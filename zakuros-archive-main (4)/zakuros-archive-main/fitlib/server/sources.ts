@@ -177,7 +177,7 @@ export function canonicalTitle(raw: string): string {
       .replace(/\s*\|\s*$/gi, "")
       .replace(/[\s]*[–—-]+\s*\+?\s*[^–—-]*?\bdlc\b[^–—-]*$/gi, "")
       .replace(/\s+\+\s*[^–—-]*?\bdlc\b[^–—-]*$/gi, "")
-      .replace(/(?<=[\w)\]]|[-,–—:])\s*\(?\s*[bB]uild\b[^)]*\)?\s*$/gi, "")
+      .replace(/(?<=[\w)\]]|[-,–—:])\s*\(?\s*[bB]uild\s+\d+(?:\.[\d]+)*[^)]*\)?\s*$/gi, "")
       .replace(/[\(\[]\s*from\s+[\d.,]+\s*(gb|mb|tb|kb)[^)\]]*[\)\]]/gi, "")
       .replace(/\s+from\s+[\d.,]+\s*(gb|mb|tb|kb)\b[^\w]*/gi, "")
       .replace(/\s+-\s*(?:goty(?: edition)?|game of the year(?: edition)?|deluxe(?: edition)?|digital deluxe|definitive edition|complete edition|ultimate edition|royal edition|collector's? edition)\s*$/gi, "")
@@ -691,6 +691,7 @@ export function steamTitleMismatch(gameTitle: string, steamTitle: string | undef
   const gT = g.filter((t) => !COMPAT_STOP_WORDS.has(t));
   const sT = s.filter((t) => !COMPAT_STOP_WORDS.has(t));
   if (gT.length === 0 || sT.length === 0) return false;
+  if (gT.length === 1 && sT.length === 1) return gT[0] !== sT[0];
   let matched = 0;
   for (const t of gT) if (sT.includes(t)) matched++;
   return matched < 2 || matched / Math.min(gT.length, sT.length) < 0.5;
