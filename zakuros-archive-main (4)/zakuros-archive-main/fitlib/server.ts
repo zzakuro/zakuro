@@ -19,7 +19,19 @@ import { Game } from "./src/types";
 // a full browser page reload every time the debounced catalog write fires.
 const GAMES_DB_PATH = path.join(process.cwd(), "data", "merged_enriched.json");
 const SOURCES_CONFIG_PATH = path.join(process.cwd(), "data", "sources.json");
+const GRIND_LOCK_PATH = path.join(process.cwd(), "data", ".grind-active");
 const PORT = 3000;
+
+// Whether the detached metadata grind is mid-run. When it is, the server must
+// not persist its (possibly stale) in-memory catalog over the grind's fresh
+// writes, and should skip auto source-syncs so they don't clobber new ids.
+function grindActive(): boolean {
+  try {
+    return fs.existsSync(GRIND_LOCK_PATH);
+  } catch {
+    return false;
+  }
+}
 const SOURCE_SYNC_INTERVAL_MS =
   (process.env.SOURCE_SYNC_INTERVAL_HOURS
     ? Number(process.env.SOURCE_SYNC_INTERVAL_HOURS)
@@ -54,6 +66,10 @@ let catalogSaveTimer: NodeJS.Timeout | null = null;
 let catalogSaving: Promise<void> | null = null;
 
 function persistCatalogSync(): void {
+  if (grindActive()) {
+    console.log("[DB] Grind active — skipping catalog persist on exit.");
+    return;
+  }
   try {
     fs.writeFileSync(GAMES_DB_PATH, JSON.stringify(gamesCatalog), "utf-8");
   } catch (e: any) {
@@ -63,6 +79,10 @@ function persistCatalogSync(): void {
 
 async function flushCatalogAsync(): Promise<void> {
   catalogDirty = false;
+  if (grindActive()) {
+    console.log("[DB] Grind active — deferring catalog persist.");
+    return;
+  }
   const tmpPath = `${GAMES_DB_PATH}.tmp`;
   try {
     await fs.promises.writeFile(tmpPath, JSON.stringify(gamesCatalog), "utf-8");
@@ -191,6 +211,16 @@ let syncState: {
 } = { lastRun: null, running: false };
 
 async function runSourceSync(): Promise<SyncResult> {
+  if (grindActive()) {
+    console.log("[Sync] Metadata grind active — skipping auto source sync.");
+    return syncState.lastRun || {
+      startedAt: new Date().toISOString(),
+      finishedAt: new Date().toISOString(),
+      ok: true,
+      sources: [],
+      totals: { added: 0, updated: 0, unchanged: 0, totalGames: gamesCatalog.length, downloadSourceCount: 0 },
+    };
+  }
   if (syncState.running) {
     console.log("[Sync] Already running, skipping.");
     return syncState.lastRun || {
@@ -376,6 +406,10 @@ async function startServer() {
       const realScreenshots = (metadata.screenshots || []).filter((u) => !u.includes("unsplash"));
       if (realScreenshots.length > 0 && !game.screenshots?.length) {
         game.screenshots = realScreenshots;
+        mutated = true;
+      }
+      if (metadata.linux && (metadata.linux.native || metadata.linux.tier) && JSON.stringify(game.linux || {}) !== JSON.stringify(metadata.linux)) {
+        game.linux = { ...(game.linux || {}), ...metadata.linux };
         mutated = true;
       }
       const extraGenres = matchGenres(metadata.summary || "", game.genres || []);

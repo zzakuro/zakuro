@@ -11,6 +11,7 @@ import { Game } from "../types";
 import { motion, AnimatePresence } from "motion/react";
 import { RatingPanel } from "../components/RatingPanel";
 import { GameComments } from "../components/GameComments";
+import { LinuxBadge } from "../components/LinuxBadge";
 
 export const GameDetailView: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -173,6 +174,9 @@ export const GameDetailView: React.FC = () => {
               <span className="rounded bg-rose-500/15 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-rose-400 ring-1 ring-rose-500/25">
                 PC
               </span>
+            )}
+            {game.linux && (game.linux.tier || game.linux.native) && (
+              <LinuxBadge linux={game.linux} className="!px-2 !py-0.5 !text-[9px]" />
             )}
           </div>
 
@@ -393,16 +397,18 @@ export const GameDetailView: React.FC = () => {
             <RatingPanel gameId={game.id} />
 
             <div className="divide-y divide-white/[0.05] rounded-2xl bg-[#0d0d10] p-1 text-xs ring-1 ring-white/[0.06]">
-              {rating > 0 && (
-                <InfoRow
-                  label="Rating Score"
-                  value={
+              <InfoRow
+                label="Rating Score"
+                value={
+                  rating > 0 ? (
                     <span className="flex items-center gap-1 font-display font-bold text-rose-400">
                       <Star className="h-3.5 w-3.5 fill-rose-400" /> {rating}%
                     </span>
-                  }
-                />
-              )}
+                  ) : (
+                    <span className="font-mono font-bold text-zinc-400">Unrated</span>
+                  )
+                }
+              />
               <InfoRow
                 label="Archive Size"
                 value={<span className="font-mono font-bold text-white">{game.fileSize}</span>}
@@ -412,6 +418,12 @@ export const GameDetailView: React.FC = () => {
                   label="Released Year"
                   value={<span className="font-mono font-bold text-white">{releaseDate.substring(0, 4)}</span>}
                 />
+              )}
+              {game.linux && (game.linux.tier || game.linux.native) && (
+                <div className="flex items-center justify-between px-3 py-3">
+                  <span className="font-mono font-semibold text-zinc-500">Linux Support</span>
+                  <LinuxBadge linux={game.linux} className="!px-2 !py-1 !text-[9px]" />
+                </div>
               )}
               <div className="flex items-center justify-between">
                 <span className="font-mono font-semibold text-zinc-500">Uploader Role</span>

@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { Star, Eye, ArrowUpRight } from "lucide-react";
 import { Game } from "../types";
 import { formatDistanceToNow, parseISO } from "date-fns";
+import { LinuxBadge } from "./LinuxBadge";
 
 type CardBadge = "NEW" | "HOT" | "UPDATED" | "VR";
 
@@ -61,7 +62,7 @@ export const GameCard: React.FC<GameCardProps> = ({ game, badge }) => {
         {/* Rating pill */}
         <div className="absolute left-2 top-2 flex items-center gap-1 rounded-md bg-black/75 px-1.5 py-0.5 text-[10px] font-bold text-white ring-1 ring-white/10 backdrop-blur-sm">
           <Star className="h-3 w-3 fill-rose-400 text-rose-400" />
-          <span>{game.rating}%</span>
+          <span>{game.rating > 0 ? `${game.rating}%` : "—"}</span>
         </div>
 
         {/* NEW / HOT / UPDATED badge */}
@@ -77,6 +78,13 @@ export const GameCard: React.FC<GameCardProps> = ({ game, badge }) => {
         {game.fileSize && (
           <div className="absolute bottom-2 right-2 rounded-md bg-black/75 px-1.5 py-0.5 font-mono text-[10px] font-bold text-zinc-200 ring-1 ring-white/10 backdrop-blur-sm">
             {game.fileSize}
+          </div>
+        )}
+
+        {/* Linux support chip */}
+        {game.linux && (game.linux.tier || game.linux.native) && (
+          <div className="absolute bottom-2 left-2">
+            <LinuxBadge linux={game.linux} />
           </div>
         )}
 

@@ -100,7 +100,10 @@ export const HomeView: React.FC = () => {
     return { games: games.length, downloads, views, sources, genres: genres.size, repackers: repackers.size };
   }, [games]);
 
-  const carouselGames = useMemo(() => [...games].sort((a, b) => b.rating - a.rating).slice(0, 5), [games]);
+  const carouselGames = useMemo(
+    () => [...games].filter((g) => g.rating > 0).sort((a, b) => b.rating - a.rating).slice(0, 5),
+    [games]
+  );
   const activeCarouselGame = carouselGames[carouselIndex];
 
   useEffect(() => {
@@ -117,7 +120,10 @@ export const HomeView: React.FC = () => {
     () => [...games].sort((a, b) => (b.popularityScore ?? 0) - (a.popularityScore ?? 0)).slice(0, 8),
     [games]
   );
-  const topRated = useMemo(() => [...games].sort((a, b) => b.rating - a.rating).slice(0, 4), [games]);
+  const topRated = useMemo(
+    () => [...games].filter((g) => g.rating > 0).sort((a, b) => b.rating - a.rating).slice(0, 4),
+    [games]
+  );
   const newReleases = useMemo(() => {
     const withDate = games.filter((g) => !Number.isNaN(Date.parse(g.releaseDate)));
     return [...withDate].sort((a, b) => b.releaseDate.localeCompare(a.releaseDate)).slice(0, 12);
@@ -228,7 +234,7 @@ export const HomeView: React.FC = () => {
             >
               <span className="flex items-center gap-1 rounded-md bg-black/60 px-2 py-1 font-mono text-[11px] font-bold text-rose-400 ring-1 ring-white/10">
                 <Star className="h-3 w-3 fill-rose-400" />
-                {activeCarouselGame.rating}%
+                {activeCarouselGame.rating > 0 ? `${activeCarouselGame.rating}%` : "—"}
               </span>
               {activeCarouselGame.releaseDate && (
                 <span className="rounded-md bg-black/60 px-2 py-1 font-mono text-[11px] font-bold text-zinc-300 ring-1 ring-white/10">
@@ -422,7 +428,7 @@ export const HomeView: React.FC = () => {
                 </span>
                 <span className="flex shrink-0 items-center gap-1 rounded-md bg-rose-500/10 px-2 py-1 font-mono text-[11px] font-bold text-rose-400 ring-1 ring-rose-500/20">
                   <Star className="h-3 w-3 fill-rose-400" />
-                  {g.rating}%
+                  {g.rating > 0 ? `${g.rating}%` : "—"}
                 </span>
                 <ChevronRight className="hidden h-4 w-4 shrink-0 text-zinc-700 transition group-hover:text-rose-400 sm:block" />
               </Link>
