@@ -668,6 +668,34 @@ export function titlesCompatible(gameTitle: string, steamTitle: string | undefin
   return matched >= 2 && matched / gT.size >= 0.4 && matched / sT.size >= 0.5;
 }
 
+// Much gentler "should this appid be UNassigned?" predicate used by the grind
+// to drop dead/stale/mislabeled Steam-app-dump matches. Keeps CJK/non-Latin
+// titles (whose Steam names often differ in script), acronym expansions
+// (A.I.L.A vs AILA) and subtitle variants; only flags clearly unrelated names.
+const COMPAT_STOP_WORDS = new Set([
+  "the", "and", "of", "a", "an", "or", "to", "in", "for", "with", "on", "at",
+  "s", "edition", "game", "games", "pc", "deluxe", "gog", "steam", "version",
+  "dlc", "dlcs", "bundle", "mini", "demo", "chapter", "pack",
+]);
+
+export function steamTitleMismatch(gameTitle: string, steamTitle: string | undefined): boolean {
+  if (!steamTitle) return true; // app doesn't exist / was removed
+  const latinish = (t: string) => /[A-Za-z]{2,}/.test(t);
+  if (!latinish(gameTitle) || !latinish(steamTitle)) return false; // CJK/etc: can't token-verify
+  const g = normalizeForMatch(gameTitle || "").split(" ");
+  const s = normalizeForMatch(steamTitle).split(" ");
+  if (g.length === 0 || s.length === 0) return false;
+  // Acronym-style titles (A.I.L.A → "a i l a") can't be token-compared safely.
+  const hasAcronym = g.some((t) => t.length === 1) || s.some((t) => t.length === 1);
+  if (hasAcronym) return false;
+  const gT = g.filter((t) => !COMPAT_STOP_WORDS.has(t));
+  const sT = s.filter((t) => !COMPAT_STOP_WORDS.has(t));
+  if (gT.length === 0 || sT.length === 0) return false;
+  let matched = 0;
+  for (const t of gT) if (sT.includes(t)) matched++;
+  return matched < 2 || matched / Math.min(gT.length, sT.length) < 0.5;
+}
+
 // Normalized game-title → candidate Steam appids. Built once from the local
 // full Steam app list so we can fill steamId for every catalog game offline.
 function loadSteamAppsIndex(): Map<string, number[]> {
