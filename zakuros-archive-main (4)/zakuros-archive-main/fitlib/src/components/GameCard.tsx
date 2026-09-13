@@ -1,91 +1,117 @@
 import React, { useState } from "react";
 import { Link } from "react-router-dom";
-import { Star, Download, Eye, Calendar, HardDrive } from "lucide-react";
+import { Star, Eye, ArrowUpRight } from "lucide-react";
 import { Game } from "../types";
 import { formatDistanceToNow, parseISO } from "date-fns";
 
+type CardBadge = "NEW" | "HOT" | "UPDATED" | "VR";
+
 interface GameCardProps {
   game: Game;
+  badge?: CardBadge;
 }
 
-export const GameCard: React.FC<GameCardProps> = ({ game }) => {
+const BADGE_STYLES: Record<CardBadge, string> = {
+  NEW: "bg-emerald-500/90 text-emerald-50",
+  HOT: "bg-amber-500/90 text-amber-50",
+  UPDATED: "bg-sky-500/90 text-sky-50",
+  VR: "bg-violet-500/90 text-violet-50",
+};
+
+export const GameCard: React.FC<GameCardProps> = ({ game, badge }) => {
   const [imgFailed, setImgFailed] = useState(false);
 
   let relativeUpdate = "";
   try {
     relativeUpdate = formatDistanceToNow(parseISO(game.stats.updatedAt), { addSuffix: true });
-  } catch (e) {
-    relativeUpdate = game.stats.updatedAt;
+  } catch {
+    relativeUpdate = "";
   }
 
   const showPlaceholder = !game.coverImage || imgFailed;
 
   return (
     <Link
-      id={`game_card_${game.id}`}
       to={`/game/${game.id}`}
-      className="group relative flex flex-col overflow-hidden rounded-xl bg-zinc-950/60 border border-zinc-900 shadow-lg hover:shadow-pink-500/10 transition-all duration-300 hover:-translate-y-1"
+      className="group relative flex h-full flex-col overflow-hidden rounded-xl bg-[#0d0d10] ring-1 ring-white/[0.06] transition-all duration-300 hover:-translate-y-1 hover:ring-rose-500/50 hover:shadow-2xl hover:shadow-rose-950/20"
     >
-      {/* Portrait Cover Container (Aspect Ratio: 3:4) */}
-      <div className="relative aspect-[3/4] w-full overflow-hidden bg-zinc-900 border-b border-zinc-900">
+      {/* Cover */}
+      <div className="relative aspect-[3/4] w-full overflow-hidden bg-zinc-900">
         {showPlaceholder ? (
-          <div className="h-full w-full flex flex-col items-start justify-end p-3 bg-gradient-to-br from-zinc-800 via-zinc-900 to-zinc-950">
-            <div className="w-8 h-0.5 bg-pink-500 mb-2 rounded" />
-            <span className="text-[11px] font-bold text-zinc-200 leading-snug line-clamp-4">{game.title}</span>
+          <div className="flex h-full w-full flex-col items-start justify-end bg-gradient-to-br from-zinc-800/70 via-zinc-900 to-[#0d0d10] p-4">
+            <div className="mb-2 h-0.5 w-8 rounded bg-rose-500" />
+            <span className="font-display text-sm font-bold leading-snug text-zinc-100 line-clamp-4">
+              {game.title}
+            </span>
           </div>
         ) : (
           <img
             src={game.coverImage}
             alt={game.title}
             referrerPolicy="no-referrer"
-            className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+            loading="lazy"
+            className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.04]"
             onError={() => setImgFailed(true)}
           />
         )}
 
-        {/* Hover/Overlay info rails */}
-        <div className="absolute inset-0 bg-gradient-to-t from-zinc-950 via-zinc-950/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-col justify-between p-3">
-          <div className="flex justify-end">
-            <span className="flex items-center gap-1 rounded bg-zinc-900/90 px-1.5 py-0.5 text-[10px] font-semibold text-white">
-              <Eye className="h-3 w-3 text-pink-400" />
-              {(game.stats.views / 1000).toFixed(0)}k Views
-            </span>
-          </div>
-          <p className="text-[11px] leading-relaxed text-zinc-300 line-clamp-3">
-            {game.summary}
-          </p>
-        </div>
+        {/* Bottom scrim for contrast */}
+        <div className="pointer-events-none absolute inset-x-0 bottom-0 h-2/5 bg-gradient-to-t from-[#0d0d10]/80 to-transparent" />
 
-        {/* Rating Badge */}
-        <div className="absolute top-2 left-2 flex items-center gap-1 rounded-md bg-[#050506]/85 px-2 py-0.5 text-[10px] font-bold text-white border border-zinc-800 backdrop-blur-sm">
-          <Star className="h-3 w-3 fill-pink-400 text-pink-400" />
+        {/* Rating pill */}
+        <div className="absolute left-2 top-2 flex items-center gap-1 rounded-md bg-black/75 px-1.5 py-0.5 text-[10px] font-bold text-white ring-1 ring-white/10 backdrop-blur-sm">
+          <Star className="h-3 w-3 fill-rose-400 text-rose-400" />
           <span>{game.rating}%</span>
         </div>
 
-        {/* Size Badge */}
-        <div className="absolute bottom-2 right-2 flex items-center gap-1 rounded-md bg-[#050506]/85 px-2 py-1 text-[10px] font-bold text-pink-400 border border-zinc-800 backdrop-blur-sm font-mono">
-          <HardDrive className="h-3 w-3" />
-          <span>{game.fileSize}</span>
+        {/* NEW / HOT / UPDATED badge */}
+        {badge && (
+          <span
+            className={`absolute right-2 top-2 rounded-md px-1.5 py-0.5 text-[9px] font-black uppercase tracking-widest ring-1 ring-black/20 ${BADGE_STYLES[badge]}`}
+          >
+            {badge}
+          </span>
+        )}
+
+        {/* Size chip */}
+        {game.fileSize && (
+          <div className="absolute bottom-2 right-2 rounded-md bg-black/75 px-1.5 py-0.5 font-mono text-[10px] font-bold text-zinc-200 ring-1 ring-white/10 backdrop-blur-sm">
+            {game.fileSize}
+          </div>
+        )}
+
+        {/* Hover overlay */}
+        <div className="absolute inset-0 flex flex-col justify-between bg-gradient-to-t from-black/90 via-black/30 to-transparent p-3 opacity-0 transition-opacity duration-300 group-hover:opacity-100">
+          <div className="flex justify-end">
+            <span className="flex items-center gap-1 rounded-md bg-black/70 px-1.5 py-0.5 text-[10px] font-semibold text-zinc-300">
+              <Eye className="h-3 w-3 text-rose-400" />
+              {(game.stats.views / 1000).toFixed(0)}k
+            </span>
+          </div>
+          <div className="translate-y-2 transition-transform duration-300 group-hover:translate-y-0">
+            <p className="line-clamp-3 text-[11px] leading-relaxed text-zinc-300">
+              {game.summary || "No description available."}
+            </p>
+            <span className="mt-2 inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-widest text-rose-400">
+              View game
+              <ArrowUpRight className="h-3 w-3" />
+            </span>
+          </div>
         </div>
       </div>
 
-      {/* Description Context */}
-      <div className="flex flex-1 flex-col p-4 justify-between">
-        <div>
-          <h3 className="font-display font-semibold text-zinc-100 group-hover:text-pink-400 transition text-[15px] line-clamp-1">
-            {game.title}
-          </h3>
-          <p className="mt-1 text-xs text-zinc-400 line-clamp-1">{game.developer}</p>
-        </div>
-
-        <div className="mt-3.5 flex items-center justify-between border-t border-zinc-900 pt-2.5">
-          <span className="inline-block rounded-md bg-zinc-900 px-2 py-0.5 text-[10px] font-medium text-zinc-400 capitalize">
-            {game.genres[0]}
+      {/* Meta */}
+      <div className="flex flex-1 flex-col justify-between gap-2 p-3.5">
+        <h3 className="line-clamp-1 font-display text-[15px] font-semibold text-zinc-100 transition group-hover:text-rose-400">
+          {game.title}
+        </h3>
+        <div className="flex items-center justify-between gap-2">
+          <span className="truncate rounded bg-white/[0.04] px-1.5 py-0.5 text-[10px] font-medium capitalize text-zinc-400 ring-1 ring-white/[0.06]">
+            {game.genres[0] ?? "Game"}
           </span>
-          <span className="text-[10px] text-zinc-500 flex items-center gap-1 font-mono">
-            <Calendar className="h-3 w-3 text-zinc-600" />
-            {relativeUpdate}
-          </span>
+          {relativeUpdate && (
+            <span className="shrink-0 font-mono text-[10px] text-zinc-600">{relativeUpdate}</span>
+          )}
         </div>
       </div>
     </Link>
