@@ -1,15 +1,227 @@
-import React, { useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { Search, User, LogOut, Compass, HelpCircle, Home } from "lucide-react";
+import { Search, User, LogOut, Home, Compass, HelpCircle, X, TrendingUp, CornerDownLeft } from "lucide-react";
 import { useGame } from "../lib/gameContext";
+import { Game } from "../types";
 import { motion, AnimatePresence } from "motion/react";
 
+/* ------------------------------------------------------------------ */
+/*  Search overlay — Cracked-Games style command palette for games.    */
+/* ------------------------------------------------------------------ */
+const SearchOverlay: React.FC<{ open: boolean; onClose: () => void }> = ({ open, onClose }) => {
+  const { games, setSearchQuery } = useGame();
+  const navigate = useNavigate();
+  const [query, setQuery] = useState("");
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (open) {
+      setQuery("");
+      const t = setTimeout(() => inputRef.current?.focus(), 60);
+      return () => clearTimeout(t);
+    }
+  }, [open]);
+
+  // Esc to close
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
+
+  // Lock body scroll while open
+  useEffect(() => {
+    if (!open) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, [open]);
+
+  const trending = useMemo(
+    () => [...games].sort((a, b) => (b.popularityScore ?? 0) - (a.popularityScore ?? 0)).slice(0, 6),
+    [games]
+  );
+
+  const results = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return [];
+    return games
+      .filter(
+        (g) =>
+          g.title.toLowerCase().includes(q) ||
+          g.developer.toLowerCase().includes(q) ||
+          g.genres.some((x) => x.toLowerCase().includes(q))
+      )
+      .slice(0, 8);
+  }, [query, games]);
+
+  const goToGame = (g: Game) => {
+    setSearchQuery("");
+    onClose();
+    navigate(`/game/${g.id}`);
+  };
+
+  const submit = (e: React.FormEvent) => {
+    e.preventDefault();
+    setSearchQuery(query);
+    onClose();
+    navigate(`/browse?q=${encodeURIComponent(query)}`);
+  };
+
+  return (
+    <AnimatePresence>
+      {open && (
+        <div className="fixed inset-0 z-[60] flex items-start justify-center px-4 pt-[10vh]">
+          <motion.button
+            aria-label="Close search"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={onClose}
+            className="absolute inset-0 cursor-default bg-black/80 backdrop-blur-sm"
+          />
+
+          <motion.div
+            initial={{ opacity: 0, y: 12, scale: 0.98 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 12, scale: 0.98 }}
+            transition={{ duration: 0.18, ease: "easeOut" }}
+            className="relative w-full max-w-2xl overflow-hidden rounded-2xl border border-white/10 bg-[#0d0d10] shadow-2xl shadow-black"
+          >
+            {/* Input row */}
+            <form onSubmit={submit} className="flex items-center gap-3 border-b border-white/10 px-5">
+              <Search className="h-4 w-4 shrink-0 text-zinc-500" />
+              <input
+                ref={inputRef}
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Search games, genres, developers…"
+                className="h-14 flex-1 bg-transparent text-sm text-white placeholder-zinc-600 outline-none"
+              />
+              {query && (
+                <button
+                  type="button"
+                  onClick={() => setQuery("")}
+                  className="rounded-full p-1 text-zinc-500 hover:text-white transition"
+                  aria-label="Clear search"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              )}
+              <kbd className="hidden rounded-md border border-white/10 bg-black/40 px-1.5 py-0.5 text-[10px] font-mono text-zinc-500 sm:block">
+                ESC
+              </kbd>
+            </form>
+
+            <div className="max-h-[420px] overflow-y-auto">
+              {query.trim() ? (
+                results.length > 0 ? (
+                  <div className="p-2">
+                    <div className="flex items-center justify-between px-3 py-2">
+                      <span className="text-[10px] font-bold uppercase tracking-widest text-zinc-500 font-mono">
+                        Results
+                      </span>
+                      <span className="text-[10px] font-mono text-zinc-600">{results.length} shown</span>
+                    </div>
+                    <ul className="space-y-0.5">
+                      {results.map((g) => (
+                        <li key={g.id}>
+                          <button
+                            onClick={() => goToGame(g)}
+                            className="group flex w-full items-center gap-3 rounded-xl px-3 py-2 text-left hover:bg-white/5 transition"
+                          >
+                            <span className="h-12 w-9 shrink-0 overflow-hidden rounded-md bg-zinc-900 ring-1 ring-white/5">
+                              {g.coverImage ? (
+                                <img
+                                  src={g.coverImage}
+                                  alt=""
+                                  referrerPolicy="no-referrer"
+                                  loading="lazy"
+                                  className="h-full w-full object-cover"
+                                  onError={(e) => ((e.target as HTMLImageElement).style.opacity = "0")}
+                                />
+                              ) : null}
+                            </span>
+                            <span className="min-w-0 flex-1">
+                              <span className="block truncate text-sm font-medium text-white">{g.title}</span>
+                              <span className="block truncate text-[11px] text-zinc-500">
+                                {g.genres[0] ?? "Game"}
+                                {g.fileSize ? ` · ${g.fileSize}` : ""}
+                              </span>
+                            </span>
+                            <span className="flex items-center gap-1 rounded-md border border-white/10 bg-black/30 px-2 py-1 text-[10px] font-bold text-zinc-400">
+                              <span className="text-rose-400">{g.rating}%</span>
+                              <span className="hidden sm:inline text-zinc-600">rating</span>
+                            </span>
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                    <button
+                      onClick={submit}
+                      className="mt-2 flex w-full items-center justify-between rounded-xl border border-white/5 px-4 py-2.5 text-xs text-zinc-400 hover:text-white hover:bg-white/5 transition"
+                    >
+                      <span className="font-mono">
+                        Search catalog for <span className="text-rose-400">"{query.trim()}"</span>
+                      </span>
+                      <CornerDownLeft className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                ) : (
+                  <div className="px-5 py-10 text-center">
+                    <p className="text-sm text-zinc-400">No matches for "{query}"</p>
+                    <button
+                      onClick={submit}
+                      className="mt-3 rounded-full border border-white/10 px-4 py-1.5 text-xs text-zinc-300 hover:text-white hover:border-rose-500/40 transition"
+                    >
+                      Browse catalog instead
+                    </button>
+                  </div>
+                )
+              ) : (
+                <div className="p-4">
+                  <div className="flex items-center gap-1.5 px-3 pb-2 text-[10px] font-bold uppercase tracking-widest text-zinc-500 font-mono">
+                    <TrendingUp className="h-3 w-3" /> Trending now
+                  </div>
+                  <div className="flex flex-wrap gap-2 px-3 pb-3">
+                    {trending.map((g) => (
+                      <button
+                        key={g.id}
+                        onClick={() => goToGame(g)}
+                        className="rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5 text-xs text-zinc-300 hover:border-rose-500/40 hover:text-white transition"
+                      >
+                        {g.title}
+                      </button>
+                    ))}
+                  </div>
+                  <button
+                    onClick={submit}
+                    className="mx-3 flex w-[calc(100%-24px)] items-center justify-center gap-2 rounded-xl border border-white/5 bg-black/30 px-4 py-2.5 text-xs font-bold text-zinc-300 hover:text-white transition font-mono"
+                  >
+                    <Search className="h-3.5 w-3.5 text-rose-400" />
+                    Full library — {games.length.toLocaleString()} games
+                  </button>
+                </div>
+              )}
+            </div>
+          </motion.div>
+        </div>
+      )}
+    </AnimatePresence>
+  );
+};
+
+/* ------------------------------------------------------------------ */
+/*  Navbar                                                             */
+/* ------------------------------------------------------------------ */
 export const Navbar: React.FC = () => {
-  const { user, logoutUser, searchQuery, setSearchQuery } = useGame();
+  const { user, logoutUser } = useGame();
   const location = useLocation();
   const navigate = useNavigate();
   const [showDropdown, setShowDropdown] = useState(false);
-  const [localSearch, setLocalSearch] = useState(searchQuery);
+  const [searchOpen, setSearchOpen] = useState(false);
 
   const navItems = [
     { label: "Home", path: "/", icon: Home },
@@ -17,45 +229,49 @@ export const Navbar: React.FC = () => {
     { label: "About", path: "/about", icon: HelpCircle },
   ];
 
-  const handleSearchSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    setSearchQuery(localSearch);
-    navigate(`/browse?q=${encodeURIComponent(localSearch)}`);
-  };
+  // Global Ctrl/Cmd+K shortcut opens the search overlay
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") {
+        e.preventDefault();
+        setSearchOpen((v) => !v);
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
 
   return (
-    <header id="nav_header" className="sticky top-0 z-50 w-full border-b border-zinc-900 bg-[#050506]/90 backdrop-blur-md">
-      <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
-        
-        {/* Zakuro's Archive Brand logo */}
-        <Link 
-          id="nav_logo" 
-          to="/" 
-          className="flex items-center gap-2 text-xl font-bold tracking-wider font-display text-white transition hover:opacity-90"
-        >
-          <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-pink-500/10 text-pink-400 font-black ring-1 ring-pink-500/30">
+    <header className="sticky top-0 z-50 w-full border-b border-white/5 bg-[#0a0a0c]/85 backdrop-blur-xl">
+      <div className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
+        {/* Brand */}
+        <Link to="/" className="flex items-center gap-2.5 transition hover:opacity-90">
+          <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-rose-500 to-rose-700 text-sm font-black text-white shadow-lg shadow-rose-500/25">
             Z
           </span>
-          <span>ZAKURO'S<span className="text-pink-400"> ARCHIVE</span></span>
+          <span className="font-display text-sm font-bold tracking-widest text-white">
+            ZAKURO'S<span className="text-rose-400"> ARCHIVE</span>
+          </span>
         </Link>
 
-        {/* Navigation center links */}
-        <nav id="nav_links" className="hidden md:flex items-center gap-1">
+        {/* Nav center */}
+        <nav className="hidden md:flex items-center gap-1">
           {navItems.map((item) => {
-            const isActive = location.pathname === item.path || (item.path !== "/" && location.pathname.startsWith(item.path));
+            const isActive =
+              location.pathname === item.path ||
+              (item.path !== "/" && location.pathname.startsWith(item.path));
             return (
               <Link
                 key={item.path}
-                id={`nav_link_${item.label.toLowerCase()}`}
                 to={item.path}
-                className={`relative px-4 py-1.5 text-sm font-medium transition duration-200 hover:text-white rounded-full ${
-                  isActive ? "text-pink-400" : "text-zinc-400"
+                className={`relative rounded-full px-4 py-1.5 text-sm transition ${
+                  isActive ? "text-white" : "text-zinc-400 hover:text-white"
                 }`}
               >
                 {isActive && (
                   <motion.span
-                    layoutId="active-nav-pill"
-                    className="absolute inset-0 -z-10 rounded-full bg-pink-950/40 border border-pink-500/20"
+                    layoutId="nav-pill"
+                    className="absolute inset-0 -z-10 rounded-full bg-white/[0.06] ring-1 ring-white/10"
                     transition={{ type: "spring", stiffness: 380, damping: 30 }}
                   />
                 )}
@@ -65,96 +281,74 @@ export const Navbar: React.FC = () => {
           })}
         </nav>
 
-        {/* Search, Auth, and Discord Buttons */}
-        <div id="nav_actions" className="flex items-center gap-4">
-          
-          {/* Quick Search Input */}
-          <form id="nav_search_form" onSubmit={handleSearchSubmit} className="relative hidden sm:block">
-            <input
-              type="text"
-              placeholder="Search repacks..."
-              value={localSearch}
-              onChange={(e) => setLocalSearch(e.target.value)}
-              className="w-48 xl:w-64 rounded-full border border-zinc-800 bg-zinc-950 py-1.5 pl-4 pr-10 text-xs font-medium text-white transition placeholder-zinc-500 focus:border-pink-500 focus:outline-none focus:ring-1 focus:ring-pink-500/30"
-            />
-            <button type="submit" className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-pink-400 transition">
-              <Search className="h-4 w-4" />
-            </button>
-          </form>
-
-          {/* User Account State */}
-          <div className="relative">
-            {user ? (
-              <div className="flex items-center gap-2">
-                <button
-                  id="user_profile_trigger"
-                  onClick={() => setShowDropdown(!showDropdown)}
-                  className="flex items-center gap-1.5 rounded-full border border-zinc-800 bg-zinc-950 px-3 py-1.5 text-xs font-semibold text-white hover:border-pink-500/40 hover:bg-zinc-900 transition"
-                >
-                  <User className="h-3.5 w-3.5 text-pink-400" />
-                  <span>{user.username}</span>
-                </button>
-
-                <AnimatePresence>
-                  {showDropdown && (
-                    <>
-                      {/* Invisible backdrop helper to close */}
-                      <div className="fixed inset-0 z-10" onClick={() => setShowDropdown(false)} />
-                      <motion.div
-                        id="user_dropdown"
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: 10 }}
-                        className="absolute right-0 mt-12 z-20 w-44 rounded-xl border border-zinc-900 bg-[#0a0a0f] p-1.5 shadow-2xl shadow-black"
-                      >
-                        <div className="px-3 py-2 text-xs border-b border-zinc-900">
-                          <p className="text-zinc-500">Account status</p>
-                          <p className="font-semibold text-pink-400">{user.role}</p>
-                        </div>
-                        <button
-                          onClick={() => {
-                            logoutUser();
-                            setShowDropdown(false);
-                            navigate("/");
-                          }}
-                          className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-xs font-medium text-zinc-400 hover:bg-red-950/20 hover:text-red-400 transition"
-                        >
-                          <LogOut className="h-3.5 w-3.5" />
-                          <span>Logout</span>
-                        </button>
-                      </motion.div>
-                    </>
-                  )}
-                </AnimatePresence>
-              </div>
-            ) : (
-              <Link
-                id="navbar_signin_btn"
-                to="/login"
-                className="flex items-center gap-1.5 rounded-full border border-dashed border-pink-500/30 bg-pink-950/20 px-4 py-1.5 text-xs font-semibold text-pink-400 hover:bg-pink-950/40 hover:border-pink-500 transition"
-              >
-                <User className="h-3.5 w-3.5" />
-                <span>Sign In</span>
-              </Link>
-            )}
-          </div>
-
-          {/* Discord Styled Button */}
-          <a
-            id="discord_btn"
-            href="https://discord.gg"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center gap-1.5 rounded-full bg-[#5865F2] hover:bg-[#4752C4] px-4 py-1.5 text-xs font-semibold text-white transition active:scale-95 shadow-md shadow-[#5865F2]/20"
+        {/* Actions */}
+        <div className="flex items-center gap-2.5">
+          {/* Search trigger */}
+          <button
+            onClick={() => setSearchOpen(true)}
+            className="group flex h-9 items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-3 text-xs text-zinc-500 transition hover:border-rose-500/40 hover:text-zinc-300 sm:px-4"
           >
-            <svg className="h-3.5 w-3.5 fill-current" viewBox="0 0 127.14 96.36">
-              <path d="M107.7,8.07A105.15,105.15,0,0,0,77.26,0a77.19,77.19,0,0,0-3.3,6.83A96.67,96.67,0,0,0,53.18,6.83,77.19,77.19,0,0,0,49.88,0,105.15,105.15,0,0,0,19.44,8.07C3.66,31.58-1.9,54.65,1,77.53a105.73,105.73,0,0,0,32,16.29,80.68,80.68,0,0,0,6.83-11.12,68.8,68.8,0,0,1-10.85-5.18c.92-.68,1.81-1.39,2.67-2.14a75.48,75.48,0,0,0,71,0c.87.75,1.76,1.46,2.68,2.14a68.86,68.86,0,0,1-10.85,5.18,80.12,80.12,0,0,0,6.83,11.12,105.54,105.54,0,0,0,32-16.29C129.24,48.24,121.55,25.43,107.7,8.07ZM42.45,65.69C36.18,65.69,31,60,31,53S36.18,40.36,42.45,40.36,53.83,46,53.83,53,48.72,65.69,42.45,65.69Zm42.24,0C78.41,65.69,73.24,60,73.24,53S78.41,40.36,84.69,40.36,96.07,46,96.07,53,91,65.69,84.69,65.69Z"/>
-            </svg>
-            <span className="hidden lg:inline">Discord</span>
-          </a>
+            <Search className="h-3.5 w-3.5" />
+            <span className="hidden sm:inline">Search</span>
+            <kbd className="hidden items-center gap-0.5 rounded border border-white/10 bg-black/40 px-1.5 py-0.5 font-mono text-[9px] text-zinc-500 xl:flex">
+              Ctrl&nbsp;K
+            </kbd>
+          </button>
 
+          {/* User */}
+          {user ? (
+            <div className="relative">
+              <button
+                onClick={() => setShowDropdown((v) => !v)}
+                className="flex h-9 items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.03] px-3 text-xs font-semibold text-white transition hover:border-rose-500/40"
+              >
+                <User className="h-3.5 w-3.5 text-rose-400" />
+                <span className="hidden sm:inline">{user.username}</span>
+              </button>
+
+              <AnimatePresence>
+                {showDropdown && (
+                  <>
+                    <div className="fixed inset-0 z-10" onClick={() => setShowDropdown(false)} />
+                    <motion.div
+                      initial={{ opacity: 0, y: 8 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: 8 }}
+                      className="absolute right-0 mt-2 z-20 w-44 rounded-xl border border-white/10 bg-[#101013] p-1.5 shadow-2xl shadow-black"
+                    >
+                      <div className="border-b border-white/5 px-3 py-2 text-xs">
+                        <p className="text-zinc-500">Account status</p>
+                        <p className="font-semibold text-rose-400">{user.role}</p>
+                      </div>
+                      <button
+                        onClick={() => {
+                          logoutUser();
+                          setShowDropdown(false);
+                          navigate("/");
+                        }}
+                        className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-xs text-zinc-400 hover:bg-white/5 hover:text-rose-400 transition"
+                      >
+                        <LogOut className="h-3.5 w-3.5" />
+                        Logout
+                      </button>
+                    </motion.div>
+                  </>
+                )}
+              </AnimatePresence>
+            </div>
+          ) : (
+            <Link
+              to="/login"
+              className="flex h-9 items-center gap-1.5 rounded-full border border-rose-500/30 bg-rose-500/10 px-3.5 text-xs font-semibold text-rose-400 transition hover:bg-rose-500/20"
+            >
+              <User className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">Sign In</span>
+            </Link>
+          )}
         </div>
       </div>
+
+      <SearchOverlay open={searchOpen} onClose={() => setSearchOpen(false)} />
     </header>
   );
 };

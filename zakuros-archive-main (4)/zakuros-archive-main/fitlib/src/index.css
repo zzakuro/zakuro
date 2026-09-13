@@ -6,40 +6,76 @@
   --font-display: "Space Grotesk", "Inter", sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
 
-  /* Custom Zakuro's Archive visual theme constants */
-  --color-dark-bg: #050506;
-  --color-dark-surface: #0a0a0f;
-  --color-dark-surface-hover: #12121c;
-  --color-pink-primary: #f472b6;
-  --color-pink-primary-hover: #ec4899;
+  /* Zakuro's Archive — pomegranate editorial dark theme */
+  --color-dark-bg: #09090b;
+  --color-dark-surface: #0d0d10;
+  --color-dark-surface-hover: #141419;
+  --color-accent: #f43f5e;
+  --color-accent-deep: #e11d48;
 }
 
-/* Custom global settings */
+html {
+  scroll-behavior: smooth;
+}
+
 body {
   background-color: var(--color-dark-bg);
-  color: #f3f4f6;
+  color: #e4e4e7;
   font-family: var(--font-sans);
   overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
 }
 
-/* Custom scrollbars for a highly polished gaming slate interface */
+/* Faint rose bloom pinned to the top of the viewport */
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0 auto auto 50%;
+  transform: translateX(-50%);
+  width: 1400px;
+  height: 420px;
+  pointer-events: none;
+  z-index: 0;
+  background: radial-gradient(
+    ellipse 700px 260px at 50% -120px,
+    rgba(244, 63, 94, 0.07),
+    transparent 70%
+  );
+}
+
+::selection {
+  background: #f43f5e;
+  color: #fff;
+}
+
+/* Thin refined scrollbars */
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 8px;
+  height: 8px;
 }
 ::-webkit-scrollbar-track {
-  background: #050506;
+  background: #09090b;
 }
 ::-webkit-scrollbar-thumb {
-  background: #1e1e2d;
-  border-radius: 3px;
+  background: #232329;
+  border-radius: 4px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #f472b6;
+  background: #f43f5e;
 }
 
-/* Active carousel navigation buttons */
+/* Hide scrollbars on horizontal rails while keeping scroll */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Legacy carousel dot active state */
 .carousel-dot-active {
-  background-color: var(--color-pink-primary) !important;
-  box-shadow: 0 0 8px var(--color-pink-primary);
+  background-color: var(--color-accent) !important;
+  box-shadow: 0 0 8px var(--color-accent);
 }
