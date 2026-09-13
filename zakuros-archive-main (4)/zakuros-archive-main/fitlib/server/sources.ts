@@ -540,36 +540,31 @@ const STEAM_SEARCH_URL = (term: string) =>
 const enrichTried = new Set<string>();
 
 async function steamSearchFirstHit(title: string): Promise<{ appid: number; name: string } | null> {
+  const gameKey = normalizeForMatch(title);
+  const gameStripped = stripReleaseJunk(gameKey);
+  // Search the raw title first, then the junk-stripped variant (helps titles
+  // like "171 Game" whose Steam name is just "171").
+  const queries = [title, gameStripped && gameStripped !== gameKey ? gameStripped : ""].filter(Boolean);
   try {
-    const gameKey = normalizeForMatch(title);
-    const gameStripped = stripReleaseJunk(gameKey);
-    const response = await fetch(STEAM_SEARCH_URL(title), {
-      headers: { "User-Agent": FETCH_UA },
-    });
-    if (!response.ok) return null;
-    const data = (await response.json()) as { items?: { id: number; name: string }[] };
-    const items = data?.items || [];
-    if (!items.length) return null;
-    // Take the FIRST item whose normalized name is compatible with the title
-    // (exact, or shares all distinctive tokens) instead of blindly items[0].
-    for (const item of items.slice(0, 6)) {
-      const hitKey = normalizeForMatch(item.name);
-      const hitStripped = stripReleaseJunk(hitKey);
-      const gCands = [gameKey, gameStripped].filter((k, i, a) => k && a.indexOf(k) === i);
-      const hCands = [hitKey, hitStripped].filter((k, i, a) => k && a.indexOf(k) === i);
-      for (const gc of gCands) {
-        for (const hc of hCands) {
-          if (gc === hc) return { appid: item.id, name: item.name };
-        }
-      }
-      const gT = tokenizeKey(gCands[0]);
-      const hT = tokenizeKey(hCands[0]);
-      if (gT.size >= 2 && hT.size >= 2) {
-        let matched = 0;
-        for (const t of gT) if (hT.has(t)) matched++;
-        const coverage = matched / gT.size;
-        const hJunk = hT.size - matched;
-        if (coverage >= 0.7 && hJunk <= 1 && (gT.size >= 3 || hJunk === 0)) {
+    for (const query of queries) {
+      const response = await fetch(STEAM_SEARCH_URL(query), {
+        headers: { "User-Agent": FETCH_UA },
+      });
+      if (!response.ok) continue;
+      const data = (await response.json()) as { items?: { id: number; name: string }[] };
+      const items = data?.items || [];
+      if (!items.length) continue;
+      for (const item of items.slice(0, 6)) {
+        const hitKey = normalizeForMatch(item.name);
+        const hitStripped = stripReleaseJunk(hitKey);
+        if (
+          hitKey === gameKey ||
+          (hitStripped && hitStripped === gameKey) ||
+          (gameStripped && (hitKey === gameStripped || (hitStripped && hitStripped === gameStripped))) ||
+          titlesCompatible(gameKey, hitKey) ||
+          (gameStripped && titlesCompatible(gameStripped, hitKey)) ||
+          titlesCompatible(gameKey, hitStripped)
+        ) {
           return { appid: item.id, name: item.name };
         }
       }
@@ -654,6 +649,23 @@ let steamAppsAppName: Map<number, string> | null = null;
 function tokenizeKey(key: string): Set<string> {
   const tokens = key.split(/\s+/).filter(Boolean);
   return new Set(tokens);
+}
+
+// Live-compatibility check between a catalog title and a Steam store title.
+// Used to reject stale/mislabeled Steam-app-dump matches (e.g. a dump that
+// renamed "171" to "Infested Inside Multiplayer Online"). Liberal enough for
+// subtitle/edition/DLC variants, strict enough to drop unrelated games.
+export function titlesCompatible(gameTitle: string, steamTitle: string | undefined): boolean {
+  if (!steamTitle) return false;
+  const gT = tokenizeKey(normalizeForMatch(gameTitle || ""));
+  const sT = tokenizeKey(normalizeForMatch(steamTitle));
+  if (gT.size === 0 || sT.size === 0) return false;
+  let matched = 0;
+  for (const t of gT) if (sT.has(t)) matched++;
+  if (gT.size === 1 || sT.size === 1) {
+    return matched === Math.min(gT.size, sT.size) && matched >= 1;
+  }
+  return matched >= 2 && matched / gT.size >= 0.4 && matched / sT.size >= 0.5;
 }
 
 // Normalized game-title → candidate Steam appids. Built once from the local

@@ -22,7 +22,7 @@ import {
   fetchSteamDetails,
   fetchProtonSummary,
 } from "./metadataService";
-import { resolveMissingSteamIds } from "./sources";
+import { resolveMissingSteamIds, titlesCompatible } from "./sources";
 
 const GAMES_DB_PATH = path.join(process.cwd(), "data", "merged_enriched.json");
 const STATE_PATH = path.join(process.cwd(), "data", "steam_grind_state.json");
@@ -128,6 +128,22 @@ async function main() {
         fetchSteamDetails(appid),
         fetchProtonSummary(appid),
       ]);
+
+      // Live-title verification: reject stale/mislabeled dump matches. If the
+      // app no longer exists or its real title is incompatible, unassign so we
+      // never ship a wrong cover/metadata.
+      if (!details.title || !titlesCompatible(game.title, details.title)) {
+        game.steamId = undefined;
+        game.coverImage = "";
+        game.screenshot = "";
+        game.screenshots = [];
+        game.developer = "";
+        game.summary = "";
+        game.linux = undefined;
+        bNoReport++;
+        protonDone.add(appid);
+        continue;
+      }
 
       // Fill any still-missing real fields (incomplete/mis-marked entries).
       if (details.summary && !game.summary) game.summary = details.summary;
