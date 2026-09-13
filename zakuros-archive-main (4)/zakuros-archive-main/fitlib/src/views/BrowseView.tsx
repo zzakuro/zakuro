@@ -1,9 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
-import { Filter, SlidersHorizontal, Grid, Search, X, ChevronDown, RotateCcw, HelpCircle } from "lucide-react";
+import { SlidersHorizontal, Search, X, ChevronDown, RotateCcw } from "lucide-react";
 import { useGame } from "../lib/gameContext";
 import { GameCard } from "../components/GameCard";
-import { Game } from "../types";
 
 export const BrowseView: React.FC = () => {
   const { games, searchQuery, setSearchQuery } = useGame();
@@ -25,8 +24,9 @@ export const BrowseView: React.FC = () => {
     if (queryParam) setSearchQuery(queryParam);
   }, [queryParam, setSearchQuery]);
 
-  // Reset to page 1 on any filter change
-  useEffect(() => { setPage(1); }, [searchQuery, selectedGenre, selectedDeveloper, selectedYear, selectedMinRating, sortBy, showClassic]);
+  useEffect(() => {
+    setPage(1);
+  }, [searchQuery, selectedGenre, selectedDeveloper, selectedYear, selectedMinRating, sortBy, showClassic]);
 
   const genresList = Array.from(new Set([
     "Visual Novel", "Metroidvania", "Souls-like", "Roguelike", "Rhythm", "Racing",
@@ -59,10 +59,11 @@ export const BrowseView: React.FC = () => {
   };
 
   const filteredGames = games.filter((game) => {
+    const q = searchQuery.toLowerCase();
     const matchesSearch = searchQuery
-      ? game.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        game.developer.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        game.genres.some(g => g.toLowerCase().includes(searchQuery.toLowerCase()))
+      ? game.title.toLowerCase().includes(q) ||
+        game.developer.toLowerCase().includes(q) ||
+        game.genres.some((g) => g.toLowerCase().includes(q))
       : true;
     const matchesGenre = selectedGenre
       ? game.genres.some((g) => g.toLowerCase() === selectedGenre.toLowerCase())
@@ -96,37 +97,52 @@ export const BrowseView: React.FC = () => {
 
   const scrollTop = () => window.scrollTo({ top: 0, behavior: "smooth" });
 
-  // Build page number list with ellipsis
   const pageNumbers: (number | string)[] = [];
   Array.from({ length: totalPages }, (_, i) => i + 1)
-    .filter(p => p === 1 || p === totalPages || Math.abs(p - page) <= 2)
+    .filter((p) => p === 1 || p === totalPages || Math.abs(p - page) <= 2)
     .forEach((p, i, arr) => {
       if (i > 0 && (p as number) - (arr[i - 1] as number) > 1) pageNumbers.push("...");
       pageNumbers.push(p);
     });
 
-  return (
-    <div id="browse_view" className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+  const selectCls =
+    "w-full rounded-lg border border-white/10 bg-[#0d0d10] py-2 pl-3 pr-8 text-xs text-zinc-300 outline-none transition focus:border-rose-500/50";
+  const activeFilterCls = "bg-rose-500/10 border-rose-500/40 text-rose-400";
+  const idleFilterCls = "bg-[#0d0d10] border-white/10 text-zinc-400 hover:border-white/25 hover:text-white";
 
+  return (
+    <div id="browse_view" className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
       {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between border-b border-zinc-900 pb-5 mb-8 gap-4">
+      <div className="mb-8 flex flex-col gap-4 border-b border-white/5 pb-6 md:flex-row md:items-end md:justify-between">
         <div>
-          <span className="text-[10px] font-bold text-pink-400 tracking-wider font-mono uppercase">ZAKURO'S ARCHIVE INTERNAL INDEX</span>
-          <h1 className="font-display text-3xl font-black text-white uppercase mt-0.5">Browse games</h1>
+          <p className="mb-1.5 flex items-center gap-2 font-mono text-[10px] font-bold uppercase tracking-[0.2em] text-rose-400">
+            <span className="h-1 w-1 rounded-full bg-rose-400" />
+            Library
+          </p>
+          <h1 className="font-display text-3xl font-bold tracking-tight text-white">
+            Browse Games
+          </h1>
+          <p className="mt-1.5 font-mono text-xs text-zinc-500">
+            {sortedGames.length.toLocaleString()} of {games.length.toLocaleString()} titles indexed
+          </p>
         </div>
+
         <div className="flex items-center gap-3">
           <button
-            onClick={() => setSidebarOpen(!sidebarOpen)}
-            className="flex items-center gap-2 rounded-full border border-zinc-800 bg-zinc-950 px-4 py-2 text-xs font-semibold text-zinc-400 hover:text-white hover:border-zinc-700 transition"
+            onClick={() => setSidebarOpen((v) => !v)}
+            className={`flex items-center gap-2 rounded-full border px-4 py-2 text-xs font-semibold transition ${
+              sidebarOpen ? "border-rose-500/40 bg-rose-500/10 text-rose-400" : "border-white/10 bg-white/[0.03] text-zinc-400 hover:text-white"
+            }`}
           >
-            <SlidersHorizontal className="h-4 w-4 text-pink-400" />
-            <span>{sidebarOpen ? "Hide Filters" : "Show Filters"}</span>
+            <SlidersHorizontal className="h-4 w-4" />
+            {sidebarOpen ? "Hide Filters" : "Show Filters"}
           </button>
+
           <div className="relative">
             <select
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value)}
-              className="appearance-none rounded-full border border-zinc-800 bg-zinc-950 py-2 pl-4 pr-10 text-xs font-semibold text-zinc-300 focus:border-pink-500 focus:outline-none focus:ring-1 focus:ring-pink-500/30"
+              className="appearance-none rounded-full border border-white/10 bg-[#0d0d10] py-2 pl-4 pr-10 text-xs font-semibold text-zinc-300 outline-none transition focus:border-rose-500/50"
             >
               <option value="Most Popular">Sort: Most Popular</option>
               <option value="Newest">Sort: Newest</option>
@@ -139,179 +155,181 @@ export const BrowseView: React.FC = () => {
         </div>
       </div>
 
-      <div className="flex gap-8 items-start">
-
+      <div className="flex flex-col items-start gap-8 lg:flex-row">
         {/* Sidebar */}
         {sidebarOpen && (
-          <aside id="filters_sidebar" className="w-64 shrink-0 rounded-xl border border-zinc-900 bg-zinc-950/40 p-5 sticky top-24 hidden md:block">
-            <div className="flex items-center justify-between border-b border-zinc-900 pb-3 mb-5">
-              <span className="text-xs font-bold font-display tracking-wider text-white uppercase">Filter Options</span>
-              <button onClick={handleClearFilters} className="text-[10px] font-bold text-zinc-500 hover:text-pink-400 font-mono transition flex items-center gap-1">
+          <aside id="filters_sidebar" className="w-full shrink-0 rounded-2xl bg-[#0d0d10] p-5 ring-1 ring-white/[0.06] lg:sticky lg:top-24 lg:w-64">
+            <div className="mb-5 flex items-center justify-between border-b border-white/5 pb-3">
+              <span className="font-display text-xs font-bold uppercase tracking-widest text-white">Filters</span>
+              <button
+                onClick={handleClearFilters}
+                className="flex items-center gap-1 font-mono text-[10px] font-bold text-zinc-500 transition hover:text-rose-400"
+              >
                 <RotateCcw className="h-3 w-3" /> Reset
               </button>
             </div>
 
-            <div className="mb-6">
-              <label className="block text-[10px] font-bold text-zinc-500 uppercase tracking-wider mb-2">Search Match</label>
+            <FilterGroup label="Search Match">
               <div className="relative">
                 <input
                   type="text"
-                  placeholder="Enter title..."
+                  placeholder="Enter title…"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full rounded-lg border border-zinc-800 bg-zinc-950 py-1.5 pl-3 pr-8 text-xs font-medium text-white transition placeholder-zinc-600 focus:border-pink-500/50 focus:outline-none"
+                  className="w-full rounded-lg border border-white/10 bg-[#0d0d10] py-2 pl-3 pr-8 text-xs text-white outline-none transition placeholder-zinc-600 focus:border-rose-500/50"
                 />
                 {searchQuery && (
-                  <button onClick={() => setSearchQuery("")} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-white">
+                  <button
+                    onClick={() => setSearchQuery("")}
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-zinc-500 transition hover:text-white"
+                  >
                     <X className="h-3 w-3" />
                   </button>
                 )}
               </div>
-            </div>
+            </FilterGroup>
 
-            <div className="mb-6">
-              <label className="block text-[10px] font-bold text-zinc-500 uppercase tracking-wider mb-2">Genres</label>
-              <select value={selectedGenre} onChange={(e) => setSelectedGenre(e.target.value)} className="w-full rounded-lg border border-zinc-800 bg-zinc-950 py-1.5 px-3 text-xs text-zinc-300 focus:border-pink-500/50 focus:outline-none">
+            <FilterGroup label="Genres">
+              <select value={selectedGenre} onChange={(e) => setSelectedGenre(e.target.value)} className={selectCls}>
                 <option value="">All Genres</option>
-                {genresList.map((genre) => <option key={genre} value={genre}>{genre}</option>)}
+                {genresList.map((genre) => (
+                  <option key={genre} value={genre}>{genre}</option>
+                ))}
               </select>
-            </div>
+            </FilterGroup>
 
-            <div className="mb-6">
-              <label className="block text-[10px] font-bold text-zinc-500 uppercase tracking-wider mb-2">Developer</label>
-              <select value={selectedDeveloper} onChange={(e) => setSelectedDeveloper(e.target.value)} className="w-full rounded-lg border border-zinc-800 bg-zinc-950 py-1.5 px-3 text-xs text-zinc-300 focus:border-pink-500/50 focus:outline-none">
+            <FilterGroup label="Developer">
+              <select value={selectedDeveloper} onChange={(e) => setSelectedDeveloper(e.target.value)} className={selectCls}>
                 <option value="">All Developers</option>
-                {developersList.map((dev) => <option key={dev} value={dev}>{dev}</option>)}
+                {developersList.map((dev) => (
+                  <option key={dev} value={dev}>{dev}</option>
+                ))}
               </select>
-            </div>
+            </FilterGroup>
 
-            <div className="mb-6">
-              <label className="block text-[10px] font-bold text-zinc-500 uppercase tracking-wider mb-2">Release Year</label>
-              <select value={selectedYear} onChange={(e) => setSelectedYear(e.target.value)} className="w-full rounded-lg border border-zinc-800 bg-zinc-950 py-1.5 px-3 text-xs text-zinc-300 focus:border-pink-500/50 focus:outline-none">
+            <FilterGroup label="Release Year">
+              <select value={selectedYear} onChange={(e) => setSelectedYear(e.target.value)} className={selectCls}>
                 <option value="">All Years</option>
-                {yearsList.map((year) => <option key={year} value={year}>{year}</option>)}
+                {yearsList.map((year) => (
+                  <option key={year} value={year}>{year}</option>
+                ))}
               </select>
-            </div>
+            </FilterGroup>
 
-            <div>
-              <label className="block text-[10px] font-bold text-zinc-500 uppercase tracking-wider mb-2">Minimum Rating</label>
+            <FilterGroup label="Minimum Rating">
               <div className="flex flex-col gap-2">
                 {[70, 80, 90].map((rating) => (
                   <button
                     key={rating}
                     onClick={() => setSelectedMinRating(selectedMinRating === rating ? "" : rating)}
-                    className={`w-full text-left rounded-lg py-1.5 px-3 text-xs font-semibold border transition ${
-                      selectedMinRating === rating
-                        ? "bg-pink-950/40 border-pink-500/40 text-pink-400"
-                        : "bg-zinc-950 border-zinc-900 text-zinc-400 hover:border-zinc-700 hover:text-white"
+                    className={`w-full rounded-lg border px-3 py-2 text-left text-xs font-semibold transition ${
+                      selectedMinRating === rating ? activeFilterCls : idleFilterCls
                     }`}
                   >
                     {rating}+ Rating Score
                   </button>
                 ))}
               </div>
-            </div>
+            </FilterGroup>
 
-            <div className="mt-6 pt-5 border-t border-zinc-900">
-              <label className="block text-[10px] font-bold text-zinc-500 uppercase tracking-wider mb-2">Library</label>
+            <FilterGroup label="Library">
               <button
                 onClick={() => setShowClassic(!showClassic)}
-                className={`w-full text-left rounded-lg py-1.5 px-3 text-xs font-semibold border transition mb-2 ${
-                  showClassic
-                    ? "bg-pink-950/40 border-pink-500/40 text-pink-400"
-                    : "bg-zinc-950 border-zinc-900 text-zinc-400 hover:border-zinc-700 hover:text-white"
+                className={`w-full rounded-lg border px-3 py-2 text-left text-xs font-semibold transition ${
+                  showClassic ? activeFilterCls : idleFilterCls
                 }`}
               >
                 {showClassic ? "✓ Classic & Retro only" : "Classic & Retro"}
               </button>
-            </div>
+            </FilterGroup>
 
-            <div className="mt-6 pt-5 border-t border-zinc-900">
-              <label className="block text-[10px] font-bold text-zinc-500 uppercase tracking-wider mb-2">Cover Art</label>
+            <FilterGroup label="Cover Art" last>
               <button
                 onClick={() => setShowNoCover(!showNoCover)}
-                className={`w-full text-left rounded-lg py-1.5 px-3 text-xs font-semibold border transition ${
-                  showNoCover
-                    ? "bg-pink-950/40 border-pink-500/40 text-pink-400"
-                    : "bg-zinc-950 border-zinc-900 text-zinc-400 hover:border-zinc-700 hover:text-white"
+                className={`w-full rounded-lg border px-3 py-2 text-left text-xs font-semibold transition ${
+                  showNoCover ? activeFilterCls : idleFilterCls
                 }`}
               >
                 {showNoCover ? "✓ Showing all games" : "Show games without cover"}
               </button>
-            </div>
+            </FilterGroup>
           </aside>
         )}
 
-        {/* Game Grid */}
+        {/* Grid */}
         <section className="flex-1">
-          <div className="flex items-center justify-between mb-6">
-            <p className="text-xs text-zinc-500 font-mono">
-              Showing <span className="font-bold text-pink-400">{sortedGames.length}</span> of {games.length} Games Indexed
+          <div className="mb-6 flex items-center justify-between">
+            <p className="font-mono text-xs text-zinc-500">
+              Showing <span className="font-bold text-rose-400">{sortedGames.length.toLocaleString()}</span>
               {totalPages > 1 && <span className="text-zinc-600"> · Page {page}/{totalPages}</span>}
             </p>
             {sortedGames.length < games.length && (
-              <button onClick={handleClearFilters} className="text-xs font-bold text-pink-500 hover:text-pink-400 underline font-mono cursor-pointer">
+              <button
+                onClick={handleClearFilters}
+                className="font-mono text-xs font-bold text-rose-500 underline transition hover:text-rose-400"
+              >
                 Clear all filters
               </button>
             )}
           </div>
 
           {sortedGames.length === 0 ? (
-            <div className="flex flex-col items-center justify-center p-12 rounded-xl border border-dashed border-zinc-800 bg-zinc-950/20 text-center">
-              <Search className="h-10 w-10 text-zinc-600 mb-4" />
-              <h3 className="font-display font-bold text-zinc-300 text-sm">No Game Found</h3>
-              <p className="text-xs text-zinc-500 mt-2 max-w-sm">No indexed files matched your tracking criteria. Try clearing criteria, adjusting filters, or submitting a request.</p>
-              <button onClick={handleClearFilters} className="mt-5 rounded-full bg-zinc-900 border border-zinc-800 px-4 py-2 text-xs font-bold text-white hover:border-pink-500/40 transition">
+            <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-white/10 bg-white/[0.02] p-12 text-center">
+              <Search className="mb-4 h-10 w-10 text-zinc-700" />
+              <h3 className="font-display text-sm font-bold text-zinc-300">No Game Found</h3>
+              <p className="mt-2 max-w-sm text-xs text-zinc-500">
+                No indexed titles matched your criteria. Try clearing filters or adjusting your search.
+              </p>
+              <button
+                onClick={handleClearFilters}
+                className="mt-5 rounded-full border border-white/10 bg-[#0d0d10] px-4 py-2 text-xs font-bold text-white transition hover:border-rose-500/40"
+              >
                 Reset Search Filters
               </button>
             </div>
           ) : (
             <>
-              <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+              <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 xl:grid-cols-4">
                 {pagedGames.map((game) => (
                   <GameCard key={game.id} game={game} />
                 ))}
               </div>
 
               {totalPages > 1 && (
-                <div className="flex items-center justify-center gap-2 mt-10 flex-wrap">
+                <div className="mt-10 flex flex-wrap items-center justify-center gap-2">
                   <button
-                    onClick={() => { setPage(1); scrollTop(); }}
+                    onClick={() => { setPage((p) => Math.max(1, p - 1)); scrollTop(); }}
                     disabled={page === 1}
-                    className="px-3 py-1.5 rounded-lg text-xs font-mono font-bold border border-zinc-800 bg-zinc-950 text-zinc-400 hover:text-white hover:border-zinc-600 disabled:opacity-30 disabled:cursor-not-allowed transition"
-                  >«</button>
-                  <button
-                    onClick={() => { setPage(p => Math.max(1, p - 1)); scrollTop(); }}
-                    disabled={page === 1}
-                    className="px-3 py-1.5 rounded-lg text-xs font-mono font-bold border border-zinc-800 bg-zinc-950 text-zinc-400 hover:text-white hover:border-zinc-600 disabled:opacity-30 disabled:cursor-not-allowed transition"
-                  >‹ Prev</button>
+                    className="rounded-lg border border-white/10 bg-[#0d0d10] px-3.5 py-1.5 font-mono text-xs font-bold text-zinc-400 transition hover:text-white disabled:opacity-30 disabled:cursor-not-allowed"
+                  >
+                    ‹ Prev
+                  </button>
 
                   {pageNumbers.map((p, i) =>
                     p === "..." ? (
-                      <span key={`e${i}`} className="px-2 text-zinc-600 text-xs font-mono">…</span>
+                      <span key={`e${i}`} className="px-1 font-mono text-xs text-zinc-600">…</span>
                     ) : (
                       <button
                         key={p}
                         onClick={() => { setPage(p as number); scrollTop(); }}
-                        className={`px-3 py-1.5 rounded-lg text-xs font-mono font-bold border transition ${
+                        className={`rounded-lg px-3.5 py-1.5 font-mono text-xs font-bold transition ${
                           page === p
-                            ? "bg-pink-950 border-pink-500/40 text-pink-400"
-                            : "border-zinc-800 bg-zinc-950 text-zinc-400 hover:text-white hover:border-zinc-600"
+                            ? "bg-rose-500 text-white shadow-lg shadow-rose-500/20"
+                            : "border border-white/10 bg-[#0d0d10] text-zinc-400 hover:text-white"
                         }`}
-                      >{p}</button>
+                      >
+                        {p}
+                      </button>
                     )
                   )}
 
                   <button
-                    onClick={() => { setPage(p => Math.min(totalPages, p + 1)); scrollTop(); }}
+                    onClick={() => { setPage((p) => Math.min(totalPages, p + 1)); scrollTop(); }}
                     disabled={page === totalPages}
-                    className="px-3 py-1.5 rounded-lg text-xs font-mono font-bold border border-zinc-800 bg-zinc-950 text-zinc-400 hover:text-white hover:border-zinc-600 disabled:opacity-30 disabled:cursor-not-allowed transition"
-                  >Next ›</button>
-                  <button
-                    onClick={() => { setPage(totalPages); scrollTop(); }}
-                    disabled={page === totalPages}
-                    className="px-3 py-1.5 rounded-lg text-xs font-mono font-bold border border-zinc-800 bg-zinc-950 text-zinc-400 hover:text-white hover:border-zinc-600 disabled:opacity-30 disabled:cursor-not-allowed transition"
-                  >»</button>
+                    className="rounded-lg border border-white/10 bg-[#0d0d10] px-3.5 py-1.5 font-mono text-xs font-bold text-zinc-400 transition hover:text-white disabled:opacity-30 disabled:cursor-not-allowed"
+                  >
+                    Next ›
+                  </button>
                 </div>
               )}
             </>
@@ -321,3 +339,16 @@ export const BrowseView: React.FC = () => {
     </div>
   );
 };
+
+const FilterGroup: React.FC<{ label: string; children: React.ReactNode; last?: boolean }> = ({
+  label,
+  children,
+  last,
+}) => (
+  <div className={last ? "" : "mb-5"}>
+    <label className="mb-2 block font-mono text-[10px] font-bold uppercase tracking-widest text-zinc-500">
+      {label}
+    </label>
+    {children}
+  </div>
+);
