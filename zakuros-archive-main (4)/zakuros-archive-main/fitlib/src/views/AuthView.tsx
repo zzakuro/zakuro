@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+﻿import React, { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { User, Lock, Mail, ChevronRight, Gamepad2, ArrowRight } from "lucide-react";
 import { useGame } from "../lib/gameContext";
@@ -55,7 +55,7 @@ export const AuthView: React.FC = () => {
         
         {/* Brand visual header decoration */}
         <div className="text-center mb-8">
-          <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-pink-500/10 text-pink-400 font-black ring-1 ring-pink-500/30 mx-auto mb-3">
+          <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-rose-500/10 text-rose-400 font-black ring-1 ring-rose-500/30 mx-auto mb-3">
             F
           </span>
           <h2 className="font-display font-black text-white text-2xl uppercase tracking-wider">
@@ -69,7 +69,7 @@ export const AuthView: React.FC = () => {
         {/* Error Callout */}
         {error && (
           <div className="mb-4 rounded-lg bg-red-950/20 border border-red-500/20 p-3 text-xs text-red-400 font-mono">
-            ⚠️ {error}
+            âš ï¸ {error}
           </div>
         )}
 
@@ -86,7 +86,7 @@ export const AuthView: React.FC = () => {
                 placeholder="e.g. repacker99"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
-                className="w-full rounded-lg border border-zinc-850 bg-zinc-950/80 py-2.5 pl-10 pr-3 text-xs text-white placeholder-zinc-650 transition placeholder-zinc-600 focus:border-pink-500/50 focus:outline-none focus:ring-1 focus:ring-pink-500/30"
+                className="w-full rounded-lg border border-zinc-850 bg-zinc-950/80 py-2.5 pl-10 pr-3 text-xs text-white placeholder-zinc-650 transition placeholder-zinc-600 focus:border-rose-500/50 focus:outline-none focus:ring-1 focus:ring-rose-500/30"
               />
               <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-500" />
             </div>
@@ -99,10 +99,10 @@ export const AuthView: React.FC = () => {
               <input
                 type="password"
                 required
-                placeholder="••••••••"
+                placeholder="â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full rounded-lg border border-zinc-850 bg-zinc-950/80 py-2.5 pl-10 pr-3 text-xs text-white placeholder-zinc-650 transition placeholder-zinc-650 focus:border-pink-500/50 focus:outline-none focus:ring-1 focus:ring-pink-500/30"
+                className="w-full rounded-lg border border-zinc-850 bg-zinc-950/80 py-2.5 pl-10 pr-3 text-xs text-white placeholder-zinc-650 transition placeholder-zinc-650 focus:border-rose-500/50 focus:outline-none focus:ring-1 focus:ring-rose-500/30"
               />
               <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-500" />
             </div>
@@ -111,7 +111,7 @@ export const AuthView: React.FC = () => {
           {/* Form action submission */}
           <button
             type="submit"
-            className="w-full h-11 flex items-center justify-center gap-2 rounded-full bg-pink-400 hover:bg-pink-300 font-display font-bold text-black text-xs uppercase tracking-wider transition active:scale-[0.98] mt-6 cursor-pointer shadow-lg shadow-pink-400/10"
+            className="w-full h-11 flex items-center justify-center gap-2 rounded-full bg-rose-400 hover:bg-rose-300 font-display font-bold text-black text-xs uppercase tracking-wider transition active:scale-[0.98] mt-6 cursor-pointer shadow-lg shadow-rose-400/10"
           >
             <span>{isLogin ? "Sign In" : "Register Credentials"}</span>
             <ArrowRight className="h-4 w-4 stroke-[2.5]" />
@@ -127,12 +127,12 @@ export const AuthView: React.FC = () => {
               setIsLogin(!isLogin);
               setError("");
             }}
-            className="text-zinc-400 hover:text-pink-400 transition"
+            className="text-zinc-400 hover:text-rose-400 transition"
           >
             {isLogin ? (
-              <span>Don't have an account? <strong className="text-pink-400 font-bold underline">Sign up here</strong></span>
+              <span>Don't have an account? <strong className="text-rose-400 font-bold underline">Sign up here</strong></span>
             ) : (
-              <span>Already registered? <strong className="text-pink-400 font-bold underline">Sign in here</strong></span>
+              <span>Already registered? <strong className="text-rose-400 font-bold underline">Sign in here</strong></span>
             )}
           </button>
         </div>

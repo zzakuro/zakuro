@@ -12,19 +12,16 @@ import { BrowseView } from "./views/BrowseView";
 import { GameDetailView } from "./views/GameDetailView";
 import { AboutView } from "./views/AboutView";
 import { AuthView } from "./views/AuthView";
-import { Heart, Activity, Globe, Disc, Gamepad, Github } from "lucide-react";
+import { Heart } from "lucide-react";
 
 export default function App() {
   return (
     <GameProvider>
       <HashRouter>
-        <div className="flex min-h-screen flex-col bg-[#050506] text-zinc-100 antialiased selection:bg-pink-500 selection:text-black">
-          
-          {/* Top Sticky Header */}
+        <div className="relative flex min-h-screen flex-col bg-[#09090b] text-zinc-100 antialiased selection:bg-rose-500 selection:text-white">
           <Navbar />
 
-          {/* Primary Main Content Canvas Frame */}
-          <div className="flex-grow">
+          <div className="relative z-10 flex-grow">
             <Routes>
               <Route path="/" element={<HomeView />} />
               <Route path="/browse" element={<BrowseView />} />
@@ -35,75 +32,70 @@ export default function App() {
             </Routes>
           </div>
 
-          {/* Bottom Integrated Footer */}
-          <footer className="border-t border-zinc-900 bg-zinc-950/60 py-12 text-zinc-500 text-xs mt-16">
+          {/* Footer */}
+          <footer className="relative z-10 mt-20 border-t border-white/5 bg-[#0a0a0c] py-12 text-xs text-zinc-500">
             <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-8 pb-8 border-b border-zinc-900">
-                
-                {/* Footer Brand info */}
-                <div className="space-y-3 md:col-span-1.5 col-span-1">
-                  <div className="flex items-center gap-2 text-md font-bold tracking-wider font-display text-white">
-                    <span className="flex h-6 w-6 items-center justify-center rounded-md bg-pink-500/10 text-pink-400 font-extrabold ring-1 ring-pink-500/30 text-xs">
+              <div className="grid grid-cols-2 gap-10 border-b border-white/5 pb-10 md:grid-cols-4">
+                <div className="col-span-2 space-y-3 md:col-span-1">
+                  <div className="flex items-center gap-2 font-display text-sm font-bold tracking-widest text-white">
+                    <span className="flex h-6 w-6 items-center justify-center rounded-md bg-gradient-to-br from-rose-500 to-rose-700 text-xs font-black text-white">
                       Z
                     </span>
-                    <span>ZAKURO'S<span className="text-pink-400"> ARCHIVE</span></span>
+                    <span>ZAKURO'S<span className="text-rose-400"> ARCHIVE</span></span>
                   </div>
-                  <p className="text-zinc-500 font-sans leading-relaxed max-w-xs">
-                    Unthrottled gaming archives.
+                  <p className="max-w-xs leading-relaxed text-zinc-500">
+                    A read-only index of PC game releases. We host metadata, never game files.
                   </p>
                 </div>
 
-                {/* Footer Fast links */}
-                <div className="space-y-2">
-                  <span className="block font-bold text-zinc-300 font-display uppercase tracking-wider text-[10px]">Index Directory</span>
+                <div className="space-y-2.5">
+                  <span className="block font-display text-[10px] font-bold uppercase tracking-wider text-zinc-300">
+                    Index Directory
+                  </span>
                   <ul className="space-y-1.5 font-mono">
-                    <li><Link to="/" className="hover:text-pink-400 transition">Main / Home</Link></li>
-                    <li><Link to="/browse" className="hover:text-pink-400 transition"> Library</Link></li>
-                    <li><Link to="/about" className="hover:text-pink-400 transition">FAQ & safety</Link></li>
+                    <li><Link to="/" className="transition hover:text-rose-400">Main / Home</Link></li>
+                    <li><Link to="/browse" className="transition hover:text-rose-400">Library</Link></li>
+                    <li><Link to="/about" className="transition hover:text-rose-400">FAQ & safety</Link></li>
                   </ul>
                 </div>
 
-                {/* External launchers */}
-                <div className="space-y-2">
-                  <span className="block font-bold text-zinc-300 font-display uppercase tracking-wider text-[10px]">Communities</span>
+                <div className="space-y-2.5">
+                  <span className="block font-display text-[10px] font-bold uppercase tracking-wider text-zinc-300">
+                    Communities
+                  </span>
                   <ul className="space-y-1.5 font-mono">
-                    <li><a href="https://discord.gg" target="_blank" rel="noopener noreferrer" className="hover:text-pink-400 transition flex items-center gap-1">Discord Portal</a></li>
-                    <li><a href="https://reddit.com" target="_blank" rel="noopener noreferrer" className="hover:text-pink-400 transition flex items-center gap-1">Reddit Sub</a></li>
-                    <li><a href="https://github.com" target="_blank" rel="noopener noreferrer" className="hover:text-pink-400 transition flex items-center gap-1">GitHub Repos</a></li>
-                    <li><a href="https://twitch.tv" target="_blank" rel="noopener noreferrer" className="hover:text-pink-400 transition flex items-center gap-1">Donation Tier</a></li>
+                    <li><a href="https://discord.gg" target="_blank" rel="noopener noreferrer" className="transition hover:text-rose-400">Discord Portal</a></li>
+                    <li><a href="https://reddit.com" target="_blank" rel="noopener noreferrer" className="transition hover:text-rose-400">Reddit Sub</a></li>
+                    <li><a href="https://github.com" target="_blank" rel="noopener noreferrer" className="transition hover:text-rose-400">GitHub Repos</a></li>
                   </ul>
                 </div>
 
-                {/* Diagnostics */}
-                <div className="space-y-2 font-mono">
-                  <span className="block font-bold text-zinc-300 font-display uppercase tracking-wider text-[10px]">System Status</span>
-                  <div className="space-y-1 text-zinc-500 text-[11px]">
-                    <p className="flex items-center gap-1.5 text-zinc-500">
+                <div className="space-y-2.5 font-mono">
+                  <span className="block font-display text-[10px] font-bold uppercase tracking-wider text-zinc-300">
+                    System Status
+                  </span>
+                  <div className="space-y-1 text-[11px]">
+                    <p className="flex items-center gap-1.5">
                       <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-                      <span>All Servers Active</span>
+                      All Servers Active
                     </p>
                     <p className="text-zinc-600">IP verification: SSL Clean</p>
                     <p className="text-zinc-600">Archival Library: Lossless x64</p>
                   </div>
                 </div>
-
               </div>
 
-              {/* Legal line */}
-              <div className="pt-8 flex flex-col md:flex-row items-center justify-between gap-4">
+              <div className="flex flex-col items-center justify-between gap-4 pt-8 md:flex-row">
                 <p className="font-mono text-[10px] text-zinc-600">
-                  © 2026 Zakuro's Archive Database Indexer. Developed with ❤️ for archival gaming preservation.
+                  © 2026 Zakuro's Archive Database Indexer. Developed with{" "}
+                  <Heart className="inline h-3 w-3 fill-rose-500 text-rose-500" /> for archival gaming preservation.
                 </p>
-                <p className="flex items-center gap-1 text-[10px] text-zinc-600 font-mono">
-                  <span>Preserving raw source files with</span>
-                  <Heart className="h-3 w-3 text-red-500 fill-current" />
-                  <span>lossless storage codes</span>
+                <p className="font-mono text-[10px] text-zinc-600">
+                  Preserving raw source files with lossless storage codes
                 </p>
               </div>
-
             </div>
           </footer>
-
         </div>
       </HashRouter>
     </GameProvider>

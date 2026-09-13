@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+﻿import React, { useState } from "react";
 import {
   HelpCircle,
   ChevronDown,
@@ -27,19 +27,19 @@ export const AboutView: React.FC = () => {
     {
       title: "Multi-Source Index",
       description:
-        "Zakuro's Archive aggregates release data from FitGirl, DODI, GOG, Xatab, SteamRip, OnlineFix, and more into a single searchable catalog. We don't pick winners — we index everything.",
+        "Zakuro's Archive aggregates release data from FitGirl, DODI, GOG, Xatab, SteamRip, OnlineFix, and more into a single searchable catalog. We don't pick winners â€” we index everything.",
       icon: Database,
     },
     {
       title: "No File Hosting",
       description:
-        "Zakuro's Archive stores only metadata — titles, descriptions, cover art, system requirements, and external links. No game files, torrents, or binaries are hosted here. All downloads originate from the source groups directly.",
+        "Zakuro's Archive stores only metadata â€” titles, descriptions, cover art, system requirements, and external links. No game files, torrents, or binaries are hosted here. All downloads originate from the source groups directly.",
       icon: Shield,
     },
     {
       title: "Search & Discovery",
       description:
-        "Browse by genre, repacker, release date, or search by title. Each game page shows all available download sources — torrent, magnet, or direct — so you can pick what works for you.",
+        "Browse by genre, repacker, release date, or search by title. Each game page shows all available download sources â€” torrent, magnet, or direct â€” so you can pick what works for you.",
       icon: Search,
     },
   ];
@@ -62,19 +62,19 @@ export const AboutView: React.FC = () => {
     },
     {
       q: "Are the download links safe?",
-      a: "Zakuro's Archive only indexes releases from established, well-known groups with long community track records. That said, we don't independently verify every file. Always download from the exact source URL listed, verify any checksums the repacker provides, and use a reputable antivirus. False positives from antivirus tools are common with repack installers — check the repacker's own site for known false positive reports.",
+      a: "Zakuro's Archive only indexes releases from established, well-known groups with long community track records. That said, we don't independently verify every file. Always download from the exact source URL listed, verify any checksums the repacker provides, and use a reputable antivirus. False positives from antivirus tools are common with repack installers â€” check the repacker's own site for known false positive reports.",
     },
     {
       q: "What's the difference between a repack and a direct download?",
-      a: "A repack (like FitGirl or DODI) recompresses the game into a smaller archive to reduce download size. When you run the installer, it decompresses back to the full game — no quality loss, but installation takes longer. A direct download is the game's original files without recompression, typically larger but faster to install.",
+      a: "A repack (like FitGirl or DODI) recompresses the game into a smaller archive to reduce download size. When you run the installer, it decompresses back to the full game â€” no quality loss, but installation takes longer. A direct download is the game's original files without recompression, typically larger but faster to install.",
     },
     {
       q: "How does the request queue work?",
-      a: "Community members can submit titles they want indexed. High-vote requests get visibility — but Zakuro's Archive doesn't produce repacks or uploads. Requests are community signals; the actual release depends on the repack groups themselves picking up a title.",
+      a: "Community members can submit titles they want indexed. High-vote requests get visibility â€” but Zakuro's Archive doesn't produce repacks or uploads. Requests are community signals; the actual release depends on the repack groups themselves picking up a title.",
     },
     {
       q: "Do you host torrents or magnet links?",
-      a: "No. Zakuro's Archive stores the magnet URI or external download URL as metadata alongside the game entry. Clicking a download link takes you directly to the source — we're never in the middle of the transfer.",
+      a: "No. Zakuro's Archive stores the magnet URI or external download URL as metadata alongside the game entry. Clicking a download link takes you directly to the source â€” we're never in the middle of the transfer.",
     },
     {
       q: "Why are some games missing Steam IDs or cover art?",
@@ -87,15 +87,15 @@ export const AboutView: React.FC = () => {
 
       {/* Hero */}
       <section className="text-center max-w-3xl mx-auto py-8">
-        <span className="rounded-full bg-pink-950/40 border border-pink-500/20 px-3.5 py-1 text-[11px] font-bold text-pink-400 uppercase tracking-widest font-mono">
-          Game release index — not a host
+        <span className="rounded-full bg-rose-950/40 border border-rose-500/20 px-3.5 py-1 text-[11px] font-bold text-rose-400 uppercase tracking-widest font-mono">
+          Game release index â€” not a host
         </span>
         <h1 className="font-display font-black tracking-tight text-white mt-6 uppercase leading-tight text-4xl sm:text-5xl">
           One place to find<br />
-          <span className="text-pink-400">every release</span>
+          <span className="text-rose-400">every release</span>
         </h1>
         <p className="mt-4 text-zinc-400 text-sm leading-relaxed font-sans max-w-xl mx-auto">
-          Zakuro's Archive is a read-only index of PC game releases from reputable repack and direct-download groups. Search, filter, and find download sources — all in one place, with no ads and no file hosting.
+          Zakuro's Archive is a read-only index of PC game releases from reputable repack and direct-download groups. Search, filter, and find download sources â€” all in one place, with no ads and no file hosting.
         </p>
         <div className="mt-8 flex justify-center gap-3 flex-wrap">
           <a
@@ -120,7 +120,7 @@ export const AboutView: React.FC = () => {
       <section className="grid grid-cols-2 md:grid-cols-4 gap-4 border border-zinc-900 rounded-xl p-6 bg-zinc-950/20 font-mono">
         {stats.map((stat, idx) => (
           <div key={idx} className="flex flex-col items-center text-center p-3">
-            <div className="h-10 w-10 rounded-full bg-pink-950/20 flex items-center justify-center border border-pink-500/20 mb-3 text-pink-400">
+            <div className="h-10 w-10 rounded-full bg-rose-950/20 flex items-center justify-center border border-rose-500/20 mb-3 text-rose-400">
               <stat.icon className="h-5 w-5" />
             </div>
             <p className="text-2xl font-black font-display text-white">{stat.value}</p>
@@ -132,13 +132,13 @@ export const AboutView: React.FC = () => {
       {/* What Zakuro's Archive does */}
       <section className="space-y-8">
         <div className="text-center">
-          <span className="text-[10px] font-bold text-pink-400 uppercase tracking-widest font-mono">How it works</span>
+          <span className="text-[10px] font-bold text-rose-400 uppercase tracking-widest font-mono">How it works</span>
           <h2 className="font-display font-black text-2xl text-white mt-1 uppercase">What Zakuro's Archive is (and isn't)</h2>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {features.map((feat, idx) => (
-            <div key={idx} className="bg-zinc-950/40 border border-zinc-900 rounded-xl p-5 hover:border-pink-500/20 transition duration-300">
-              <div className="h-9 w-9 rounded-lg bg-zinc-900 flex items-center justify-center border border-zinc-800 text-pink-400 mb-4">
+            <div key={idx} className="bg-zinc-950/40 border border-zinc-900 rounded-xl p-5 hover:border-rose-500/20 transition duration-300">
+              <div className="h-9 w-9 rounded-lg bg-zinc-900 flex items-center justify-center border border-zinc-800 text-rose-400 mb-4">
                 <feat.icon className="h-4 w-4" />
               </div>
               <h3 className="font-display font-bold text-white uppercase text-sm mb-2">{feat.title}</h3>
@@ -151,10 +151,10 @@ export const AboutView: React.FC = () => {
       {/* Indexed sources */}
       <section className="space-y-6">
         <div className="text-center">
-          <span className="text-[10px] font-bold text-pink-400 uppercase tracking-widest font-mono">Sourced from</span>
+          <span className="text-[10px] font-bold text-rose-400 uppercase tracking-widest font-mono">Sourced from</span>
           <h2 className="font-display font-black text-2xl text-white mt-1 uppercase">Indexed Release Groups</h2>
           <p className="text-zinc-500 text-xs mt-2 font-sans max-w-lg mx-auto">
-            These are the groups whose releases appear in the Zakuro's Archive catalog. Zakuro's Archive has no affiliation with any of them — we only index their public release metadata.
+            These are the groups whose releases appear in the Zakuro's Archive catalog. Zakuro's Archive has no affiliation with any of them â€” we only index their public release metadata.
           </p>
         </div>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
@@ -164,11 +164,11 @@ export const AboutView: React.FC = () => {
               href={src.url}
               target="_blank"
               rel="noopener noreferrer"
-              className="group flex flex-col gap-1.5 rounded-xl border border-zinc-900 bg-zinc-950/40 hover:border-pink-500/20 p-4 transition duration-200"
+              className="group flex flex-col gap-1.5 rounded-xl border border-zinc-900 bg-zinc-950/40 hover:border-rose-500/20 p-4 transition duration-200"
             >
               <div className="flex items-center justify-between">
-                <span className="font-mono font-bold text-white text-xs group-hover:text-pink-400 transition">{src.name}</span>
-                <ExternalLink className="h-3 w-3 text-zinc-600 group-hover:text-pink-400 transition" />
+                <span className="font-mono font-bold text-white text-xs group-hover:text-rose-400 transition">{src.name}</span>
+                <ExternalLink className="h-3 w-3 text-zinc-600 group-hover:text-rose-400 transition" />
               </div>
               <span className="text-[10px] font-mono text-zinc-500 uppercase tracking-wider">{src.type}</span>
             </a>
@@ -179,8 +179,8 @@ export const AboutView: React.FC = () => {
       {/* FAQ */}
       <section id="faq-section" className="space-y-8 max-w-4xl mx-auto">
         <div className="text-center">
-          <HelpCircle className="h-7 w-7 text-pink-400 mx-auto mb-2" />
-          <span className="text-[10px] font-bold text-pink-400 uppercase tracking-widest font-mono">FAQ</span>
+          <HelpCircle className="h-7 w-7 text-rose-400 mx-auto mb-2" />
+          <span className="text-[10px] font-bold text-rose-400 uppercase tracking-widest font-mono">FAQ</span>
           <h2 className="font-display font-black text-2xl text-white mt-1 uppercase">Common Questions</h2>
         </div>
 
@@ -201,7 +201,7 @@ export const AboutView: React.FC = () => {
                   </span>
                   <ChevronDown
                     className={`h-4 w-4 text-zinc-500 transition-transform duration-300 flex-shrink-0 ml-4 ${
-                      isOpen ? "rotate-180 text-pink-400" : ""
+                      isOpen ? "rotate-180 text-rose-400" : ""
                     }`}
                   />
                 </button>
@@ -227,8 +227,8 @@ export const AboutView: React.FC = () => {
       </section>
 
       {/* Footer CTA */}
-      <section className="rounded-2xl border border-pink-500/10 bg-pink-950/10 p-8 text-center max-w-4xl mx-auto flex flex-col items-center gap-4">
-        <CheckCircle className="h-9 w-9 text-pink-400" />
+      <section className="rounded-2xl border border-rose-500/10 bg-rose-950/10 p-8 text-center max-w-4xl mx-auto flex flex-col items-center gap-4">
+        <CheckCircle className="h-9 w-9 text-rose-400" />
         <h3 className="font-display font-black text-white uppercase text-xl">Something missing from the index?</h3>
         <p className="text-zinc-400 text-xs max-w-xl font-sans">
           If a release isn't in the catalog yet, submit a request in the Request tab or drop it in the Discord. The community keeps the index growing.
@@ -237,7 +237,7 @@ export const AboutView: React.FC = () => {
           href="https://discord.gg"
           target="_blank"
           rel="noopener noreferrer"
-          className="mt-2 flex items-center gap-2 rounded-full bg-pink-400 px-6 py-2.5 text-xs font-bold text-black hover:bg-pink-300 transition"
+          className="mt-2 flex items-center gap-2 rounded-full bg-rose-400 px-6 py-2.5 text-xs font-bold text-black hover:bg-rose-300 transition"
         >
           <span>OPEN DISCORD</span>
           <ArrowRight className="h-3.5 w-3.5" />

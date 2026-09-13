@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+﻿import React, { useEffect, useState } from "react";
 import { Star, Loader2, User } from "lucide-react";
 import { useGame } from "../lib/gameContext";
 
@@ -53,13 +53,13 @@ export const RatingPanel: React.FC<{ gameId: string }> = ({ gameId }) => {
           Community Rating
         </span>
         {loading ? (
-          <Loader2 className="h-3.5 w-3.5 animate-spin text-pink-400" />
+          <Loader2 className="h-3.5 w-3.5 animate-spin text-rose-400" />
         ) : (
           <span className="flex items-center gap-1 text-zinc-200 font-mono">
             {summary!.count > 0 ? (
               <>
-                <Star className="h-3.5 w-3.5 fill-pink-400 text-pink-400" />
-                <span className="font-black text-pink-400 text-sm">{summary!.average}</span>
+                <Star className="h-3.5 w-3.5 fill-rose-400 text-rose-400" />
+                <span className="font-black text-rose-400 text-sm">{summary!.average}</span>
                 <span className="text-zinc-600">({summary!.count})</span>
               </>
             ) : (
@@ -76,9 +76,9 @@ export const RatingPanel: React.FC<{ gameId: string }> = ({ gameId }) => {
             const pct = Math.round((c / maxCount) * 100);
             return (
               <div key={n} className="flex items-center gap-2">
-                <span className="w-9 text-right text-[10px] font-mono text-zinc-500 shrink-0">{n}★</span>
+                <span className="w-9 text-right text-[10px] font-mono text-zinc-500 shrink-0">{n}â˜…</span>
                 <div className="flex-1 h-1.5 rounded bg-zinc-900 overflow-hidden">
-                  <div className="h-full bg-pink-500/70" style={{ width: `${pct}%` }} />
+                  <div className="h-full bg-rose-500/70" style={{ width: `${pct}%` }} />
                 </div>
                 <span className="w-6 text-left text-[10px] font-mono text-zinc-600 shrink-0">{c}</span>
               </div>
@@ -107,16 +107,16 @@ export const RatingPanel: React.FC<{ gameId: string }> = ({ gameId }) => {
             >
               <Star
                 className={`h-4.5 w-4.5 transition-colors ${
-                  n <= active ? "fill-pink-400 text-pink-400" : "text-zinc-700"
+                  n <= active ? "fill-rose-400 text-rose-400" : "text-zinc-700"
                 }`}
               />
             </button>
           ))}
-          {submitting && <Loader2 className="h-3.5 w-3.5 animate-spin text-pink-400" />}
+          {submitting && <Loader2 className="h-3.5 w-3.5 animate-spin text-rose-400" />}
         </div>
         {hover > 0 && (
-          <p className="mt-1.5 text-[10px] font-mono text-pink-400">
-            {SCALE_LABELS[hover]} — click to {summary?.mine ? "update" : "submit"}
+          <p className="mt-1.5 text-[10px] font-mono text-rose-400">
+            {SCALE_LABELS[hover]} â€” click to {summary?.mine ? "update" : "submit"}
           </p>
         )}
         {!user && (

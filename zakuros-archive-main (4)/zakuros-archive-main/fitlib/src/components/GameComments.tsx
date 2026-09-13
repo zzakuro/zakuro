@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+﻿import React, { useEffect, useState } from "react";
 import {
   Send,
   Heart,
@@ -132,8 +132,8 @@ export const GameComments: React.FC<{ gameId: string }> = ({ gameId }) => {
       {/* Composer */}
       <div className="rounded-xl border border-zinc-900 bg-zinc-950/40 p-4">
         <div className="flex items-center gap-2 mb-2.5">
-          <span className="flex h-7 w-7 items-center justify-center rounded-full bg-pink-950 border border-pink-500/20">
-            <User className="h-3.5 w-3.5 text-pink-400" />
+          <span className="flex h-7 w-7 items-center justify-center rounded-full bg-rose-950 border border-rose-500/20">
+            <User className="h-3.5 w-3.5 text-rose-400" />
           </span>
           <div className="min-w-0">
             <p className="text-[11px] font-bold text-white font-display truncate">
@@ -151,8 +151,8 @@ export const GameComments: React.FC<{ gameId: string }> = ({ gameId }) => {
             if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) post();
           }}
           maxLength={2000}
-          placeholder="Share your experience with this repack — install size, run config, issues…"
-          className="w-full resize-y rounded-lg border border-zinc-900 bg-black/40 p-3 text-xs text-zinc-200 placeholder-zinc-600 outline-none focus:border-pink-500/40 transition font-sans"
+          placeholder="Share your experience with this repack â€” install size, run config, issuesâ€¦"
+          className="w-full resize-y rounded-lg border border-zinc-900 bg-black/40 p-3 text-xs text-zinc-200 placeholder-zinc-600 outline-none focus:border-rose-500/40 transition font-sans"
           rows={3}
         />
         <div className="mt-2 flex items-center justify-between">
@@ -160,7 +160,7 @@ export const GameComments: React.FC<{ gameId: string }> = ({ gameId }) => {
           <button
             onClick={post}
             disabled={!text.trim() || posting}
-            className="flex items-center gap-1.5 rounded-lg bg-pink-400 hover:bg-pink-300 disabled:opacity-40 disabled:cursor-not-allowed px-3.5 py-2 text-[11px] font-black text-black font-mono uppercase tracking-wider transition"
+            className="flex items-center gap-1.5 rounded-lg bg-rose-400 hover:bg-rose-300 disabled:opacity-40 disabled:cursor-not-allowed px-3.5 py-2 text-[11px] font-black text-black font-mono uppercase tracking-wider transition"
           >
             {posting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
             Post
@@ -229,8 +229,8 @@ export const GameComments: React.FC<{ gameId: string }> = ({ gameId }) => {
                     disabled={actioning === c.id}
                     className={`flex items-center gap-1 rounded-md px-2 py-1 text-[10px] font-bold font-mono transition cursor-pointer ${
                       liked
-                        ? "bg-pink-950/30 text-pink-400 border border-pink-500/20"
-                        : "bg-zinc-900 text-zinc-400 hover:text-pink-400 border border-zinc-800"
+                        ? "bg-rose-950/30 text-rose-400 border border-rose-500/20"
+                        : "bg-zinc-900 text-zinc-400 hover:text-rose-400 border border-zinc-800"
                     }`}
                   >
                     <Heart className={`h-3 w-3 ${liked ? "fill-current" : ""}`} />
