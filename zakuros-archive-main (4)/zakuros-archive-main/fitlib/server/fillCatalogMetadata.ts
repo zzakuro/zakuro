@@ -22,7 +22,7 @@ import {
   fetchSteamDetails,
   fetchProtonSummary,
 } from "./metadataService";
-import { resolveMissingSteamIds, titlesCompatible } from "./sources";
+import { resolveMissingSteamIds, steamTitleMismatch } from "./sources";
 
 const GAMES_DB_PATH = path.join(process.cwd(), "data", "merged_enriched.json");
 const STATE_PATH = path.join(process.cwd(), "data", "steam_grind_state.json");
@@ -129,10 +129,14 @@ async function main() {
         fetchProtonSummary(appid),
       ]);
 
-      // Live-title verification: reject stale/mislabeled dump matches. If the
-      // app no longer exists or its real title is incompatible, unassign so we
-      // never ship a wrong cover/metadata.
-      if (!details.title || !titlesCompatible(game.title, details.title)) {
+      // Live-title verification: drop dead/stale/mislabeled dump matches so we
+      // never ship a wrong cover. For title mismatches only unassign games that
+      // are still unenriched (freshly matched) — a name mismatch on an already
+      // enriched id is more likely a subtitle/locale variant than an error.
+      if (
+        !details.title ||
+        (steamTitleMismatch(game.title, details.title) && (!game.developer || !game.summary))
+      ) {
         game.steamId = undefined;
         game.coverImage = "";
         game.screenshot = "";
