@@ -1,7 +1,7 @@
 import fs from "fs";
 import path from "path";
-import { Game, DownloadSource } from "../src/types";
-import { fetchSteamDetails } from "./metadataService";
+import { Game, DownloadSource, LinuxSupportInfo } from "../src/types";
+import { fetchSteamDetails, fetchProtonSummary } from "./metadataService";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -222,6 +222,38 @@ export function normalizeForMatch(title: string): string {
     .replace(/\s+(?:pc|windows|win)\s*$/, "")
     .replace(/\s+/g, " ")
     .trim();
+}
+
+// Release residue that repacker titles carry but Steam store names never do
+// ("Build 110", "R34294", "MULTi12", "FitGirl Repack", language tags, DLC
+// notes…). Used to build a *secondary* matching key so version-heavy titles
+// like "112 Operator v.0.220428.110w-cb" still resolve to their base app.
+const RELEASE_JUNK_TOKENS = new Set([
+  "repack", "repackage", "repacks", "dodi", "dodis", "fitgirl", "xatab", "codex",
+  "razor1911", "elamigos", "steamrip", "onlinefix", "online-fix", "gog",
+  "magnet", "torrent", "download", "full", "setup", "installer", "install",
+  "preinstalled", "crack", "cracked", "noinstall", "portable", "redist",
+  "eng", "rus", "ger", "fre", "ita", "spa", "pol", "jp", "jpn", "chn", "chs",
+  "ptbr", "bra", "latam", "multi", "multilang", "multilingual", "multilingualver",
+  "windows", "win", "win64", "win32", "win10", "win11", "winxp", "x64", "x86",
+  "64bit", "32bit", "pc", "mac", "macos", "linux", "unix", "steamos",
+  "dlc", "dlcs", "bundle", "updated", "version", "hotfix", "works",
+]);
+
+function stripReleaseJunk(key: string): string {
+  if (!key) return "";
+  const out: string[] = [];
+  for (const t of key.split(" ")) {
+    if (!t) continue;
+    if (RELEASE_JUNK_TOKENS.has(t)) continue;
+    if (/^\d+(?:\.\d+)*[a-z]*$/i.test(t)) continue; // 1.31, 34294, 110w
+    if (/^v\d/.test(t)) continue; // v1, v0220428
+    if (/^r\d{2,}$/i.test(t)) continue; // r34294 (release/build tag)
+    if (/^b\d{3,}$/i.test(t)) continue; // b12345
+    if (/^(multi|m)\d{1,3}$/i.test(t)) continue; // multi12
+    out.push(t);
+  }
+  return out.join(" ");
 }
 
 function makeId(title: string): string {
