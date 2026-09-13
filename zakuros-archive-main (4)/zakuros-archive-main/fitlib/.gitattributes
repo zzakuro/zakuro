@@ -1,0 +1,3 @@
+# JSON files are committed as plain text in this repo (the catalog / app-list
+# dumps live outside git via ../../repo-root .gitignore).
+*.json -text

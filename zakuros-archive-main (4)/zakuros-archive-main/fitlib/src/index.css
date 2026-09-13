@@ -1,0 +1,45 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Space Grotesk", "Inter", sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+
+  /* Custom Zakuro's Archive visual theme constants */
+  --color-dark-bg: #050506;
+  --color-dark-surface: #0a0a0f;
+  --color-dark-surface-hover: #12121c;
+  --color-pink-primary: #f472b6;
+  --color-pink-primary-hover: #ec4899;
+}
+
+/* Custom global settings */
+body {
+  background-color: var(--color-dark-bg);
+  color: #f3f4f6;
+  font-family: var(--font-sans);
+  overflow-x: hidden;
+}
+
+/* Custom scrollbars for a highly polished gaming slate interface */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #050506;
+}
+::-webkit-scrollbar-thumb {
+  background: #1e1e2d;
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #f472b6;
+}
+
+/* Active carousel navigation buttons */
+.carousel-dot-active {
+  background-color: var(--color-pink-primary) !important;
+  box-shadow: 0 0 8px var(--color-pink-primary);
+}

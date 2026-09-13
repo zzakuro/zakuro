@@ -1,0 +1,19 @@
+node_modules/
+build/
+dist/
+coverage/
+data/
+__pycache__/
+.DS_Store
+dev_tmp_*.ts
+dev_tmp_*.js
+*.log
+.env*
+!.env.example
+# LFS pointer stubs from the original archive (real content never shipped);
+# regenerable data artifacts / legacy-optional config.
+steam_id_overrides.json
+merge_decisions.json
+public/enriched.json
+public/enriched_50.json
+public/database.template.json
