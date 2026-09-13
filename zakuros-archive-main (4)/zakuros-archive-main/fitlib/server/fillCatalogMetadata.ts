@@ -143,26 +143,29 @@ async function main() {
           fetchProtonSummary(appid),
         ]);
 
-        // Live-title verification: drop dead/stale/mislabeled dump matches so we
-        // never ship a wrong cover. For title mismatches only unassign games that
-        // are still unenriched (freshly matched) — a name mismatch on an already
-        // enriched id is more likely a subtitle/locale variant than an error.
-        if (
-          !details.title ||
-          (steamTitleMismatch(game.title, details.title) && (!game.developer || !game.summary))
-        ) {
-          game.steamId = undefined;
-          game.coverImage = "";
-          game.screenshot = "";
-          game.screenshots = [];
-          game.developer = "";
-          game.summary = "";
-          game.linux = undefined;
-          bNoReport++;
-          protonDone.add(appid);
-          continue;
-        }
+// Live-title verification: drop dead/stale/mislabeled dump matches so we
+      // never ship a wrong cover. Only unassign games that are STILL UNENRICHED
+      // (freshly matched) — an already-enriched id is far more likely a legit
+      // but delisted title (e.g. GTA IV) whose appdetails no longer resolve,
+      // or a subtitle/locale variant, than an error.
+      const unenriched = !game.developer && !game.summary;
+      if (
+        unenriched &&
+        (!details.title || steamTitleMismatch(game.title, details.title))
+      ) {
+        game.steamId = undefined;
+        game.coverImage = "";
+        game.screenshot = "";
+        game.screenshots = [];
+        game.developer = "";
+        game.summary = "";
+        game.linux = undefined;
+        bNoReport++;
+        protonDone.add(appid);
+        continue;
+      }
 
+      if (details.title) {
         // Fill any still-missing real fields (incomplete/mis-marked entries).
         if (details.summary && !game.summary) game.summary = details.summary;
         if (details.releaseDate && (!game.releaseDate || game.releaseDate.includes("Unknown"))) {
@@ -176,14 +179,17 @@ async function main() {
         if (details.screenshots?.length && (!game.screenshots || !game.screenshots.length)) {
           game.screenshots = details.screenshots;
         }
+      }
 
-        game.linux = {
-          ...(game.linux || {}),
-          native: !!details.linuxNative,
-          ...(proton || {}),
-        };
-        if (proton) bEnriched++;
-        else bNoReport++;
+      // Always record the Linux verdict. When appdetails were unavailable
+      // (delisted/removed) we keep the existing id/fields and only merge Proton.
+      game.linux = {
+        ...(game.linux || {}),
+        ...(details.title ? { native: !!details.linuxNative } : {}),
+        ...(proton || {}),
+      };
+      if (proton) bEnriched++;
+      else bNoReport++;
       } catch (e: any) {
         if (e?.message === "RATE_LIMIT_EXCEEDED") {
           console.warn(`[Grind][B] Steam rate-limited at "${game.title}"; backing off 45s...`);
