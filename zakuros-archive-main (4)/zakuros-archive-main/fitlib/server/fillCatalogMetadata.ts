@@ -77,15 +77,15 @@ async function main() {
     `[Grind] games: ${games.length} | match attempted: ${attemptedMatch.size} | proton appids: ${protonDone.size}`
   );
 
-  // ── Stage A: resolve missing steamIds ─────────────────────────────────────
-  let matchStats = { filled: 0, unmatched: 0, onlineSearched: 0 };
-  const unmatchable = games.filter(
-    (g) => !g.classic && !g.steamId && g.title && attemptedMatch.has(g.id)
-  ).length;
-  console.log(`[Grind][A] unmatched still needing resolution: ${unmatchable}`);
+  // ── Stage A: resolve missing steamIds (resumable — online search only hits
+  //     games that haven't been attempted yet) ───────────────────────────────
+  const matchCandidates = games.filter(
+    (g) => !g.classic && !g.steamId && g.title && !attemptedMatch.has(g.id)
+  );
+  console.log(`[Grind][A] games needing steamId resolution: ${matchCandidates.length}`);
 
-  if (limit > 0) {
-    const matchRes = await resolveMissingSteamIds(games, {
+  if (matchCandidates.length > 0 && limit > 0) {
+    const matchRes = await resolveMissingSteamIds(matchCandidates, {
       online: !noOnline,
       onReachedOnline: (n) => {
         if (n % 100 === 0) {
@@ -93,12 +93,7 @@ async function main() {
         }
       },
     });
-    matchStats = matchRes;
-    for (const g of games) {
-      if (!g.classic && !g.steamId && !attemptedMatch.has(g.id)) {
-        attemptedMatch.add(g.id);
-      }
-    }
+    for (const g of matchCandidates) attemptedMatch.add(g.id);
     console.log(
       `[Grind][A] match done: +${matchRes.filled} filled, ${matchRes.unmatched} unmatched (online searched: ${matchRes.onlineSearched})`
     );
