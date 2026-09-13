@@ -542,6 +542,7 @@ const enrichTried = new Set<string>();
 async function steamSearchFirstHit(title: string): Promise<{ appid: number; name: string } | null> {
   try {
     const gameKey = normalizeForMatch(title);
+    const gameStripped = stripReleaseJunk(gameKey);
     const response = await fetch(STEAM_SEARCH_URL(title), {
       headers: { "User-Agent": FETCH_UA },
     });
@@ -551,16 +552,24 @@ async function steamSearchFirstHit(title: string): Promise<{ appid: number; name
     if (!items.length) return null;
     // Take the FIRST item whose normalized name is compatible with the title
     // (exact, or shares all distinctive tokens) instead of blindly items[0].
-    for (const item of items.slice(0, 5)) {
+    for (const item of items.slice(0, 6)) {
       const hitKey = normalizeForMatch(item.name);
-      if (!hitKey) continue;
-      if (hitKey === gameKey) return { appid: item.id, name: item.name };
-      const gT = tokenizeKey(gameKey);
-      const hT = tokenizeKey(hitKey);
-      if (gT.size >= 3 && hT.size >= 3) {
+      const hitStripped = stripReleaseJunk(hitKey);
+      const gCands = [gameKey, gameStripped].filter((k, i, a) => k && a.indexOf(k) === i);
+      const hCands = [hitKey, hitStripped].filter((k, i, a) => k && a.indexOf(k) === i);
+      for (const gc of gCands) {
+        for (const hc of hCands) {
+          if (gc === hc) return { appid: item.id, name: item.name };
+        }
+      }
+      const gT = tokenizeKey(gCands[0]);
+      const hT = tokenizeKey(hCands[0]);
+      if (gT.size >= 2 && hT.size >= 2) {
         let matched = 0;
         for (const t of gT) if (hT.has(t)) matched++;
-        if (matched / gT.size >= 0.7 && hT.size - matched <= 1) {
+        const coverage = matched / gT.size;
+        const hJunk = hT.size - matched;
+        if (coverage >= 0.7 && hJunk <= 1 && (gT.size >= 3 || hJunk === 0)) {
           return { appid: item.id, name: item.name };
         }
       }
@@ -580,7 +589,7 @@ export async function enrichNewGames(
   let enriched = 0;
   let skipped = 0;
   const candidates = games.filter(
-    (g) => !g.classic && !g.steamId && !g.coverImage && g.title && g.rating === 0
+    (g) => !g.classic && !g.steamId && !g.coverImage && g.title && (!g.summary || !g.developer)
   ).filter((g) => !enrichTried.has(g.id)).slice(0, maxItems);
 
   for (const game of candidates) {
@@ -599,7 +608,10 @@ export async function enrichNewGames(
     // Steam appdetails is aggressively rate-limited; pace requests gently.
     await sleep(1200);
     try {
-      const details = await fetchSteamDetails(hit.appid);
+      const [details, proton] = await Promise.all([
+        fetchSteamDetails(hit.appid),
+        fetchProtonSummary(hit.appid),
+      ]);
       if (details.summary) game.summary = details.summary;
       if (details.releaseDate) game.releaseDate = details.releaseDate;
       if (details.developer) game.developer = details.developer;
@@ -608,6 +620,11 @@ export async function enrichNewGames(
       if (details.screenshots && details.screenshots.length > 0) {
         game.screenshots = details.screenshots;
       }
+      game.linux = {
+        ...(game.linux || {}),
+        native: !!details.linuxNative,
+        ...(proton || {}),
+      };
       enrichTried.add(game.id);
       enriched++;
     } catch (e: any) {
@@ -698,13 +715,10 @@ function loadSteamAppsIndex(): Map<string, number[]> {
 // didn't normalize-identically (e.g. "X r34294" vs "X", subtitle/edition junk).
 // Only returns a candidate when the game's stripped title is dominated by a
 // single Steam title, so ambiguous/weak matches stay unassigned.
-function fuzzySteamMatch(
-  gameKey: string,
-  candidatesMax = 20000
-): number | undefined {
+function fuzzyScan(gameKey: string, candidatesMax = 20000): number | undefined {
   if (!steamAppsIndex || !steamAppsInvert || !steamAppsTokens) return undefined;
   const gameTokens = tokenizeKey(gameKey);
-  if (gameTokens.size < 3) return undefined;
+  if (gameTokens.size < 2) return undefined;
   const candidateKeys = new Set<string>();
   for (const t of gameTokens) {
     const keys = steamAppsInvert.get(t);
@@ -729,7 +743,9 @@ function fuzzySteamMatch(
     // game tokens ("Accident" ⊂ "Plane Accident", "1849" ⊂ "Broadway: 1849")
     // or when the game has a large junk tail that swamps the shared tokens.
     if (appJunk > 1) continue;
-    if (gameJunk > 2) continue;
+    if (gameTokens.size >= 3 && gameJunk > 2) continue;
+    // Two-word game keys need a practically clean overlap to stay safe.
+    if (gameTokens.size === 2 && (appJunk > 0 || gameJunk > 0)) continue;
     if (
       coverage > bestCoverage ||
       (coverage === bestCoverage && appJunk < bestAppJunk)
@@ -739,15 +755,54 @@ function fuzzySteamMatch(
       bestKey = key;
     }
   }
-  if (bestKey === null || bestCoverage < 0.7) return undefined;
+  if (bestKey === null) return undefined;
   const ids = steamAppsIndex.get(bestKey);
   return ids && ids.length ? ids[0] : undefined;
+}
+
+// Tries the clean key first, then the junk-stripped variant — the two-word
+// guard above stays intact so stripping release residue can't create the
+// "Baldur's Gate III → BALDUR's GATE" style false positives.
+function fuzzySteamMatch(gameKey: string, candidatesMax = 20000): number | undefined {
+  const candidates = [gameKey];
+  const stripped = stripReleaseJunk(gameKey);
+  if (stripped && stripped !== gameKey && tokenizeKey(stripped).size >= 2) {
+    candidates.push(stripped);
+  }
+  for (const key of candidates) {
+    const id = fuzzyScan(key, candidatesMax);
+    if (id) return id;
+  }
+  return undefined;
 }
 
 const STEAM_COVER = (id: number) =>
   `https://cdn.akamai.steamstatic.com/steam/apps/${id}/library_600x900.jpg`;
 const STEAM_HEADER = (id: number) =>
   `https://cdn.akamai.steamstatic.com/steam/apps/${id}/header.jpg`;
+
+function applySteamId(g: Game, appid: number): void {
+  g.steamId = appid;
+  if (!g.coverImage) g.coverImage = STEAM_COVER(appid);
+  if (!g.screenshot) g.screenshot = STEAM_HEADER(appid);
+}
+
+// Try exact matches (clean + junk-stripped keys), then fuzzy on each.
+function resolveBestSteamId(key: string, stripped?: string): number | undefined {
+  const keys: string[] = [];
+  for (const k of [key, stripped]) {
+    if (k && !keys.includes(k)) keys.push(k);
+  }
+  for (const k of keys) {
+    const ids = steamAppsIndex!.get(k);
+    if (ids && ids.length > 0) return ids[0];
+  }
+  for (const k of keys) {
+    const id = fuzzySteamMatch(k);
+    if (id) return id;
+  }
+  return undefined;
+}
 
 // Fill steamId (+ cover/screenshot when missing) for every non-classic game
 // using the local Steam app index instead of hammering the rate-limited API.
@@ -764,22 +819,64 @@ export function backfillSteamIds(
       continue;
     }
     const key = normalizeForMatch(g.title);
-    const ids = key ? steamAppsIndex!.get(key) : undefined;
-    let appid = ids && ids.length > 0 ? ids[0] : undefined;
-    if (!appid && key) {
-      appid = fuzzySteamMatch(key);
-      if (appid) {
-        stat.fuzzy++;
-      }
-    }
+    const stripped = stripReleaseJunk(key);
+    const exactHit =
+      (key ? steamAppsIndex!.get(key) : undefined) ??
+      (stripped ? steamAppsIndex!.get(stripped) : undefined);
+    const appid = exactHit?.length
+      ? exactHit[0]
+      : resolveBestSteamId(key, stripped);
     if (!appid) {
       stat.unmatched++;
       continue;
     }
-    g.steamId = appid;
-    if (!g.coverImage) g.coverImage = STEAM_COVER(appid);
-    if (!g.screenshot) g.screenshot = STEAM_HEADER(appid);
+    applySteamId(g, appid);
+    if (!exactHit?.length) stat.fuzzy++;
     stat.filled++;
+  }
+  return stat;
+}
+
+// Offline-first steamId resolution for the whole unmatched backlog, with an
+// optional online Steam store-search sweep for the leftovers (the grind uses
+// this). `onReachedOnline` lets the caller throttle/measure the online phase.
+export async function resolveMissingSteamIds(
+  games: Game[],
+  opts: {
+    online?: boolean;
+    onReachedOnline?: (searched: number) => void;
+  } = {}
+): Promise<{ filled: number; unmatched: number; onlineSearched: number }> {
+  const stat = { filled: 0, unmatched: 0, onlineSearched: 0 };
+  loadSteamAppsIndex();
+  const pending: Game[] = [];
+  for (const g of games) {
+    if (g.classic || !g.title || g.steamId) continue;
+    const key = normalizeForMatch(g.title);
+    const stripped = stripReleaseJunk(key);
+    const appid = resolveBestSteamId(key, stripped);
+    if (appid) {
+      applySteamId(g, appid);
+      stat.filled++;
+    } else {
+      pending.push(g);
+    }
+  }
+  if (!opts.online || pending.length === 0) {
+    stat.unmatched = pending.length;
+    return stat;
+  }
+  for (const g of pending) {
+    const hit = await steamSearchFirstHit(g.title);
+    if (hit) {
+      applySteamId(g, hit.appid);
+      stat.filled++;
+    } else {
+      stat.unmatched++;
+    }
+    stat.onlineSearched++;
+    if (opts.onReachedOnline) opts.onReachedOnline(stat.onlineSearched);
+    await sleep(300);
   }
   return stat;
 }
@@ -843,7 +940,7 @@ export async function enrichCatalogMetadata(
         !g.classic &&
         typeof g.steamId === "number" &&
         g.title &&
-        (!g.summary || !g.developer || !g.rating || !g.screenshots || g.screenshots.length === 0)
+        (!g.summary || !g.developer || !g.screenshots || g.screenshots.length === 0)
     )
     .filter((g) => !metadataTried.has(g.id))
     .slice(0, maxItems);
@@ -853,7 +950,10 @@ export async function enrichCatalogMetadata(
   for (const game of candidates) {
     await sleep(1200);
     try {
-      const details = await fetchSteamDetails(game.steamId as number);
+      const [details, proton] = await Promise.all([
+        fetchSteamDetails(game.steamId as number),
+        fetchProtonSummary(game.steamId as number),
+      ]);
       if (details.summary) game.summary = details.summary;
       if (details.releaseDate) game.releaseDate = details.releaseDate;
       if (details.developer) game.developer = details.developer;
@@ -864,6 +964,11 @@ export async function enrichCatalogMetadata(
       if (details.screenshots && details.screenshots.length > 0 && (!game.screenshots || game.screenshots.length === 0)) {
         game.screenshots = details.screenshots;
       }
+      game.linux = {
+        ...(game.linux || {}),
+        native: !!details.linuxNative,
+        ...(proton || {}),
+      };
       metadataTried.add(game.id);
       if (game.summary) enriched++;
       else failed++;
