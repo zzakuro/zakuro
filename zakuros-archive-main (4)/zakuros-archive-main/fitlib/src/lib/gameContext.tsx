@@ -283,6 +283,32 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     fetchGamesFromBackend();
   }, []);
 
+  // Light poll: while the backend metadata grind enriches the catalog on disk,
+  // quietly refresh the served list every few minutes so new fields (linux,
+  // screenshots, summaries) appear without a manual page reload.
+  useEffect(() => {
+    const signature = (list: Game[]) =>
+      `${list.length}:${list.slice(0, 600).filter((g) => g.linux && (g.linux.tier || g.linux.native)).length}`;
+    const id = setInterval(async () => {
+      try {
+        const res = await fetch("/api/games");
+        if (!res.ok) return;
+        const data = await res.json();
+        const next: Game[] = Array.isArray(data) ? data : (data.games ?? []);
+        let changed = false;
+        setGames((prev) => {
+          if (signature(prev) === signature(next)) return prev;
+          changed = true;
+          return next;
+        });
+        if (changed) setError(null);
+      } catch {
+        // backend offline; keep current data
+      }
+    }, 180000);
+    return () => clearInterval(id);
+  }, []);
+
   const loginUser = (username: string) => {
     let savedBookmarks: string[] = [];
     const cookieBms = getCookie("zakuro_bookmarks");

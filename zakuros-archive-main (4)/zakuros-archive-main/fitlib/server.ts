@@ -675,6 +675,14 @@ async function startServer() {
     setInterval(() => {
       void runSourceSync();
     }, SOURCE_SYNC_INTERVAL_MS);
+    // While the metadata grind holds the lock, reload the enriched catalog from
+    // disk every ~2 min so new steam/proton/screenshot fields show up live
+    // (persistence stays disabled; only reads happen here).
+    setInterval(() => {
+      if (!grindActive()) return;
+      console.log("[Sync] Grind active — hot-reloading catalog from disk.");
+      gamesCatalog = loadGames();
+    }, 120000);
   });
 }
 
