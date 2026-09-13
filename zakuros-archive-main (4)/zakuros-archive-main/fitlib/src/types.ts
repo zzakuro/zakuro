@@ -23,6 +23,14 @@ export interface GameStats {
   updatedAt: string;
 }
 
+// Linux compatibility: native Steam support and/or ProtonDB tier report.
+export interface LinuxSupportInfo {
+  native?: boolean; // Steam platforms.linux === true
+  tier?: string; // Proton tier: platinum | gold | silver | bronze | borked | pending | unknown
+  confidence?: string; // strong | moderate | weak | preliminary | unavailable
+  votes?: number; // ProtonDB report voters
+}
+
 export interface DownloadSource {
   name: string;
   url: string;
@@ -52,6 +60,7 @@ export interface Game {
   igdbId?: number;
   reviewCount?: number;
   popularityScore?: number;
+  linux?: LinuxSupportInfo;
   downloadSources?: DownloadSource[];
   classic?: boolean; // retro/classic titles (e.g. PSX ROMs) — used by the Classic filter
 }
@@ -82,6 +91,8 @@ export interface GameMetadataExtended {
     storyline?: string;
     videos?: string[];
   };
+  linux?: LinuxSupportInfo;
+  linuxNative?: boolean; // Steam platforms.linux === true (before merging into linux)
   _ratingReal?: boolean; // true when rating comes from a real source (Metacritic/IGDB), not a placeholder
 }
 
