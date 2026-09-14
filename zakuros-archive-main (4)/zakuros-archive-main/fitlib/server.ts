@@ -4,6 +4,7 @@ import fs from "fs";
 import compression from "compression";
 import { createServer as createViteServer } from "vite";
 import { getGameMetadata, checkBackendRateLimit } from "./server/metadataService";
+import { setRealScreenshots } from "./server/sources";
 import {
   communityRouter,
 } from "./server/community";
@@ -404,8 +405,7 @@ async function startServer() {
         mutated = true;
       }
       const realScreenshots = (metadata.screenshots || []).filter((u) => !u.includes("unsplash"));
-      if (realScreenshots.length > 0 && !game.screenshots?.length) {
-        game.screenshots = realScreenshots;
+      if (realScreenshots.length > 0 && setRealScreenshots(game, realScreenshots)) {
         mutated = true;
       }
       if (metadata.linux && (metadata.linux.native || metadata.linux.tier) && JSON.stringify(game.linux || {}) !== JSON.stringify(metadata.linux)) {

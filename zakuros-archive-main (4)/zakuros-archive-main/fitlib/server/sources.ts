@@ -668,6 +668,25 @@ export function titlesCompatible(gameTitle: string, steamTitle: string | undefin
   return matched >= 2 && matched / gT.size >= 0.4 && matched / sT.size >= 0.5;
 }
 
+// Replace any current screenshots that are pure placeholders (single header
+// banner, page_bg fallback, unsplash curated image) with real Steam
+// screenshots. Returns true when something changed.
+const PLACEHOLDER_SHOT = /header\.jpg|page_bg|unsplash/;
+export function screenshotsArePlaceholder(game: Game): boolean {
+  const cur = game.screenshots || [];
+  return cur.length === 0 || cur.every((u) => PLACEHOLDER_SHOT.test(u));
+}
+
+export function setRealScreenshots(game: Game, shots: string[] | undefined): boolean {
+  const real = (shots || []).filter((u) => u && !PLACEHOLDER_SHOT.test(u));
+  if (real.length === 0) return false;
+  const cur = game.screenshots || [];
+  if (!screenshotsArePlaceholder(game) && real.length <= cur.length) return false;
+  game.screenshots = real;
+  game.screenshot = real[0];
+  return true;
+}
+
 // Much gentler "should this appid be UNassigned?" predicate used by the grind
 // to drop dead/stale/mislabeled Steam-app-dump matches. Keeps CJK/non-Latin
 // titles (whose Steam names often differ in script), acronym expansions

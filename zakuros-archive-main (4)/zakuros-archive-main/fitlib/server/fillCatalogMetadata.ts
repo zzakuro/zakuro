@@ -26,7 +26,7 @@ import {
   fetchSteamDetails,
   fetchProtonSummary,
 } from "./metadataService";
-import { resolveMissingSteamIds, steamTitleMismatch } from "./sources";
+import { resolveMissingSteamIds, steamTitleMismatch, screenshotsArePlaceholder, setRealScreenshots } from "./sources";
 
 const GAMES_DB_PATH = path.join(process.cwd(), "data", "merged_enriched.json");
 const STATE_PATH = path.join(process.cwd(), "data", "steam_grind_state.json");
@@ -123,8 +123,8 @@ async function main() {
           !g.classic &&
           typeof g.steamId === "number"
       )
-      .filter((g) => !g.linux || (g.linux.native === undefined && !g.linux.tier))
-      .filter((g) => !protonDone.has(g.steamId as number))
+      .filter((g) => !g.linux || (g.linux.native === undefined && !g.linux.tier) || screenshotsArePlaceholder(g))
+      .filter((g) => !protonDone.has(g.steamId as number) || screenshotsArePlaceholder(g))
       .sort((a, b) => (b.popularityScore ?? 0) - (a.popularityScore ?? 0))
       .slice(0, limit);
 
@@ -176,8 +176,8 @@ async function main() {
         if (details.rating !== undefined && (game.rating === 0 || !game.rating)) {
           game.rating = details.rating;
         }
-        if (details.screenshots?.length && (!game.screenshots || !game.screenshots.length)) {
-          game.screenshots = details.screenshots;
+        if (details.screenshots?.length) {
+          setRealScreenshots(game, details.screenshots);
         }
       }
 
