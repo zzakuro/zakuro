@@ -1,235 +1,259 @@
-import React, { useState } from "react";
+import React from "react";
+import { Link, useNavigate } from "react-router-dom";
 import {
-  HelpCircle,
-  ChevronDown,
   Search,
-  Monitor,
   Download,
-  User,
-  Star,
+  ShieldCheck,
+  Monitor,
   Bug,
-  MessageSquare,
   BookOpen,
+  MessageSquare,
   ExternalLink,
   ArrowRight,
+  Gamepad2,
+  Terminal,
+  HardDrive,
+  Wifi,
+  Lock,
   CheckCircle2,
+  FileArchive,
+  RefreshCw,
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
-import { Link } from "react-router-dom";
 
 export const HelpView: React.FC = () => {
-  const [activeFaq, setActiveFaq] = useState<number | null>(null);
+  const [activeFaq, setActiveFaq] = useState<number | null>(nullExchange as any);
+  const navigate = useNavigate();
 
-  const sections = [
+  const quickLinks = [
+    { icon: Search, label: "Searching the catalog", href: "#search" },
+    { icon: Download, label: "How downloads work", href: "#downloads" },
+    { icon: Monitor, label: "Install guides", href: "#install" },
+    { icon: ShieldCheck, label: "Staying safe", href: "#safety" },
+    { icon: Lock, label: "Accounts & login", href: "#accounts" },
+    { icon: Bug, label: "Report a problem", href: "#report" },
+  ];
+
+  const guideSections = [
     {
       icon: Search,
-      title: "Finding games",
-      items: [
+      title: "Searching the catalog",
+      id: "search",
+      intro:
+        "Searching is the fastest way through 20,000+ releases — and there's a hidden power-user trick built into the top bar.",
+      steps: [
         {
-          q: "How do I search the catalog?",
-          a: "Press Ctrl+K (or Cmd+K on macOS) anywhere to open the command palette, then type the game title, developer, or genre. Press Enter to jump straight into full-library search. On the Browse page you can also filter by year, genre, and sort by popularity, newest, or title.",
+          title: "Jump straight in (Ctrl+K)",
+          body: "Press Ctrl+K (or Cmd+K on macOS) from anywhere to open the command palette. Type a partial title and hit Enter for instant results — no page reload, works mid-scroll. Esc closes it.",
         },
         {
-          q: "Why is a game I want missing?",
-          a: "The catalog only indexes releases we can verify from the source groups. A title may be missing because the group hasn't repacked it yet, it's delisted from stores, or it's exclusive to a platform we don't cover. Use the request feature in About to signal it to the community.",
+          title: "Use the browse filters",
+          body: "The Library page gives you year, genre, and native-Linux filters plus sorting. You can stack a genre with a year range, then sort by popularity, newest, rating, or downloads to zero in fast.",
+        },
+        {
+          title: "Match what the metadata has",
+          body: "Search matches the indexed title, developer, and genre fields. If a game is filed under its original Steam title but you know it by another name, use Browse's text filter to surface both spellings.",
         },
       ],
     },
     {
       icon: Download,
-      title: "Downloading releases",
-      items: [
+      title: "How downloads work",
+      id: "downloads",
+      intro:
+        "Every game page lists the exact sources indexed for that release. Pick the one that fits your connection and preferences.",
+      steps: [
         {
-          q: "What do the download sources mean?",
-          a: "Each game page lists every indexed source with its type: Repack (smaller download, slower install), Direct (original files, larger), DRM-Free (GOG-style), or Multiplayer Patch (online capable). Choose whichever fits your connection and preference — we don't host any of them.",
+          title: "Pick the kind of source",
+          body: "Repack = smaller archive, longer install (FitGirl, DODI). Direct = original files, bigger download, faster install (GOG, SteamRip, Xatab). Multiplayer patch = online-enabled variant for titles that support it.",
         },
         {
-          q: "I clicked a source but nothing happens.",
-          a: "Sources open in a new tab at the repacker's own page or torrent client. Pop-up blockers can silently swallow them — allow pop-ups for Zakuro's Archive, or right-click the link and select \"Open in new tab\".",
+          title: "Check the badge before you go",
+          body: "The Linux badge (Native, Gold, Silver, Platinum) is pulled live from ProtonDB — a Silver title likely needs a Proton launch command, while Native just runs. That's precisely what the badge is there to tell you before you commit to a big download.",
         },
         {
-          q: "The file size says 0 B.",
-          a: "Some mirrors don't report archive sizes. The listed size is the best metadata available at index time; the real size always appears on the repacker's own release page.",
+          title: "Downloads open the source page",
+          body: "Nothing is hosted here. Clicking a mirror opens the repacker's own page in a new tab where the actual file lives. There is no in-site download step — the index stays lightweight and honest.",
         },
       ],
     },
     {
       icon: Monitor,
-      title: "Installation & running",
-      items: [
+      title: "Install guides",
+      id: "install",
+      intro: "A clean install mostly comes down to a clean staging area and letting the repack's own tools do the integrity work.",
+      steps: [
         {
-          q: "Why do repack installers scare my antivirus?",
-          a: "Repacks use custom compressors and installer code, which antivirus tools frequently flag as false positives. Check the repacker's own site for a known false-positive list, verify checksums they publish, and whitelist the installer only if you trust the source. We index releases only from established groups.",
+          title: "Stage before you run",
+          body: "Keep the archive on a NTFS volume with 2× the repack's install size free. Wherever you extract, keep the installer and its .bin files in the same folder — never run the installer while it's still inside a zip or rar.",
         },
         {
-          q: "The game won't launch. What now?",
-          a: "Confirm your system meets the listed requirements, run the installer's verification tool (FitGirl and DODI both ship one) to catch corrupt files, then reinstall via a different mirror. For multiplayer patches, the specific online fix has its own launcher — run the game through that, in the order the source instructs.",
+          title: "Use the built-in verifier",
+          body: "Every major repacker (FitGirl, DODI, Xatab) ships a file-check/verification step. Run it before and after install to catch a bad mirror or a corrupted download early — it rehashes every file against the repack manifest.",
         },
         {
-          q: "How do I read the Linux badge?",
-          a: "A game wearing the Linux badge has community Proton compatibility data from ProtonDB. Native means a proper Linux build; Gold/Platinum/Silver tiers describe how well it runs under Proton. Tiers are community-reported and can shift with Wine/Proton versions.",
+          title: "Proton launch tips",
+          body: "For titles without a Native badge, install Proton from Steam's compatibility section Islands, then set the game to force a specific GE/Proton version. A Gold or better ProtonDB tier is your green light.",
         },
       ],
     },
     {
-      icon: User,
-      title: "Accounts & community",
-      items: [
+      icon: ShieldCheck,
+      title: "Staying safe",
+      id: "safety",
+      intro:
+        "Zakuro's Archive is an index — a pointer map. The safety model is built on keeping that pointer map accurate and public.",
+      steps: [
         {
-          q: "Do I need an account to download?",
-          a: "No. Browsing and downloading work without an account. Accounts exist for the community features — leaving ratings, commenting on games, and tracking your rating history.",
+          title: "Trust the badge, not the title",
+          body: "The loudest release with the shiniest cover is the #1 malware attack vector. Here, every entry is a verified Steam release with live ProtonDB data. If a cover's attached to the wrong appid, it stays delisted until it lines up — that mismatch is the thing we filter out aggressively.",
         },
         {
-          q: "I can't log in / sign up.",
-          a: "Register from the Sign In page via the \"Create account\" toggle, or visit /register directly. If an account can't be created, the backend community service may be starting — wait a minute and retry.",
+          title: "Whitelist deliberately",
+          body: "Repack installers trip antivirus false positives by design (custom packers). If a mirror is unusual, your AV flags it, AND the repack's own site lists that binary — verify checksums from the source page before you whitelist anything.",
+        },
+        {
+          title: "Report what's wrong",
+          body: "Spot a dead mirror, wrong cover, or missing link? Hit \"Report a problem\" from any game page. Every report lands in the queue with the game's context, so it gets cleaned on the next enrichment pass.",
+        },
+      ],
+    },
+    {
+      icon: Lock,
+      title: "Accounts & login",
+      id: "accounts",
+      intro: "Accounts are optional — download links work for everyone. Accounts exist for the community layer.",
+      steps: [
+        {
+          title: "What an account is for",
+          body: "Ratings, comments, and a watch history are tied to your account. Nothing else is gated: the full catalog, search, and download index are all public read-only.",
+        },
+        {
+          title: "Sign in anywhere",
+          body: "The top-right Sign In button toggles between login and create-account. Use the register route (/register) if you want to jump straight to signup. Auth lives server-side; passwords are hashed, never stored in the browser.",
+        },
+        {
+          title: "Community-first, ads-never",
+          body: "There are no ads and no tracking scripts. Accounts never feed a marketing graph — ratings and comments only make the index more useful for the next person.",
         },
       ],
     },
     {
       icon: Bug,
-      title: "Troubleshooting the site",
-      items: [
+      title: "Report a problem",
+      id: "report",
+      intro: "Found a bug, a stale mirror, or an inaccurate entry? There's a direct line in for all of it.",
+      steps: [
         {
-          q: "The site shows stale data.",
-          a: "The catalog refreshes automatically in the background as metadata is enriched. Hard-refresh with Ctrl+Shift+R to bypass the browser cache and pull the newest index.",
+          title: "From a game page",
+          body: "Every game has a Report action that pre-fills the title and ID so the fix lands on the right record. Describe what's wrong — dead mirror (report the exact URL), wrong cover, missing requirements — and it's triaged fast.",
         },
         {
-          q: "A game page looks broken or is missing art.",
-          a: "This is a metadata signal — the entry is still being enriched. Give it a few hours and revisit: covers, descriptions, and requirements populate on a rolling schedule. Persistent issues after that are worth reporting on Discord.",
+          title: "Site doesn't feel right",
+          body: "Broken layout, search missing results, a filter that ignores you — the Help & Support forum link below covers the whole UI. Screenshots help most when a visual glitch is involved.",
+        },
+        {
+          title: "About the metadata itself",
+          body: "If enrichment looks wrong (wrong dev, placeholder summary, missing Linux data), the grind backfills those on a rolling schedule. Recent titles enrich faster than old ones — notice it on an old entry and it'll likely heal itself within the day.",
         },
       ],
     },
   ];
 
-  const faqs = sections.flatMap((s) => s.items);
+  const faqs = [
+    {
+      q: "What does the Linux badge mean?",
+      a: "Native means a real Linux build existsalking. Gold/Platinum/Silver come from ProtonDB and describe how the Windows build plays under Proton — Platinum runs out of the box, Gold needs a small tweak, Silver might need a launch flag or GE-Proton. No badge = no reliable data yet.",
+    },
+    {
+      q: "Is a repack faster than a direct download?",
+      a: "Repacks trade download time for install time. The archive is smaller (great for capped connections), but the installer decompresses everything locally, so a 6GB repack can take 30-60 minutes to install. Direct downloads are bigger but done in minutes.",
+    },
+    {
+      q: "Why is one game in both Repack and Direct?",
+      a: "Many titles are repacked by one group and released direct by another. Both are legitimate sources; the game page lists each mirror's type so you can pick. Zakuro's Archive never prefers one — it just indexes what the groups publish.",
+    },
+    {
+      q: "How do I verify a mirror is the original?",
+      a: "Source mirrors are checked periodically and the index keeps the group-authorized URL per release. Still, always confirm the URL against the repack group's own site before downloading anything — and prefer their published checksums as the final word.",
+    },
+    {
+      q: "My antivirus deleted the installer.",
+      a: "That's the normal false-positive dance with custom repack packers — not a sign you were hit. Cross-check the exact filename and checksum against the repacker's release page, and test in a sandbox or VM if you're on the fence.",
+    },
+    {
+      q: "What do the popularity/download numbers mean?",
+      a: "Popularity is a weighted index of the catalog's own signals (views, saves, ratings) — not sales. Downloads reflect metadata interest aggregated from the index's own records. Both update on the enrichment cycle so they get sharper as the catalog matures.",
+    },
+    {
+      q: "Can I request a game to be indexed?",
+      a: "Yes — the community Request queue is the fastest way to signal a missing title. High-vote requests get prioritized in the enrichment pipeline. There's no guarantee a group will pick any title up, but the index reflects what's requested.",
+    },
+  ];
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8 space-y-20">
-
       {/* Hero */}
       <section className="text-center max-w-3xl mx-auto py-8">
         <span className="rounded-full bg-rose-950/40 border border-rose-500/20 px-3.5 py-1 text-[11px] font-bold text-rose-400 uppercase tracking-widest font-mono">
-          Guides, tips & troubleshooting
+          Full help & support
         </span>
         <h1 className="font-display font-black tracking-tight text-white mt-6 uppercase leading-tight text-4xl sm:text-5xl">
-          How can we<br />
-          <span className="text-rose-400">help you?</span>
+          We've got you<br />
+          <span className="text-rose-400">covered</span>
         </h1>
         <p className="mt-4 text-zinc-400 text-sm leading-relaxed font-sans max-w-xl mx-auto">
-          Everything you need to search the index, use downloads safely, install releases, and get the most out of the community.
+          Every question the community actually asks, answered once. From the Ctrl+K trick to Proton badges — pick a topic or search the FAQ below.
         </p>
-        <div className="mt-8 flex justify-center gap-3 flex-wrap">
-          <a
-            href="#guides"
-            className="rounded-full border border-zinc-800 bg-zinc-950 hover:bg-zinc-900 font-mono text-xs font-bold px-6 py-2.5 text-zinc-300 hover:text-white transition"
-          >
-            Browse guides
-          </a>
-          <a
-            href="#support-faq"
-            className="flex items-center gap-1.5 rounded-full bg-rose-400 hover:bg-rose-300 font-mono text-xs font-bold px-6 py-2.5 text-black transition active:scale-95 shadow-lg shadow-rose-500/20"
-          >
-            <MessageSquare className="h-3.5 w-3.5" />
-            <span>FAQ & support</span>
-          </a>
-        </div>
-      </section>
 
-      {/* Guides */}
-      <section id="guides" className="space-y-8 max-w-5xl mx-auto">
-        <div className="text-center">
-          <span className="text-[10px] font-bold text-rose-400 uppercase tracking-widest font-mono">Step by step</span>
-          <h2 className="font-display font-black text-2xl text-white mt-1 uppercase">Quick-Start Guides</h2>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {[
-            {
-              icon: Search,
-              step: "01",
-              title: "Search & filter",
-              body: "Press Ctrl+K for instant search, or use Browse with year, genre and sort filters to narrow 20,000+ releases down to what you want.",
-            },
-            {
-              icon: Download,
-              step: "02",
-              title: "Pick a source",
-              body: "Open any game, review its system requirements and Linux badge, then choose your preferred mirror and source type on the download tab.",
-            },
-            {
-              icon: Monitor,
-              step: "03",
-              title: "Install safely",
-              body: "Verify checksums, whitelist the installer only if you trust the repacker, and use the repack's built-in verification before playing.",
-            },
-          ].map((g, idx) => (
-            <div key={idx} className="bg-zinc-950/40 border border-zinc-900 rounded-xl p-5 hover:border-rose-500/20 transition duration-300 relative overflow-hidden">
-              <span className="absolute top-3 right-4 font-mono text-[10px] text-zinc-700 font-bold">{g.step}</span>
-              <div className="h-9 w-9 rounded-lg bg-zinc-900 flex items-center justify-center border border-zinc-800 text-rose-400 mb-4">
-                <g.icon className="h-4 w-4" />
-              </div>
-              <h3 className="font-display font-bold text-white uppercase text-sm mb-2">{g.title}</h3>
-              <p className="text-zinc-400 text-xs leading-relaxed font-sans">{g.body}</p>
-            </div>
+        {/* Quick topic nav */}
+        <div className="mt-7 flex flex-wrap justify-center gap-2">
+          {quickLinks.map((q, idx) => (
+            <a
+              key={idx}
+              href={q.href}
+              className="flex items-center gap-1.5 rounded-full border border-zinc-900 bg-zinc-950/50 px-4 py-2 text-[11px] font-bold text-zinc-300 hover:border-rose-500/40 hover:text-white font-mono transition"
+            >
+              <q.icon className="h-3.5 w-3.5 text-rose-400" />
+              {q.label}
+            </a>
           ))}
         </div>
       </section>
 
-      {/* Topic sections */}
-      {sections.map((section, idx) => (
-        <section key={idx} className="space-y-6 max-w-5xl mx-auto">
-          <div className="flex items-center gap-3">
-            <div className="h-9 w-9 rounded-lg bg-rose-950/20 border border-rose-500/20 flex items-center justify-center text-rose-400">
-              <section.icon className="h-4 w-4" />
+      {/* Step guides */}
+      {guideSections.map((s) => (
+        <section key={s.id} id={s.id} className="space-y-6 max-w-4xl mx-auto">
+          <div className="flex items-center gap-4">
+            <div className="h-11 w-11 shrink-0 rounded-xl bg-rose-950/20 border border-rose-500/20 flex items-center justify-center text-rose-400">
+              <s.icon className="h-5 w-5" />
             </div>
             <div>
-              <span className="text-[10px] font-bold text-rose-400 uppercase tracking-widest font-mono">Guide</span>
-              <h2 className="font-display font-black text-xl text-white uppercase leading-tight">{section.title}</h2>
+              <h2 className="font-display font-black text-xl text-white uppercase leading-tight">{s.title}</h2>
+              <p className="text-zinc-500 text-xs mt-1 max-w-2xl">{s.intro}</p>
             </div>
           </div>
-          <div className="space-y-3">
-            {section.items.map((faq, i) => {
-              const flatIdx = faqs.indexOf(faq);
-              const isOpen = activeFaq === flatIdx;
-              return (
-                <div key={i} className="rounded-xl border border-zinc-900 bg-zinc-950/45 overflow-hidden">
-                  <button
-                    onClick={() => setActiveFaq(isOpen ? null : flatIdx)}
-                    className="w-full flex items-center justify-between p-4 text-left hover:bg-zinc-900/10 transition"
-                  >
-                    <span className="font-display font-bold text-white text-xs sm:text-sm uppercase tracking-wide">{faq.q}</span>
-                    <ChevronDown
-                      className={`h-4 w-4 text-zinc-500 transition-transform duration-300 flex-shrink-0 ml-4 ${isOpen ? "rotate-180 text-rose-400" : ""}`}
-                    />
-                  </button>
-                  <AnimatePresence initial={false}>
-                    {isOpen && (
-                      <motion.div
-                        initial={{ height: 0 }}
-                        animate={{ height: "auto" }}
-                        exit={{ height: 0 }}
-                        transition={{ duration: 0.25 }}
-                        className="overflow-hidden"
-                      >
-                        <div className="p-4 border-t border-zinc-900/60 text-zinc-400 text-xs sm:text-sm leading-relaxed font-sans bg-[#0c0c14]/15">
-                          {faq.a}
-                        </div>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
-                </div>
-              );
-            })}
+
+          <div className="space-y-4">
+            {s.steps.map((step, si) => (
+              <div key={si} className="rounded-xl border border-zinc-900 bg-zinc-950/40 p-5 relative overflow-hidden">
+                <span className="absolute right-4 top-3 font-mono text-[10px] font-bold text-zinc-700">{String(si + 1).padStart(2, "0")}</span>
+                <h3 className="font-display font-bold text-white uppercase text-xs mb-2 flex items-center gap-2">
+                  <ArrowRight className="h-3.5 w-3.5 text-rose-400" />
+                  {step.title}
+                </h3>
+                <p className="text-zinc-400 text-xs leading-relaxed font-sans">{step.body}</p>
+              </div>
+            ))}
           </div>
         </section>
       ))}
 
-      {/* Full FAQ list */}
-      <section id="support-faq" className="space-y-8 max-w-4xl mx-auto">
+      {/* FAQ */}
+      <section className="space-y-6 max-w-4xl mx-auto">
         <div className="text-center">
-          <HelpCircle className="h-7 w-7 text-rose-400 mx-auto mb-2" />
-          <span className="text-[10px] font-bold text-rose-400 uppercase tracking-widest font-mono">Support</span>
-          <h2 className="font-display font-black text-2xl text-white mt-1 uppercase">All Common Questions</h2>
+          <span className="text-[10px] font-bold text-rose-400 uppercase tracking-widest font-mono">FAQ</span>
+          <h2 className="font-display font-black text-2xl text-white mt-1 uppercase">Common Questions</h2>
         </div>
 
         <div className="space-y-3">
@@ -242,9 +266,7 @@ export const HelpView: React.FC = () => {
                   className="w-full flex items-center justify-between p-5 text-left hover:bg-zinc-900/10 transition"
                 >
                   <span className="font-display font-bold text-white text-xs sm:text-sm uppercase tracking-wide">{faq.q}</span>
-                  <ChevronDown
-                    className={`h-4 w-4 text-zinc-500 transition-transform duration-300 flex-shrink-0 ml-4 ${isOpen ? "rotate-180 text-rose-400" : ""}`}
-                  />
+                  <ChevronDown {...{ className: `h-4 w-4 text-zinc-500 transition-transform duration-300 flex-shrink-0 ml-4 ${isOpen ? "rotate-180 text-rose-400" : ""}` }} />
                 </button>
                 <AnimatePresence initial={false}>
                   {isOpen && (
@@ -267,61 +289,32 @@ export const HelpView: React.FC = () => {
         </div>
       </section>
 
-      {/* Resources */}
-      <section className="space-y-6 max-w-4xl mx-auto">
-        <div className="text-center">
-          <span className="text-[10px] font-bold text-rose-400 uppercase tracking-widest font-mono">More help</span>
-          <h2 className="font-display font-black text-2xl text-white mt-1 uppercase">External Resources</h2>
-        </div>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-          {[
-            { label: "Read the FAQ & safety", to: "/about", icon: BookOpen },
-            { label: "Report a bug on Discord", href: "https://discord.gg", icon: MessageSquare },
-            { label: "Browse the whole library", to: "/browse", icon: Search },
-          ].map((r, idx) => {
-            const inner = (
-              <>
-                <r.icon className="h-4 w-4 text-rose-400" />
-                <span className="font-mono font-bold text-white text-xs group-hover:text-rose-400 transition">{r.label}</span>
-                {r.href ? <ExternalLink className="h-3 w-3 text-zinc-600 group-hover:text-rose-400 transition ml-auto" /> : <ArrowRight className="h-3 w-3 text-zinc-600 group-hover:text-rose-400 transition ml-auto" />}
-              </>
-            );
-            return r.href ? (
-              <a key={idx} href={r.href} target="_blank" rel="noopener noreferrer"
-                className="group flex items-center gap-3 rounded-xl border border-zinc-900 bg-zinc-950/40 hover:border-rose-500/20 p-4 transition duration-200">
-                {inner}
-              </a>
-            ) : (
-              <Link key={idx} to={r.to as string}
-                className="group flex items-center gap-3 rounded-xl border border-zinc-900 bg-zinc-950/40 hover:border-rose-500/20 p-4 transition duration-200">
-                {inner}
-              </Link>
-            );
-          })}
-        </div>
-      </section>
-
-      {/* Still stuck CTA */}
-      <section className="rounded-2xl border border-rose-500/10 bg-rose-950/10 p-8 text-center max-w-4xl mx-auto flex flex-col items-center gap-4">
-        <CheckCircle2 className="h-9 w-9 text-rose-400" />
+      {/* Still stuck */}
+      <section className="rounded-2xl border border-rose-500/10 bg-rose-950/10 p-8 text-center max-w-4xl mx-auto">
+        <Bug className="h-8 w-8 text-rose-400 mx-auto mb-3" />
         <h3 className="font-display font-black text-white uppercase text-xl">Still stuck?</h3>
-        <p className="text-zinc-400 text-xs max-w-xl font-sans">
-          Ask the community on Discord. Include the game title and what exactly happens (error text, where the download fails) so someone can help you fast.
+        <p className="text-zinc-400 text-xs max-w-xl mx-auto mt-2">
+          Ask the community on Discord — include the game title and what exactly happens (error text, where the download fails) so someone can help you fast.
         </p>
-        <a
-          href="https://discord.gg"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="mt-2 flex items-center gap-2 rounded-full bg-rose-400 px-6 py-2.5 text-xs font-bold text-black hover:bg-rose-300 transition"
-        >
-          <span>GET HELP ON DISCORD</span>
-          <ArrowRight className="h-3.5 w-3.5" />
-        </a>
-        <span className="mt-1 flex items-center gap-1.5 font-mono text-[10px] text-zinc-600">
-          <Star className="h-3 w-3" /> Prefer it free and ad-free? You're already here.
-        </span>
-      </section>
 
+        <div className="mt-5 flex flex-wrap justify-center gap-3">
+          <a
+            href="https://discord.gg"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-2 rounded-full bg-rose-400 px-6 py-2.5 text-xs font-bold text-black hover:bg-rose-300 transition"
+          >
+            <MessageSquare className="h-3.5 w-3.5" />
+            Open Discord
+          </a>
+          <Link
+            to="/donate"
+            className="flex items-center gap-2 rounded-full border border-zinc-800 px-6 py-2.5 text-xs font-bold text-zinc-300 hover:text-white hover:border-zinc-700 transition"
+          >
+            Support the archive
+          </Link>
+        </div>
+      </section>
     </div>
   );
 };
