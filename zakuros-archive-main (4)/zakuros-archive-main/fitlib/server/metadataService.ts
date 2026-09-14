@@ -139,7 +139,9 @@ export function parseSteamPcRequirements(spec: string | undefined): PlatformRequ
 function cleanSteamDescription(html: string | undefined): string | undefined {
   if (!html) return undefined;
   let t = html
-    .replace(/\[\/?[a-z0-9]+\]/gi, "")               // [h1], [/b], [*], ...
+    .replace(/\[\*\]/g, "\n• ")                   // [*] bullets → bullet lines
+    .replace(/\[(?:\/?)(?:h1|h2|h3)\]/gi, "\n")
+    .replace(/\[\/?[a-z0-9]+\]/gi, "")               // [h1], [/b], ...
     .replace(/<br\s*\/?>/gi, "\n")
     .replace(/<\/?(?:p|div|li|ul|ol|strong|em)>/gi, "\n")
     .replace(/<[^>]+>/g, "")
