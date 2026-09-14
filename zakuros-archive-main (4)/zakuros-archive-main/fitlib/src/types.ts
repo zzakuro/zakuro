@@ -82,6 +82,8 @@ export interface UserSession {
 
 export interface GameMetadataExtended {
   title: string;
+  verifiedTitle?: string; // the title Steam itself reports for steamId (used to
+                          // confirm an appid truly belongs before aligning covers)
   summary: string;
   rating: number;
   releaseDate: string;

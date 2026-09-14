@@ -27,9 +27,31 @@ const PORT = 3000;
 // Whether the detached metadata grind is mid-run. When it is, the server must
 // not persist its (possibly stale) in-memory catalog over the grind's fresh
 // writes, and should skip auto source-syncs so they don't clobber new ids.
+// The lock records the grind's pid; a left-behind lock whose pid is gone is
+// stale and auto-cleared so a hard-killed grind can never deadlock the server's
+// persistence.
 function grindActive(): boolean {
   try {
-    return fs.existsSync(GRIND_LOCK_PATH);
+    if (!fs.existsSync(GRIND_LOCK_PATH)) return false;
+    const parsed = JSON.parse(fs.readFileSync(GRIND_LOCK_PATH, "utf8"));
+    const pid = typeof parsed?.pid === "number" ? parsed.pid : null;
+    if (pid !== null && pid !== process.pid) {
+      try {
+        process.kill(pid, 0);
+        return true; // process alive → grind genuinely running
+      } catch (e: any) {
+        if (e?.code === "EPERM") return true; // exists but not ours → alive
+        fs.rmSync(GRIND_LOCK_PATH, { force: true });
+        console.log("[DB] Stale grind lock (dead pid) cleared.");
+        return false;
+      }
+    }
+    // Legacy plain-text lock (no pid): treat as active briefly, stale after 15m.
+    const age = Date.now() - fs.statSync(GRIND_LOCK_PATH).mtimeMs;
+    if (age < 15 * 60 * 1000) return true;
+    fs.rmSync(GRIND_LOCK_PATH, { force: true });
+    console.log("[DB] Stale grind lock (old) cleared.");
+    return false;
   } catch {
     return false;
   }
@@ -165,10 +187,12 @@ function applyQuery(
     result = result.filter((g) => (g.developer || "").toLowerCase().includes(dev));
   }
 
-  // Release-year filter
+  // Release-year filter — matches the *year* wherever it appears in the date
+  // (ISO, "Dec 11 2015", "Q3 2026", ...), never dropping valid dates.
   if (typeof query.year === "string" && query.year.trim()) {
     const year = query.year.trim();
-    result = result.filter((g) => (g.releaseDate || "").startsWith(year));
+    const yearOnly = (d: string) => (d || "").match(/(19|20)\d{2}/)?.[0];
+    result = result.filter((g) => yearOnly(g.releaseDate) === year);
   }
 
   // Minimum editorial rating filter
@@ -178,16 +202,22 @@ function applyQuery(
   }
 
   // Sort (default: as-is / popularity order already in the source file)
+  const parseTime = (d: string) => {
+    const t = Date.parse(d || "");
+    return Number.isNaN(t) ? -Infinity : t;
+  };
   switch (query.sort) {
     case "popular":
+    case "popularity":
       result = [...result].sort(
         (a, b) => (b.popularityScore ?? 0) - (a.popularityScore ?? 0)
       );
       break;
     case "newest":
-      result = [...result].sort((a, b) =>
-        (b.releaseDate || "").localeCompare(a.releaseDate || "")
-      );
+      result = [...result].sort((a, b) => parseTime(b.releaseDate) - parseTime(a.releaseDate));
+      break;
+    case "downloads":
+      result = [...result].sort((a, b) => (b.stats?.downloads ?? 0) - (a.stats?.downloads ?? 0));
       break;
     case "rating":
       result = [...result].sort((a, b) => (b.rating ?? 0) - (a.rating ?? 0));
@@ -324,8 +354,14 @@ async function startServer() {
   // A. Get Games Catalog (served from in-memory cache, with search/pagination)
   app.get("/api/games", (req, res) => {
     try {
-      const limit = req.query.limit ? parseInt(req.query.limit as string, 10) : undefined;
-      const offset = req.query.offset ? parseInt(req.query.offset as string, 10) : undefined;
+      const numParam = (v: string | undefined): number | undefined => {
+        if (v === undefined) return undefined;
+        const n = Number(v);
+        return Number.isFinite(n) && n >= 0 ? n : undefined;
+      };
+      const limit = numParam(req.query.limit as string | undefined);
+      const offset = numParam(req.query.offset as string | undefined);
+      const minRating = numParam(req.query.minRating as string | undefined);
       const { games, total } = applyQuery(gamesCatalog, {
         q: req.query.q as string | undefined,
         limit,
@@ -334,9 +370,7 @@ async function startServer() {
         genre: req.query.genre as string | undefined,
         developer: req.query.developer as string | undefined,
         year: req.query.year as string | undefined,
-        minRating: req.query.minRating
-          ? parseInt(req.query.minRating as string, 10)
-          : undefined,
+        minRating,
         classic: req.query.classic === "1" || req.query.classic === "true",
       });
       res.json({ total, offset: offset ?? 0, limit: limit ?? total, games });

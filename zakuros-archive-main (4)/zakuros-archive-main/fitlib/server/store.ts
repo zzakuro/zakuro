@@ -23,7 +23,11 @@ export function loadStore<T>(name: string, fallback: T): T {
 export function saveStore<T>(name: string, data: T): void {
   try {
     fs.mkdirSync(DATA_DIR, { recursive: true });
-    fs.writeFileSync(path.join(DATA_DIR, `${name}.json`), JSON.stringify(data, null, 2), "utf-8");
+    // Atomic (tmp + rename) so a crash mid-write can never corrupt the store.
+    const file = path.join(DATA_DIR, `${name}.json`);
+    const tmp = `${file}.tmp`;
+    fs.writeFileSync(tmp, JSON.stringify(data, null, 2), "utf-8");
+    fs.renameSync(tmp, file);
   } catch (e: any) {
     console.error(`[Store] Failed saving data/${name}.json:`, e.message);
   }

@@ -79,7 +79,11 @@ function stillMissingMeta(g: Game): boolean {
 
 async function main() {
   const limit = Number.isFinite(argLimit) ? argLimit : Infinity;
-  fs.writeFileSync(LOCK_PATH, "grinding", "utf8");
+  fs.writeFileSync(
+    LOCK_PATH,
+    JSON.stringify({ pid: process.pid, startedAt: new Date().toISOString() }),
+    "utf8"
+  );
   const games = readGames<Game>();
   let normalized = 0;
   for (const g of games) if (normalizeGame(g)) normalized++;

@@ -169,12 +169,17 @@ export async function fetchSteamDetails(steamId: number): Promise<Partial<GameMe
     }
 
     if (!response.ok) {
+      // Transient server/network failures (5xx etc.) must propagate — the grind
+      // treats a swallowed error + empty details as "dead appid" and would wipe
+      // a perfectly valid steamId on a one-off 503.
       throw new Error(`Steam API responded with high-level code: ${response.status}`);
     }
 
     const json = await response.json() as any;
     const appInfo = json[steamId.toString()];
 
+    // Only success:false / missing data is a *definitive* no-match (delisted,
+    // wrong appid). Genuine network/parse problems already threw above.
     if (!appInfo || !appInfo.success || !appInfo.data) {
       console.warn(`[Steam API] Steam could not resolve details for appID: ${steamId}`);
       return {};
@@ -226,10 +231,15 @@ export async function fetchSteamDetails(steamId: number): Promise<Partial<GameMe
     };
   } catch (error: any) {
     console.error(`[Steam API Error] Failed fetching appID ${steamId}:`, error.message);
-    if (error.message === "RATE_LIMIT_EXCEEDED") {
+    if (error.message === "RATE_LIMIT_EXCEEDED" || error.message.startsWith("Steam API responded with high-level code")) {
+      // Rate limits and transient 5xx must reach the caller so it knows the
+      // appid was NOT verified (and must not unassign / skip it permanently).
       throw error;
     }
-    return {};
+    // Anything else (success:false already returned {} above, unexpected parse
+    // shapes) — treat as unverifiable and surface rather than silently acting
+    // like a confirmed dead app.
+    throw new Error(`Steam appdetails unverifiable for appID ${steamId}`);
   }
 }
 
@@ -440,6 +450,7 @@ export async function getGameMetadata(
     // Merge outputs (Steam details take priority, then IGDB, then base defaults)
     finalMetadata = {
       title,
+      verifiedTitle: steamData.title || undefined,
       summary: steamData.summary || igdbData.summary || finalMetadata.summary,
       rating: steamData.rating !== undefined ? steamData.rating : (igdbData.rating || finalMetadata.rating),
       releaseDate: steamData.releaseDate || finalMetadata.releaseDate,
