@@ -25,8 +25,16 @@ import { Game } from "../src/types";
 import {
   fetchSteamDetails,
   fetchProtonSummary,
+  parseSteamPcRequirements,
 } from "./metadataService";
-import { resolveMissingSteamIds, steamTitleMismatch, screenshotsArePlaceholder, setRealScreenshots } from "./sources";
+import {
+  resolveMissingSteamIds,
+  steamTitleMismatch,
+  screenshotsArePlaceholder,
+  setRealScreenshots,
+  summaryIsPlaceholder,
+  devIsPlaceholder,
+} from "./sources";
 
 const GAMES_DB_PATH = path.join(process.cwd(), "data", "merged_enriched.json");
 const STATE_PATH = path.join(process.cwd(), "data", "steam_grind_state.json");
@@ -118,13 +126,14 @@ async function main() {
   // linux still count, so this is what backfills the whole catalog's badges.)
   const runStageB = async () => {
     const candidates = games
-      .filter(
-        (g) =>
-          !g.classic &&
-          typeof g.steamId === "number"
+      .filter((
+        g
+      ) =>
+        !g.classic &&
+        typeof g.steamId === "number"
       )
-      .filter((g) => !g.linux || (g.linux.native === undefined && !g.linux.tier) || screenshotsArePlaceholder(g))
-      .filter((g) => !protonDone.has(g.steamId as number) || screenshotsArePlaceholder(g))
+      .filter((g) => !g.linux || (g.linux.native === undefined && !g.linux.tier) || screenshotsArePlaceholder(g) || summaryIsPlaceholder(g.summary) || devIsPlaceholder(g.developer) || devIsPlaceholder(g.publisher))
+      .filter((g) => !protonDone.has(g.steamId as number) || screenshotsArePlaceholder(g) || summaryIsPlaceholder(g.summary) || devIsPlaceholder(g.developer) || devIsPlaceholder(g.publisher))
       .sort((a, b) => (b.popularityScore ?? 0) - (a.popularityScore ?? 0))
       .slice(0, limit);
 
@@ -166,18 +175,25 @@ async function main() {
       }
 
       if (details.title) {
-        // Fill any still-missing real fields (incomplete/mis-marked entries).
-        if (details.summary && !game.summary) game.summary = details.summary;
+        // Fill any still-missing OR placeholder fields (incomplete/mis-marked
+        // entries plus repack placeholders like "Available via: ...").
+        if (details.summary && summaryIsPlaceholder(game.summary)) game.summary = details.summary;
         if (details.releaseDate && (!game.releaseDate || game.releaseDate.includes("Unknown"))) {
           game.releaseDate = details.releaseDate;
         }
-        if (details.developer && !game.developer) game.developer = details.developer;
-        if (details.publisher && !game.publisher) game.publisher = details.publisher;
+        if (details.developer && devIsPlaceholder(game.developer)) game.developer = details.developer;
+        if (details.publisher && devIsPlaceholder(game.publisher)) game.publisher = details.publisher;
         if (details.rating !== undefined && (game.rating === 0 || !game.rating)) {
           game.rating = details.rating;
         }
         if (details.screenshots?.length) {
           setRealScreenshots(game, details.screenshots);
+        }
+        // PC system requirements from Steam (only when we have none yet).
+        const reqs = parseSteamPcRequirements(details.steamDetails?.pcSpecs);
+        if (reqs && (!game.systemRequirements?.windows?.minimum?.os)) {
+          game.systemRequirements = game.systemRequirements || {};
+          game.systemRequirements.windows = reqs;
         }
       }
 

@@ -1,5 +1,5 @@
 import Redis from "ioredis";
-import { GameMetadataExtended, LinuxSupportInfo } from "../src/types";
+import { GameMetadataExtended, GameSystemRequirements, LinuxSupportInfo, PlatformRequirements } from "../src/types";
 
 // In-Memory Fallback Cache if Redis is unavailable
 const memoryCache = new Map<string, { value: GameMetadataExtended; expires: number }>();
@@ -101,6 +101,37 @@ export function normalizeSteamDate(raw: string | undefined): string | undefined 
   const month = MONTHS[mon.slice(0, 3).toLowerCase()];
   if (!month) return raw;
   return `${y}-${String(month).padStart(2, "0")}-${String(num).padStart(2, "0")}`;
+}
+
+// Steam "pc_requirements" comes as BBCode/HTML (e.g. "OS: Windows 10\n
+// Processor: Intel i5..."). Parse the common label/value lines into the
+// catalog's minimum requirements shape. Returns undefined when unusable.
+export function parseSteamPcRequirements(spec: string | undefined): PlatformRequirements | undefined {
+  if (!spec || !spec.trim()) return undefined;
+  const text = spec
+    .replace(/\[[^\]]*\]/g, "")           // [b], [/b], [h1], [/*], ...
+    .replace(/<br\s*\/?>/gi, "\n")
+    .replace(/<\/?li>/gi, "\n")
+    .replace(/<[^>]+>/g, " ")
+    .replace(/&nbsp;/gi, " ")
+    .replace(/[•▪*]/g, " ");
+  const minimum: GameSystemRequirements = { os: "", processor: "", memory: "", storage: "" };
+  let gotAnything = false;
+  for (const line of text.split(/[\n]+/)) {
+    const m = line.match(/^\s*(?:minimum|recommended)?\s*(?:[-:•]?\s*)?(os|processor|memory|graphics|storage|network|sound card|additional notes)\s*:\s*(.+?)\s*$/i);
+    if (!m) continue;
+    const label = m[1].toLowerCase();
+    const value = m[2].replace(/\s+/g, " ").trim();
+    if (!value) continue;
+    if (label === "os") minimum.os = value.replace(/^(windows|linux|mac).*\*?\s*/i, "");
+    else if (label === "processor") minimum.processor = value;
+    else if (label === "memory") minimum.memory = value;
+    else if (label === "graphics" && !minimum.graphics) minimum.graphics = value;
+    else if (label === "storage") minimum.storage = value;
+    if (["os", "processor", "memory", "storage"].includes(label)) gotAnything = true;
+  }
+  if (!gotAnything) return undefined;
+  return { minimum };
 }
 
 export async function fetchSteamDetails(steamId: number): Promise<Partial<GameMetadataExtended>> {

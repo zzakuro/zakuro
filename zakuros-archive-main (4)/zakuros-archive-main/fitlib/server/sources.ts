@@ -687,6 +687,18 @@ export function setRealScreenshots(game: Game, shots: string[] | undefined): boo
   return true;
 }
 
+// Text placeholder detection for description-ish fields: repack summaries
+// ("Available via: FitGirl..."), curated fallbacks ("fantastic game curated"),
+// and unknown dev/publisher labels. Grind/live-enrichment treats these as
+// "missing" so the real values replace them.
+export function summaryIsPlaceholder(s: string | undefined | null): boolean {
+  return !s || /^Available via:|fantastic game curated|unknown description|no description available|no summary/i.test(s);
+}
+
+export function devIsPlaceholder(s: string | undefined | null): boolean {
+  return !s || /unknown (developer|publisher|company|studio)|^unknown$/i.test(s);
+}
+
 // Much gentler "should this appid be UNassigned?" predicate used by the grind
 // to drop dead/stale/mislabeled Steam-app-dump matches. Keeps CJK/non-Latin
 // titles (whose Steam names often differ in script), acronym expansions
