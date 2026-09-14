@@ -444,6 +444,8 @@ export async function getGameMetadata(
         ? steamData.screenshots
         : (finalMetadata.screenshots),
       screenshot: steamData.screenshot || finalMetadata.screenshot,
+      genres: steamData.genres || finalMetadata.genres,
+      trailers: steamData.trailers || finalMetadata.trailers,
       steamDetails: steamData.steamDetails,
       igdbDetails: igdbData.igdbDetails,
       _ratingReal: steamData.rating !== undefined || igdbData.rating !== undefined,
