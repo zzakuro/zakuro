@@ -17,14 +17,14 @@ export const GameDetailView: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const { games, user, toggleWishlist, toggleLike, bookmarks, toggleBookmark } = useGame();
 
+  const game = games.find((g) => g.id === id);
+
   const [activeTab, setActiveTab] = useState<"overview" | "screenshots" | "trailers" | "community">("overview");
   const [reqOs, setReqOs] = useState<"windows" | "linux" | "mac">("windows");
   const [showDownloadMenu, setShowDownloadMenu] = useState<boolean>(false);
   const [enriching, setEnriching] = useState<boolean>(false);
   const [trailers, setTrailers] = useState<GameTrailer[]>(game?.trailers || []);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
-
-  const game = games.find((g) => g.id === id);
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
