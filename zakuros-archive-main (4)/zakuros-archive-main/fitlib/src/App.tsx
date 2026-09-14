@@ -60,6 +60,8 @@ export default function App() {
                     <li><Link to="/" className="transition hover:text-rose-400">Main / Home</Link></li>
                     <li><Link to="/browse" className="transition hover:text-rose-400">Library</Link></li>
                     <li><Link to="/about" className="transition hover:text-rose-400">FAQ & safety</Link></li>
+                    <li><Link to="/help" className="transition hover:text-rose-400">Help & guides</Link></li>
+                    <li><Link to="/donate" className="transition hover:text-rose-400">Support the archive</Link></li>
                   </ul>
                 </div>
 
