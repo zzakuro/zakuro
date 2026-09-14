@@ -1,5 +1,4 @@
 import React, { useState } from "react";
-import { Link } from "react-router-dom";
 import {
   Search,
   Download,
@@ -12,6 +11,7 @@ import {
   ChevronDown,
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
+import { Link } from "react-router-dom";
 
 export const HelpView: React.FC = () => {
   const [activeFaq, setActiveFaq] = useState<number | null>(null);
@@ -76,7 +76,7 @@ export const HelpView: React.FC = () => {
       steps: [
         {
           title: "Stage before you run",
-          body: "Keep the archive on a NTFS volume with 2× the repack's install size free. Wherever you extract, keep the installer and its .bin files in the same folder — never run the installer while it's still inside a zip or rar.",
+          body: "Keep the archive on an NTFS volume with twice the repack's install size free. Wherever you extract, keep the installer and its .bin files in the same folder — never run the installer while it's still inside a zip or rar.",
         },
         {
           title: "Use the built-in verifier",
@@ -84,7 +84,7 @@ export const HelpView: React.FC = () => {
         },
         {
           title: "Proton launch tips",
-          body: "For titles without a Native badge, install Proton from Steam's compatibility section Islands, then set the game to force a specific GE/Proton version. A Gold or better ProtonDB tier is your green light.",
+          body: "For titles without a Native badge, install Proton from Steam's compatibility settings, then set the game to force a specific GE/Proton version. A Gold or better ProtonDB tier is your green light.",
         },
       ],
     },
@@ -97,11 +97,11 @@ export const HelpView: React.FC = () => {
       steps: [
         {
           title: "Trust the badge, not the title",
-          body: "The loudest release with the shiniest cover is the #1 malware attack vector. Here, every entry is a verified Steam release with live ProtonDB data. If a cover's attached to the wrong appid, it stays delisted until it lines up — that mismatch is the thing we filter out aggressively.",
+          body: "The loudest release with the shiniest cover is the most common malware attack vector. Here, every entry is a verified Steam release with live ProtonDB data. If a cover attaches to the wrong appid it stays delisted until it lines up — that mismatch is the thing we filter out aggressively.",
         },
         {
           title: "Whitelist deliberately",
-          body: "Repack installers trip antivirus false positives by design (custom packers). If a mirror is unusual, your AV flags it, AND the repack's own site lists that binary — verify checksums from the source page before you whitelist anything.",
+          body: "Repack installers trip antivirus false positives by design (custom packers). If a mirror is unusual, your AV flags it, AND the repack's own site doesn't list that binary — verify checksums and the binary's hash against the source page before you whitelist anything.",
         },
         {
           title: "Report what's wrong",
@@ -121,7 +121,7 @@ export const HelpView: React.FC = () => {
         },
         {
           title: "Sign in anywhere",
-          body: "The top-right Sign In button toggles between login and create-account. Use the register route (/register) if you want to jump straight to signup. Auth lives server-side; passwords are hashed, never stored in the browser.",
+          body: "The top-right Sign In button toggles between login and create-account. Use the /register route if you want to jump straight to signup. Auth lives server-side; passwords are hashed, never stored in the browser.",
         },
         {
           title: "Community-first, ads-never",
@@ -141,7 +141,7 @@ export const HelpView: React.FC = () => {
         },
         {
           title: "Site doesn't feel right",
-          body: "Broken layout, search missing results, a filter that ignores you — the Help & Support forum link below covers the whole UI. Screenshots help most when a visual glitch is involved.",
+          body: "Broken layout, search missing results, a filter that ignores you — the Discord above covers the whole UI. Screenshots help most when a visual glitch is involved.",
         },
         {
           title: "About the metadata itself",
@@ -154,7 +154,7 @@ export const HelpView: React.FC = () => {
   const faqs = [
     {
       q: "What does the Linux badge mean?",
-      a: "Native means a real Linux build existsalking. Gold/Platinum/Silver come from ProtonDB and describe how the Windows build plays under Proton — Platinum runs out of the box, Gold needs a small tweak, Silver might need a launch flag or GE-Proton. No badge = no reliable data yet.",
+      a: "Native means a real Linux build exists. Gold/Platinum/Silver come from ProtonDB and describe how the Windows build plays under Proton — Platinum runs out of the box, Gold needs a small tweak, Silver might need a launch flag or GE-Proton. No badge = no reliable data yet.",
     },
     {
       q: "Is a repack faster than a direct download?",
@@ -186,7 +186,7 @@ export const HelpView: React.FC = () => {
     <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8 space-y-20">
       {/* Hero */}
       <section className="text-center max-w-3xl mx-auto py-8">
-        <span className="rounded-full bg-rose-950/40 border border-rose-500/20 px-3.5 py-1 text-[11px] font-bold text-rose-400 uppercase tracking-widest font-mono">
+        <span className="inline-block rounded-full bg-rose-950/40 border border-rose-500/20 px-3.5 py-1 text-[11px] font-bold text-rose-400 uppercase tracking-widest font-mono">
           Full help & support
         </span>
         <h1 className="font-display font-black tracking-tight text-white mt-6 uppercase leading-tight text-4xl sm:text-5xl">
@@ -257,7 +257,7 @@ export const HelpView: React.FC = () => {
                   className="w-full flex items-center justify-between p-5 text-left hover:bg-zinc-900/10 transition"
                 >
                   <span className="font-display font-bold text-white text-xs sm:text-sm uppercase tracking-wide">{faq.q}</span>
-                  <ChevronDown {...{ className: `h-4 w-4 text-zinc-500 transition-transform duration-300 flex-shrink-0 ml-4 ${isOpen ? "rotate-180 text-rose-400" : ""}` }} />
+                  <ChevronDown className={`h-4 w-4 text-zinc-500 transition-transform duration-300 flex-shrink-0 ml-4 ${isOpen ? "rotate-180 text-rose-400" : ""}`} />
                 </button>
                 <AnimatePresence initial={false}>
                   {isOpen && (
