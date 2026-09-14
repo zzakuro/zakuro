@@ -81,6 +81,12 @@ async function main() {
   const limit = Number.isFinite(argLimit) ? argLimit : Infinity;
   fs.writeFileSync(LOCK_PATH, "grinding", "utf8");
   const games = readGames<Game>();
+  let normalized = 0;
+  for (const g of games) if (normalizeGame(g)) normalized++;
+  if (normalized) {
+    console.log(`[Grind] normalized ${normalized} games (release dates / popularity scores)`);
+    saveCatalog(games);
+  }
   const state = loadState();
   const attemptedMatch = new Set(state.attemptedMatch);
   const protonDone = new Set(state.protonDone);
