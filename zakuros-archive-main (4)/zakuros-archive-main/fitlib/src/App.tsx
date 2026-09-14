@@ -11,6 +11,8 @@ import { HomeView } from "./views/HomeView";
 import { BrowseView } from "./views/BrowseView";
 import { GameDetailView } from "./views/GameDetailView";
 import { AboutView } from "./views/AboutView";
+import { HelpView } from "./views/HelpView";
+import { DonateView } from "./views/DonateView";
 import { AuthView } from "./views/AuthView";
 import { Heart } from "lucide-react";
 
