@@ -3,8 +3,8 @@ import path from "path";
 import fs from "fs";
 import compression from "compression";
 import { createServer as createViteServer } from "vite";
-import { getGameMetadata, checkBackendRateLimit } from "./server/metadataService";
-import { setRealScreenshots } from "./server/sources";
+import { getGameMetadata, checkBackendRateLimit, parseSteamPcRequirements } from "./server/metadataService";
+import { setRealScreenshots, summaryIsPlaceholder, devIsPlaceholder } from "./server/sources";
 import {
   communityRouter,
 } from "./server/community";
@@ -384,15 +384,15 @@ async function startServer() {
       // Persist newly-pulled metadata back into the catalog so a single visit
       // makes the enrichment permanent instead of re-fetching it forever.
       let mutated = false;
-      if (metadata.summary && !metadata.summary.includes("fantastic game curated") && metadata.summary !== game.summary) {
+      if (metadata.summary && !metadata.summary.includes("fantastic game curated") && summaryIsPlaceholder(game.summary) && metadata.summary !== game.summary) {
         game.summary = metadata.summary;
         mutated = true;
       }
-      if (metadata.developer && !metadata.developer.includes("Unknown Developer") && metadata.developer !== game.developer) {
+      if (metadata.developer && !metadata.developer.includes("Unknown Developer") && devIsPlaceholder(game.developer) && metadata.developer !== game.developer) {
         game.developer = metadata.developer;
         mutated = true;
       }
-      if (metadata.publisher && !metadata.publisher.includes("Unknown Publisher") && metadata.publisher !== game.publisher) {
+      if (metadata.publisher && !metadata.publisher.includes("Unknown Publisher") && devIsPlaceholder(game.publisher) && metadata.publisher !== game.publisher) {
         game.publisher = metadata.publisher;
         mutated = true;
       }
@@ -406,6 +406,12 @@ async function startServer() {
       }
       const realScreenshots = (metadata.screenshots || []).filter((u) => !u.includes("unsplash"));
       if (realScreenshots.length > 0 && setRealScreenshots(game, realScreenshots)) {
+        mutated = true;
+      }
+      const reqs = parseSteamPcRequirements(metadata.steamDetails?.pcSpecs);
+      if (reqs && !game.systemRequirements?.windows?.minimum?.os) {
+        game.systemRequirements = game.systemRequirements || {};
+        game.systemRequirements.windows = reqs;
         mutated = true;
       }
       if (metadata.linux && (metadata.linux.native || metadata.linux.tier) && JSON.stringify(game.linux || {}) !== JSON.stringify(metadata.linux)) {
