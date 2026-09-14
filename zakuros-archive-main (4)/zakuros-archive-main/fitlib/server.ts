@@ -19,6 +19,7 @@ import { Game } from "./src/types";
 // Housed under data/ (not public/) so Vite's public-dir watcher doesn't force
 // a full browser page reload every time the debounced catalog write fires.
 import { GAMES_DB_PATH, readGames, writeGames } from "./server/catalogIO";
+import { normalizeGame } from "./server/normalize";
 const SOURCES_CONFIG_PATH = path.join(process.cwd(), "data", "sources.json");
 const GRIND_LOCK_PATH = path.join(process.cwd(), "data", ".grind-active");
 const PORT = 3000;
@@ -50,6 +51,9 @@ function loadGames(): Game[] {
     console.log("[DB] Loading catalog into memory...");
     const start = Date.now();
     const games = readGames<Game>();
+    let normalized = 0;
+    for (const g of games) if (normalizeGame(g)) normalized++;
+    if (normalized) console.log(`[DB] Normalized ${normalized} games (dates/popularity).`);
     console.log(`[DB] Loaded ${games.length} games in ${Date.now() - start}ms`);
     return Array.isArray(games) ? games : [];
   } catch (e: any) {

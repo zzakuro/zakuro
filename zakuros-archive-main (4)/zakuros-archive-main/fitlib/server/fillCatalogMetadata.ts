@@ -24,6 +24,7 @@ import fs from "fs";
 import path from "path";
 import { Game } from "../src/types";
 import { GAMES_DB_PATH, readGames, writeGames } from "./catalogIO";
+import { normalizeGame } from "./normalize";
 import {
   fetchSteamDetails,
   fetchProtonSummary,
