@@ -204,6 +204,17 @@ async function main() {
         if (details.trailers?.length) {
           game.trailers = details.trailers;
         }
+        // Covers were assigned title-based and can disagree with the VERIFIED
+        // appid (e.g. Baldur's Gate II showing BG3's art). Only when this fetch
+        // confirms the appid truly belongs to this title do we align the cover
+        // to the game's own library art — never otherwise.
+        if (!steamTitleMismatch(game.title, details.title)) {
+          const ownCover = `https://cdn.akamai.steamstatic.com/steam/apps/${appid}/library_600x900.jpg`;
+          const coverAppid = (game.coverImage || "").match(/\/apps\/(\d+)\//)?.[1];
+          if (coverAppid && coverAppid !== String(appid) && game.coverImage !== ownCover) {
+            game.coverImage = ownCover;
+          }
+        }
         // System requirements from Steam's per-platform specs (only when we
         // have none for that platform yet).
         const applyPlatform = (spec: string | undefined, key: "windows" | "mac" | "linux") => {

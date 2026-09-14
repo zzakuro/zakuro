@@ -4,7 +4,7 @@ import fs from "fs";
 import compression from "compression";
 import { createServer as createViteServer } from "vite";
 import { getGameMetadata, checkBackendRateLimit, parseSteamPcRequirements } from "./server/metadataService";
-import { setRealScreenshots, summaryIsPlaceholder, devIsPlaceholder, shouldUpgradeSummary } from "./server/sources";
+import { setRealScreenshots, summaryIsPlaceholder, devIsPlaceholder, shouldUpgradeSummary, steamTitleMismatch } from "./server/sources";
 import {
   communityRouter,
 } from "./server/community";
@@ -435,6 +435,19 @@ async function startServer() {
       if (metadata.trailers?.length && JSON.stringify(game.trailers || []) !== JSON.stringify(metadata.trailers)) {
         game.trailers = metadata.trailers;
         mutated = true;
+      }
+      // Align the cover to the game's own Steam art when (and only when) this
+      // live fetch verified the appid belongs to this title.
+      if (
+        game.steamId != null &&
+        metadata.title &&
+        !steamTitleMismatch(game.title, metadata.title)
+      ) {
+        const coverAppid = (game.coverImage || "").match(/\/apps\/(\d+)\//)?.[1];
+        if (coverAppid && coverAppid !== String(game.steamId)) {
+          game.coverImage = `https://cdn.akamai.steamstatic.com/steam/apps/${game.steamId}/library_600x900.jpg`;
+          mutated = true;
+        }
       }
       if (metadata.linux && (metadata.linux.native || metadata.linux.tier) && JSON.stringify(game.linux || {}) !== JSON.stringify(metadata.linux)) {
         game.linux = { ...(game.linux || {}), ...metadata.linux };
