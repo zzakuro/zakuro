@@ -321,7 +321,18 @@ async function startServer() {
 
   const app = express();
   app.use(compression());
-  app.use(express.json());
+  app.use(express.json({ limit: "50mb" }));
+
+  // Static-catalog fallback: lets a static/offline build of the frontend load
+  // the enriched catalog without the /api surface (gameContext falls back to
+  // this when /api/games is unreachable).
+  app.get("/games.json", (_req, res) => {
+    try {
+      res.type("application/json").send(JSON.stringify(gamesCatalog));
+    } catch (e: any) {
+      res.status(500).json({ error: "Failed to serialize catalog fallback." });
+    }
+  });
 
   // Community layer: comments + ratings (persisted to data/)
   app.use("/api", communityRouter());
@@ -428,7 +439,7 @@ async function startServer() {
         game.publisher = metadata.publisher;
         mutated = true;
       }
-      if (metadata.releaseDate && !metadata.releaseDate.includes("Unknown") && metadata.releaseDate !== game.releaseDate) {
+      if (metadata.releaseDate && !metadata.releaseDate.includes("Unknown") && !metadata.releaseDate.includes("Coming soon") && (!game.releaseDate || game.releaseDate.includes("Unknown") || game.releaseDate.includes("Coming soon")) && metadata.releaseDate !== game.releaseDate) {
         game.releaseDate = metadata.releaseDate;
         mutated = true;
       }
@@ -460,7 +471,7 @@ async function startServer() {
       }
       const extraGenres = matchGenres(metadata.summary || "", game.genres || []);
       if (extraGenres.length > 0) {
-        game.genres = [...(game.genres || []), ...extraGenres];
+        game.genres = [...(game.genres || []), ...extraGenres].slice(0, 12);
         mutated = true;
       }
       const steamGenres = (metadata.genres || []).filter(
@@ -475,11 +486,12 @@ async function startServer() {
         mutated = true;
       }
       // Align the cover to the game's own Steam art when (and only when) this
-      // live fetch verified the appid belongs to this title.
+      // live fetch VERIFIED the appid belongs to this title (metadata.verifiedTitle
+      // is Steam's own reported name — title-with-itself guards are no-ops).
       if (
         game.steamId != null &&
-        metadata.title &&
-        !steamTitleMismatch(game.title, metadata.title)
+        metadata.verifiedTitle &&
+        !steamTitleMismatch(game.title, metadata.verifiedTitle)
       ) {
         const coverAppid = (game.coverImage || "").match(/\/apps\/(\d+)\//)?.[1];
         if (coverAppid && coverAppid !== String(game.steamId)) {
@@ -751,11 +763,20 @@ async function startServer() {
     }, SOURCE_SYNC_INTERVAL_MS);
     // While the metadata grind holds the lock, reload the enriched catalog from
     // disk every ~2 min so new steam/proton/screenshot fields show up live
-    // (persistence stays disabled; only reads happen here).
+    // (persistence stays disabled; only reads happen here). When the grind ENDS
+    // (lock released) reload once more so we never persist a pre-grind snapshot
+    // over its final output.
+    let grindWasActive = grindActive();
     setInterval(() => {
-      if (!grindActive()) return;
-      console.log("[Sync] Grind active — hot-reloading catalog from disk.");
-      gamesCatalog = loadGames();
+      const active = grindActive();
+      if (active) {
+        console.log("[Sync] Grind active — hot-reloading catalog from disk.");
+        gamesCatalog = loadGames();
+      } else if (grindWasActive) {
+        console.log("[Sync] Grind finished — reloading final catalog from disk.");
+        gamesCatalog = loadGames();
+      }
+      grindWasActive = active;
     }, 120000);
   });
 }
