@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { useParams, Link } from "react-router-dom";
+import { useParams, Link, useNavigate } from "react-router-dom";
 import {
   Download, Heart, ThumbsUp, Star, HardDrive, Calendar,
   ShieldAlert, Monitor, Cpu, Server, Database, Share2,
@@ -16,6 +16,7 @@ import { LinuxBadge } from "../components/LinuxBadge";
 export const GameDetailView: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const { games, user, toggleWishlist, toggleLike, bookmarks, toggleBookmark } = useGame();
+  const navigate = useNavigate();
 
   const game = games.find((g) => g.id === id);
 
@@ -83,6 +84,17 @@ export const GameDetailView: React.FC = () => {
       setEnriching(false);
     }
   };
+
+  // Reset per-game UI state when navigating between game pages (otherwise a
+  // previous game's trailers/tab leak onto the next one).
+  useEffect(() => {
+    setTrailers(game?.trailers || []);
+    const keys = Object.keys(game?.systemRequirements ?? {});
+    setReqOs((keys[0] as "windows" | "linux" | "mac") || "windows");
+  }, [game?.id]);
+  const systemRequirements = game.systemRequirements ?? {};
+  const reqKeys = Object.keys(systemRequirements);
+  const activeReq = (systemRequirements as any)[reqOs] ? reqOs : ((reqKeys[0] || "windows") as "windows" | "linux" | "mac");
 
   // Pull live Steam metadata once on open so trailers (and refresh button data)
   // are available even before the offline grind has persisted them to disk.

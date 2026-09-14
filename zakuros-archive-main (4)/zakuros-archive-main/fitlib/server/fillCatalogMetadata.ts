@@ -255,7 +255,11 @@ async function main() {
           await sleep(45000);
           continue; // don't mark the appid done so it retries next pass
         }
-        bNoReport++;
+        // Transient 5xx/network — do NOT mark this appid done (it wasn't
+        // verified, so the next pass retries instead of permanently skipping a
+        // perfectly valid steamId).
+        console.warn(`[Grind][B] Transient failure at "${game.title}" (${appid}): ${e?.message ?? e}`);
+        continue;
       }
       protonDone.add(appid);
       bDone++;
