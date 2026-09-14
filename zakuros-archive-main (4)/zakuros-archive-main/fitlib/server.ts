@@ -414,13 +414,36 @@ async function startServer() {
         game.systemRequirements.windows = reqs;
         mutated = true;
       }
-      if (metadata.linux && (metadata.linux.native || metadata.linux.tier) && JSON.stringify(game.linux || {}) !== JSON.stringify(metadata.linux)) {
-        game.linux = { ...(game.linux || {}), ...metadata.linux };
+      const macReqs = parseSteamPcRequirements(metadata.steamDetails?.macSpecs);
+      if (macReqs && !game.systemRequirements?.mac?.minimum?.os) {
+        game.systemRequirements = game.systemRequirements || {};
+        game.systemRequirements.mac = macReqs;
+        mutated = true;
+      }
+      const linuxReqs = parseSteamPcRequirements(metadata.steamDetails?.linuxSpecs);
+      if (linuxReqs && !game.systemRequirements?.linux?.minimum?.os) {
+        game.systemRequirements = game.systemRequirements || {};
+        game.systemRequirements.linux = linuxReqs;
         mutated = true;
       }
       const extraGenres = matchGenres(metadata.summary || "", game.genres || []);
       if (extraGenres.length > 0) {
         game.genres = [...(game.genres || []), ...extraGenres];
+        mutated = true;
+      }
+      const steamGenres = (metadata.genres || []).filter(
+        (g: string) => !(game.genres || []).some((x: string) => x.toLowerCase() === g.toLowerCase())
+      );
+      if (steamGenres.length > 0) {
+        game.genres = [...(game.genres || []), ...steamGenres].slice(0, 12);
+        mutated = true;
+      }
+      if (metadata.trailers?.length && JSON.stringify(game.trailers || []) !== JSON.stringify(metadata.trailers)) {
+        game.trailers = metadata.trailers;
+        mutated = true;
+      }
+      if (metadata.linux && (metadata.linux.native || metadata.linux.tier) && JSON.stringify(game.linux || {}) !== JSON.stringify(metadata.linux)) {
+        game.linux = { ...(game.linux || {}), ...metadata.linux };
         mutated = true;
       }
       if (mutated) scheduleCatalogSave();

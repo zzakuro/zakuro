@@ -15,10 +15,11 @@
 //   npx tsx server/fillCatalogMetadata.ts               # full run
 //   npx tsx server/fillCatalogMetadata.ts --limit=300   # bounded run (verify)
 //   npx tsx server/fillCatalogMetadata.ts --no-online   # skip store-search stage
-//   npx tsx server/fillCatalogMetadata.ts --stage-b-first
-//            # enrich high-popularity games (Stage B) before the slow online
-//            # store-search sweep (Stage A), so the most visible titles get
-//            # real screenshots + linux badges sooner.
+//   npx tsx server/fillCatalogMetadata.ts --skip-stage-a
+//            # only enrich existing steamIds (skip the missing-id resolution),
+//            # for when you don't want the ~20 min online search sweep first.
+// Order is always Stage A (id resolution) then Stage B (details+ProtonDB);
+// Stage A's attemptedMatch state makes it fully resumable.
 import fs from "fs";
 import path from "path";
 import { Game } from "../src/types";
@@ -44,7 +45,7 @@ const LOCK_PATH = path.join(process.cwd(), "data", ".grind-active");
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 const argLimit = Number(process.argv.find((a) => a.startsWith("--limit="))?.split("=")[1]);
 const noOnline = process.argv.includes("--no-online");
-const stageBFirst = process.argv.includes("--stage-b-first");
+const skipStageA = process.argv.includes("--skip-stage-a");
 
 interface GrindState {
   attemptedMatch: string[]; // game ids already online-searched
@@ -87,7 +88,7 @@ async function main() {
   const startedAt = Date.now();
 
   console.log(
-    `[Grind] games: ${games.length} | match attempted: ${attemptedMatch.size} | proton appids: ${protonDone.size} | order: ${stageBFirst ? "B-then-A" : "A-then-B"}`
+    `[Grind] games: ${games.length} | match attempted: ${attemptedMatch.size} | proton appids: ${protonDone.size}`
   );
 
   const syncBack = () =>
@@ -194,12 +195,29 @@ async function main() {
         if (details.screenshots?.length) {
           setRealScreenshots(game, details.screenshots);
         }
-        // PC system requirements from Steam (only when we have none yet).
-        const reqs = parseSteamPcRequirements(details.steamDetails?.pcSpecs);
-        if (reqs && (!game.systemRequirements?.windows?.minimum?.os)) {
-          game.systemRequirements = game.systemRequirements || {};
-          game.systemRequirements.windows = reqs;
+        // Steam genre tags: append any we don't already have (repack genres
+        // stay, deduped), capped so cards don't overflow.
+        if (details.genres?.length) {
+          const have = new Set((game.genres || []).map((g) => g.toLowerCase()));
+          const fresh = details.genres.filter((g) => !have.has(g.toLowerCase()));
+          if (fresh.length) game.genres = [...(game.genres || []), ...fresh].slice(0, 12);
         }
+        // Trailers: only when Steam has movies.
+        if (details.trailers?.length) {
+          game.trailers = details.trailers;
+        }
+        // System requirements from Steam's per-platform specs (only when we
+        // have none for that platform yet).
+        const applyPlatform = (spec: string | undefined, key: "windows" | "mac" | "linux") => {
+          const parsed = parseSteamPcRequirements(spec);
+          if (parsed && !game.systemRequirements?.[key]?.minimum?.os) {
+            game.systemRequirements = game.systemRequirements || {};
+            game.systemRequirements[key] = parsed;
+          }
+        };
+        applyPlatform(details.steamDetails?.pcSpecs, "windows");
+        applyPlatform(details.steamDetails?.macSpecs, "mac");
+        applyPlatform(details.steamDetails?.linuxSpecs, "linux");
       }
 
       // Always record the Linux verdict. When appdetails were unavailable
@@ -242,13 +260,8 @@ async function main() {
   };
 
   let bRes = { bDone: 0, bEnriched: 0, bNoReport: 0 };
-  if (stageBFirst) {
-    bRes = await runStageB();
-    await runStageA();
-  } else {
-    await runStageA();
-    bRes = await runStageB();
-  }
+  if (!skipStageA) await runStageA();
+  bRes = await runStageB();
 
   const withLinux = games.filter((g) => !g.classic && g.linux && (g.linux.tier || g.linux.native)).length;
   const stillNoSteam = games.filter((g) => !g.classic && !g.steamId).length;

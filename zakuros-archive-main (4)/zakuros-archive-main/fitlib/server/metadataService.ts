@@ -150,7 +150,7 @@ function cleanSteamDescription(html: string | undefined): string | undefined {
     .map((line) => line.replace(/\s+/g, " ").trim())
     .filter(Boolean)
     .join("\n");
-  if (t.length > 5000) t = t.slice(0, 5000).replace(/\s+\S*$/, "");
+  if (t.length > 2200) t = t.slice(0, 2200).replace(/\s+\S*$/, "");
   return t || undefined;
 }
 
@@ -183,9 +183,21 @@ export async function fetchSteamDetails(steamId: number): Promise<Partial<GameMe
     const data = appInfo.data;
 
     // Build the structural partial metadata
-    const genres = data.genres ? data.genres.map((g: any) => g.description) : [];
+    const genres = data.genres
+      ? data.genres.map((g: any) => g.description).filter(Boolean)
+      : [];
     const screenshotUrls = data.screenshots 
       ? data.screenshots.map((s: any) => s.path_full) 
+      : [];
+    const trailers = Array.isArray(data.movies)
+      ? data.movies
+          .map((m: any) => {
+            const pick = (ratio: any) =>
+              (ratio && (ratio.max || ratio["480"] || ratio["360"])) || undefined;
+            const src = pick(m.webm) || pick(m.mp4) || undefined;
+            return src ? { name: m.name, thumb: m.thumbnail, src } : undefined;
+          })
+          .filter((t: any): t is { name: string; thumb: string; src: string } => !!t)
       : [];
 
     return {
@@ -196,11 +208,15 @@ export async function fetchSteamDetails(steamId: number): Promise<Partial<GameMe
       developer: data.developers ? data.developers.join(", ") : "",
       publisher: data.publishers ? data.publishers.join(", ") : "",
       screenshots: screenshotUrls,
+      genres,
+      trailers,
       linuxNative: !!(data.platforms && data.platforms.linux),
       steamDetails: {
         headerImage: data.header_image,
         background: data.background_raw || data.background,
         pcSpecs: data.pc_requirements ? data.pc_requirements.minimum : undefined,
+        macSpecs: data.mac_requirements ? data.mac_requirements.minimum : undefined,
+        linuxSpecs: data.linux_requirements ? data.linux_requirements.minimum : undefined,
       }
     };
   } catch (error: any) {

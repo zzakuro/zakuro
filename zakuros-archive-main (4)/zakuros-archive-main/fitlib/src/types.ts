@@ -31,6 +31,12 @@ export interface LinuxSupportInfo {
   votes?: number; // ProtonDB report voters
 }
 
+export interface GameTrailer {
+  name?: string;
+  thumb?: string;
+  src?: string; // mp4/webm URL from Steam movies
+}
+
 export interface DownloadSource {
   name: string;
   url: string;
@@ -62,6 +68,7 @@ export interface Game {
   popularityScore?: number;
   linux?: LinuxSupportInfo;
   downloadSources?: DownloadSource[];
+  trailers?: GameTrailer[];
   classic?: boolean; // retro/classic titles (e.g. PSX ROMs) — used by the Classic filter
 }
 
@@ -86,11 +93,15 @@ export interface GameMetadataExtended {
     headerImage?: string;
     background?: string;
     pcSpecs?: string;
+    macSpecs?: string;
+    linuxSpecs?: string;
   };
   igdbDetails?: {
     storyline?: string;
     videos?: string[];
   };
+  genres?: string[]; // Steam genre tags (also merged into Game.genres)
+  trailers?: GameTrailer[];
   linux?: LinuxSupportInfo;
   linuxNative?: boolean; // Steam platforms.linux === true (before merging into linux)
   _ratingReal?: boolean; // true when rating comes from a real source (Metacritic/IGDB), not a placeholder
