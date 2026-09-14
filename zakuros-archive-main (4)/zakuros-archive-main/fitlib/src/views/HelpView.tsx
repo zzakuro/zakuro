@@ -1,29 +1,20 @@
-import React from "react";
-import { Link, useNavigate } from "react-router-dom";
+import React, { useState } from "react";
+import { Link } from "react-router-dom";
 import {
   Search,
   Download,
   ShieldCheck,
   Monitor,
   Bug,
-  BookOpen,
   MessageSquare,
-  ExternalLink,
   ArrowRight,
-  Gamepad2,
-  Terminal,
-  HardDrive,
-  Wifi,
   Lock,
-  CheckCircle2,
-  FileArchive,
-  RefreshCw,
+  ChevronDown,
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 
 export const HelpView: React.FC = () => {
-  const [activeFaq, setActiveFaq] = useState<number | null>(nullExchange as any);
-  const navigate = useNavigate();
+  const [activeFaq, setActiveFaq] = useState<number | null>(null);
 
   const quickLinks = [
     { icon: Search, label: "Searching the catalog", href: "#search" },
