@@ -18,7 +18,7 @@ import { Game } from "./src/types";
 
 // Housed under data/ (not public/) so Vite's public-dir watcher doesn't force
 // a full browser page reload every time the debounced catalog write fires.
-const GAMES_DB_PATH = path.join(process.cwd(), "data", "merged_enriched.json");
+import { GAMES_DB_PATH, readGames, writeGames } from "./server/catalogIO";
 const SOURCES_CONFIG_PATH = path.join(process.cwd(), "data", "sources.json");
 const GRIND_LOCK_PATH = path.join(process.cwd(), "data", ".grind-active");
 const PORT = 3000;
@@ -47,13 +47,9 @@ let gamesCatalog: Game[] = [];
 
 function loadGames(): Game[] {
   try {
-    if (!fs.existsSync(GAMES_DB_PATH)) {
-      console.error(`[DB] Catalog file missing at ${GAMES_DB_PATH}`);
-      return [];
-    }
     console.log("[DB] Loading catalog into memory...");
     const start = Date.now();
-    const games = JSON.parse(fs.readFileSync(GAMES_DB_PATH, "utf-8")) as Game[];
+    const games = readGames<Game>();
     console.log(`[DB] Loaded ${games.length} games in ${Date.now() - start}ms`);
     return Array.isArray(games) ? games : [];
   } catch (e: any) {
