@@ -266,7 +266,11 @@ export const Navbar: React.FC = () => {
                 key={item.path}
                 to={item.path}
                 className={`relative rounded-full px-4 py-1.5 text-sm transition ${
-                  isActive ? "text-white" : "text-zinc-400 hover:text-white"
+                  item.highlighted
+                    ? "font-bold text-rose-400 hover:text-rose-300"
+                    : isActive
+                    ? "text-white"
+                    : "text-zinc-400 hover:text-white"
                 }`}
               >
                 {isActive && (
