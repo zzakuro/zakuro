@@ -226,7 +226,8 @@ export const Navbar: React.FC = () => {
   const navItems = [
     { label: "Home", path: "/", icon: Home },
     { label: "Browse", path: "/browse", icon: Compass },
-    { label: "About", path: "/about", icon: HelpCircle },
+    { label: "Help", path: "/help", icon: HelpCircle },
+    { label: "Donate", path: "/donate", icon: Heart, highlighted: true },
   ];
 
   // Global Ctrl/Cmd+K shortcut opens the search overlay
