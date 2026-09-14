@@ -23,6 +23,7 @@
 import fs from "fs";
 import path from "path";
 import { Game } from "../src/types";
+import { GAMES_DB_PATH, readGames, writeGames } from "./catalogIO";
 import {
   fetchSteamDetails,
   fetchProtonSummary,
@@ -38,7 +39,6 @@ import {
   shouldUpgradeSummary,
 } from "./sources";
 
-const GAMES_DB_PATH = path.join(process.cwd(), "data", "merged_enriched.json");
 const STATE_PATH = path.join(process.cwd(), "data", "steam_grind_state.json");
 const LOCK_PATH = path.join(process.cwd(), "data", ".grind-active");
 
@@ -69,9 +69,7 @@ function saveState(state: GrindState): void {
 }
 
 function saveCatalog(games: Game[]): void {
-  const tmp = `${GAMES_DB_PATH}.tmp`;
-  fs.writeFileSync(tmp, JSON.stringify(games), "utf8");
-  fs.renameSync(tmp, GAMES_DB_PATH);
+  writeGames(games);
 }
 
 function stillMissingMeta(g: Game): boolean {
@@ -81,7 +79,7 @@ function stillMissingMeta(g: Game): boolean {
 async function main() {
   const limit = Number.isFinite(argLimit) ? argLimit : Infinity;
   fs.writeFileSync(LOCK_PATH, "grinding", "utf8");
-  const games = JSON.parse(fs.readFileSync(GAMES_DB_PATH, "utf8")) as Game[];
+  const games = readGames<Game>();
   const state = loadState();
   const attemptedMatch = new Set(state.attemptedMatch);
   const protonDone = new Set(state.protonDone);

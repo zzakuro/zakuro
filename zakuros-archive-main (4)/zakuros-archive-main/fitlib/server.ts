@@ -68,7 +68,7 @@ function persistCatalogSync(): void {
     return;
   }
   try {
-    fs.writeFileSync(GAMES_DB_PATH, JSON.stringify(gamesCatalog), "utf-8");
+    writeGames(gamesCatalog);
   } catch (e: any) {
     console.error("[DB] Failed to persist catalog:", e.message);
   }
@@ -80,10 +80,8 @@ async function flushCatalogAsync(): Promise<void> {
     console.log("[DB] Grind active — deferring catalog persist.");
     return;
   }
-  const tmpPath = `${GAMES_DB_PATH}.tmp`;
   try {
-    await fs.promises.writeFile(tmpPath, JSON.stringify(gamesCatalog), "utf-8");
-    await fs.promises.rename(tmpPath, GAMES_DB_PATH);
+    writeGames(gamesCatalog);
     console.log("[DB] Catalog persisted (async, atomic).");
   } catch (e: any) {
     console.error("[DB] Failed to persist catalog:", e.message);

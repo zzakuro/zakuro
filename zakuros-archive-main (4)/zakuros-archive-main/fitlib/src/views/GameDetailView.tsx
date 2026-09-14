@@ -17,7 +17,7 @@ export const GameDetailView: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const { games, user, toggleWishlist, toggleLike, bookmarks, toggleBookmark } = useGame();
 
-  const [activeTab, setActiveTab] = useState<"overview" | "screenshots" | "community">("overview");
+  const [activeTab, setActiveTab] = useState<"overview" | "screenshots" | "trailers" | "community">("overview");
   const [reqOs, setReqOs] = useState<"windows" | "linux" | "mac">("windows");
   const [showDownloadMenu, setShowDownloadMenu] = useState<boolean>(false);
   const [enriching, setEnriching] = useState<boolean>(false);
@@ -102,7 +102,7 @@ export const GameDetailView: React.FC = () => {
 
   const heroImage = screenshots[0] || game.coverImage || "";
 
-  const tabBtn = (tabId: "overview" | "screenshots" | "community", label: string) => (
+  const tabBtn = (tabId: "overview" | "screenshots" | "trailers" | "community", label: string) => (
     <button
       onClick={() => setActiveTab(tabId)}
       className={`border-b-2 pb-3 font-mono uppercase transition ${

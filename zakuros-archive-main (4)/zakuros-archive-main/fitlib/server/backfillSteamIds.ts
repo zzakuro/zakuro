@@ -2,22 +2,18 @@
 // steamId (and missing covers) for every non-classic game using the local
 // Steam app index.
 // Run: npx tsx server/backfillSteamIds.ts
-import fs from "fs";
-import path from "path";
 import { Game } from "../src/types";
 import { validateSteamIds, backfillSteamIds } from "./sources";
+import { GAMES_DB_PATH, readGames, writeGames } from "./catalogIO";
 
-const GAMES_DB_PATH = path.join(process.cwd(), "data", "merged_enriched.json");
-const games = JSON.parse(fs.readFileSync(GAMES_DB_PATH, "utf8")) as Game[];
+const games = readGames<Game>();
 
 const valid = validateSteamIds(games);
 const before = games.filter((g) => !g.classic && !g.steamId).length;
 const result = backfillSteamIds(games);
 const after = games.filter((g) => !g.classic && !g.steamId).length;
 
-const tmpPath = `${GAMES_DB_PATH}.tmp`;
-fs.writeFileSync(tmpPath, JSON.stringify(games), "utf8");
-fs.renameSync(tmpPath, GAMES_DB_PATH);
+writeGames(games);
 
 console.log(
   `Validation: ${valid.fixed} fixed, ${valid.unassigned} unassigned, ${valid.kept} kept`
