@@ -93,7 +93,7 @@ export const GameCard: React.FC<GameCardProps> = ({ game, badge }) => {
           <div className="flex justify-end">
             <span className="flex items-center gap-1 rounded-md bg-black/70 px-1.5 py-0.5 text-[10px] font-semibold text-zinc-300">
               <Eye className="h-3 w-3 text-rose-400" />
-              {(game.stats.views / 1000).toFixed(0)}k
+              {((game.stats?.views ?? 0) / 1000).toFixed(0)}k
             </span>
           </div>
           <div className="translate-y-2 transition-transform duration-300 group-hover:translate-y-0">

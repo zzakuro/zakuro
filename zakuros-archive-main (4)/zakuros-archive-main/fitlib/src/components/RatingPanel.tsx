@@ -54,18 +54,14 @@ export const RatingPanel: React.FC<{ gameId: string }> = ({ gameId }) => {
         </span>
         {loading ? (
           <Loader2 className="h-3.5 w-3.5 animate-spin text-rose-400" />
-        ) : (
+        ) : summary && summary.count > 0 ? (
           <span className="flex items-center gap-1 text-zinc-200 font-mono">
-            {summary!.count > 0 ? (
-              <>
-                <Star className="h-3.5 w-3.5 fill-rose-400 text-rose-400" />
-                <span className="font-black text-rose-400 text-sm">{summary!.average}</span>
-                <span className="text-zinc-600">({summary!.count})</span>
-              </>
-            ) : (
-              <span className="text-zinc-600">No ratings yet</span>
-            )}
+            <Star className="h-3.5 w-3.5 fill-rose-400 text-rose-400" />
+            <span className="font-black text-rose-400 text-sm">{summary.average.toFixed(1)}</span>
+            <span className="text-zinc-600">({summary.count})</span>
           </span>
+        ) : (
+          <span className="text-zinc-600">No ratings yet</span>
         )}
       </div>
 
@@ -76,7 +72,7 @@ export const RatingPanel: React.FC<{ gameId: string }> = ({ gameId }) => {
             const pct = Math.round((c / maxCount) * 100);
             return (
               <div key={n} className="flex items-center gap-2">
-                <span className="w-9 text-right text-[10px] font-mono text-zinc-500 shrink-0">{n}â˜…</span>
+                <span className="w-9 text-right text-[10px] font-mono text-zinc-500 shrink-0">{n}★</span>
                 <div className="flex-1 h-1.5 rounded bg-zinc-900 overflow-hidden">
                   <div className="h-full bg-rose-500/70" style={{ width: `${pct}%` }} />
                 </div>
@@ -116,7 +112,7 @@ export const RatingPanel: React.FC<{ gameId: string }> = ({ gameId }) => {
         </div>
         {hover > 0 && (
           <p className="mt-1.5 text-[10px] font-mono text-rose-400">
-            {SCALE_LABELS[hover]} â€” click to {summary?.mine ? "update" : "submit"}
+            {SCALE_LABELS[hover]} — click to {summary?.mine ? "update" : "submit"}
           </p>
         )}
         {!user && (

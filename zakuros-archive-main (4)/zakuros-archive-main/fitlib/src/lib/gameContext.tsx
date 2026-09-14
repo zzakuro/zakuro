@@ -256,7 +256,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     // 2. Fall back to a local JSON database file
     const jsonPath: string =
-      (import.meta as any).env?.VITE_GAMES_JSON ?? "/enriched.json";
+      (import.meta as any).env?.VITE_GAMES_JSON ?? "/games.json";
 
     try {
       console.info(`[Zakuro's Archive] Backend offline — loading JSON database: ${jsonPath}`);
@@ -289,24 +289,23 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => {
     const signature = (list: Game[]) =>
       `${list.length}:${list.slice(0, 600).filter((g) => g.linux && (g.linux.tier || g.linux.native)).length}`;
+    let lastSig = signature(games);
     const id = setInterval(async () => {
       try {
         const res = await fetch("/api/games");
         if (!res.ok) return;
         const data = await res.json();
         const next: Game[] = Array.isArray(data) ? data : (data.games ?? []);
-        let changed = false;
-        setGames((prev) => {
-          if (signature(prev) === signature(next)) return prev;
-          changed = true;
-          return next;
-        });
-        if (changed) setError(null);
+        const sig = signature(next);
+        setGames((prev) => (signature(prev) === sig ? prev : next));
+        if (lastSig && lastSig !== sig) setError(null);
+        lastSig = sig;
       } catch {
         // backend offline; keep current data
       }
     }, 180000);
     return () => clearInterval(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const loginUser = (username: string) => {

@@ -179,13 +179,13 @@ export const GameDetailView: React.FC = () => {
         )}
 
         <div className="absolute inset-x-0 top-6 z-20 mx-auto flex max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
-          <Link
-            to={-1 as any || "/"}
+          <button
+            onClick={() => navigate(-1)}
             className="flex items-center gap-1.5 rounded-full border border-white/10 bg-black/60 px-3.5 py-1.5 font-mono text-xs font-bold uppercase text-zinc-300 backdrop-blur-sm transition hover:text-white"
           >
             <ArrowLeft className="h-3.5 w-3.5 text-rose-400" />
             Back
-          </Link>
+          </button>
           <button
             onClick={handleSharePage}
             className="flex items-center gap-1.5 rounded-full border border-white/10 bg-black/60 px-3.5 py-1.5 font-mono text-xs font-bold uppercase text-zinc-300 backdrop-blur-sm transition hover:text-white"
@@ -197,12 +197,12 @@ export const GameDetailView: React.FC = () => {
 
         <div className="absolute inset-x-0 bottom-0 z-20 mx-auto max-w-7xl px-4 pb-10 sm:px-6 lg:px-8">
           <div className="mb-3 flex flex-wrap gap-1.5">
-            {game.genres.map((g) => (
+            {(game.genres || []).map((g) => (
               <span key={g} className="rounded bg-black/60 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-zinc-400 ring-1 ring-white/10">
                 {g}
               </span>
             ))}
-            {game.systemRequirements.windows && (
+            {game.systemRequirements?.windows && (
               <span className="rounded bg-rose-500/15 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-rose-400 ring-1 ring-rose-500/25">
                 PC
               </span>
@@ -257,12 +257,12 @@ export const GameDetailView: React.FC = () => {
                   </h3>
 
                   <div className="mb-4 flex gap-2">
-                    {Object.keys(game.systemRequirements).map((osKey) => (
+                    {reqKeys.map((osKey) => (
                       <button
                         key={osKey}
                         onClick={() => setReqOs(osKey as any)}
                         className={`rounded-full px-3.5 py-1 font-mono text-[11px] font-bold capitalize transition ${
-                          reqOs === osKey
+                          activeReq === osKey
                             ? "bg-rose-500 text-white shadow-md shadow-rose-500/20"
                             : "bg-white/[0.04] text-zinc-400 ring-1 ring-white/10 hover:text-white"
                         }`}
@@ -273,17 +273,17 @@ export const GameDetailView: React.FC = () => {
                   </div>
 
                   <div className="rounded-2xl bg-[#0d0d10] p-5 ring-1 ring-white/[0.06]">
-                    {game.systemRequirements[reqOs] ? (
+                    {(systemRequirements as any)[activeReq] ? (
                       <div className="grid grid-cols-1 gap-8 text-xs md:grid-cols-2">
                         <ReqColumn
                           title="Minimum OS specs"
-                          req={game.systemRequirements[reqOs]?.minimum}
+                          req={(systemRequirements as any)[activeReq]?.minimum}
                         />
                         <ReqColumn
                           title="Recommended OS specs"
                           req={
-                            game.systemRequirements[reqOs]?.recommended
-                              ? game.systemRequirements[reqOs]!.recommended!
+                            (systemRequirements as any)[activeReq]?.recommended
+                              ? (systemRequirements as any)[activeReq]!.recommended!
                               : null
                           }
                         />
@@ -444,8 +444,8 @@ export const GameDetailView: React.FC = () => {
             </div>
 
             <div className="grid grid-cols-2 gap-3 text-xs">
-              <StatCard label="Downloads" value={game.stats.downloads.toLocaleString()} />
-              <StatCard label="Views" value={game.stats.views.toLocaleString()} />
+              <StatCard label="Downloads" value={(game.stats?.downloads ?? 0).toLocaleString()} />
+              <StatCard label="Views" value={(game.stats?.views ?? 0).toLocaleString()} />
             </div>
 
             <RatingPanel gameId={game.id} />
@@ -470,7 +470,7 @@ export const GameDetailView: React.FC = () => {
               {releaseDate && (
                 <InfoRow
                   label="Released Year"
-                  value={<span className="font-mono font-bold text-white">{releaseDate.substring(0, 4)}</span>}
+                  value={<span className="font-mono font-bold text-white">{releaseDate.match(/(19|20)\d{2}/)?.[0] ?? releaseDate}</span>}
                 />
               )}
               {game.linux && (game.linux.tier || game.linux.native) && (

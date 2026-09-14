@@ -40,13 +40,15 @@ const AnimatedNumber: React.FC<{ value: number; compact?: boolean; duration?: nu
   const [current, setCurrent] = useState(0);
   useEffect(() => {
     let start: number | null = null;
+    let raf = 0;
     const step = (ts: number) => {
       if (!start) start = ts;
       const progress = Math.min((ts - start) / duration, 1);
       setCurrent(Math.floor(progress * value));
-      if (progress < 1) requestAnimationFrame(step);
+      if (progress < 1) raf = requestAnimationFrame(step);
     };
-    requestAnimationFrame(step);
+    raf = requestAnimationFrame(step);
+    return () => cancelAnimationFrame(raf);
   }, [value, duration]);
   return <span>{compact ? compactNum(current) : current.toLocaleString()}</span>;
 };
@@ -134,6 +136,12 @@ export const HomeView: React.FC = () => {
   );
   const activeCarouselGame = carouselGames[carouselIndex];
 
+  // If the pool shrinks (catalog poll), never let the index dangle out of range.
+  useEffect(() => {
+    if (carouselGames.length === 0) return;
+    setCarouselIndex((i) => Math.min(i, carouselGames.length - 1));
+  }, [carouselGames.length]);
+
   useEffect(() => {
     if (carouselGames.length === 0 || paused) return;
     const id = setInterval(() => setCarouselIndex((p) => (p + 1) % carouselGames.length), 6000);
@@ -155,8 +163,12 @@ export const HomeView: React.FC = () => {
     [games]
   );
   const newReleases = useMemo(() => {
-    const withDate = games.filter((g) => !Number.isNaN(Date.parse(g.releaseDate)));
-    return [...withDate].sort((a, b) => b.releaseDate.localeCompare(a.releaseDate)).slice(0, 12);
+    const parseTime = (d: string) => {
+      const t = Date.parse(d || "");
+      return Number.isNaN(t) ? -Infinity : t;
+    };
+    const withDate = games.filter((g) => !Number.isNaN(parseTime(g.releaseDate)));
+    return [...withDate].sort((a, b) => parseTime(b.releaseDate) - parseTime(a.releaseDate)).slice(0, 12);
   }, [games]);
 
   const genreCounts = useMemo(() => {
@@ -268,7 +280,7 @@ export const HomeView: React.FC = () => {
               </span>
               {activeCarouselGame.releaseDate && (
                 <span className="rounded-md bg-black/60 px-2 py-1 font-mono text-[11px] font-bold text-zinc-300 ring-1 ring-white/10">
-                  {activeCarouselGame.releaseDate.slice(0, 4)}
+                  {activeCarouselGame.releaseDate.match(/(19|20)\d{2}/)?.[0] ?? activeCarouselGame.releaseDate}
                 </span>
               )}
               <span className="rounded-md bg-black/60 px-2 py-1 text-[11px] font-medium text-zinc-400 ring-1 ring-white/10">

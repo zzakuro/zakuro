@@ -43,7 +43,13 @@ export const BrowseView: React.FC = () => {
   ]));
 
   const developersList = Array.from(new Set(games.map((g) => g.developer))).sort();
-  const yearsList = ["2022", "2023", "2024", "2025", "2026"];
+  // Data-derived years (matches ISO, "Dec 11 2015", "Q3 2026", ...) so the
+  // filter is honest about what's actually in the catalog.
+  const yearsList = Array.from(new Set(
+    games
+      .map((g) => g.releaseDate.match(/(19|20)\d{2}/)?.[0])
+      .filter((y): y is string => !!y)
+  )).sort((a, b) => Number(b) - Number(a));
 
   const handleClearFilters = () => {
     setSelectedGenre("");
@@ -69,21 +75,29 @@ export const BrowseView: React.FC = () => {
       ? game.genres.some((g) => g.toLowerCase() === selectedGenre.toLowerCase())
       : true;
     const matchesDeveloper = selectedDeveloper ? game.developer === selectedDeveloper : true;
-    const matchesYear = selectedYear ? game.releaseDate.startsWith(selectedYear) : true;
+    const matchesYear = selectedYear
+      ? (game.releaseDate || "").match(/(19|20)\d{2}/)?.[0] === selectedYear
+      : true;
     const matchesRating = selectedMinRating ? game.rating >= selectedMinRating : true;
     const matchesClassic = showClassic ? game.classic === true : true;
     const matchesCover = showClassic ? true : showNoCover ? true : !!game.coverImage;
     return matchesSearch && matchesGenre && matchesDeveloper && matchesYear && matchesRating && matchesClassic && matchesCover;
   });
 
+  const parseTime = (d: string) => {
+    const t = Date.parse(d || "");
+    return Number.isNaN(t) ? -Infinity : t;
+  };
+
   const sortedGames = [...filteredGames].sort((a, b) => {
     if (sortBy === "Most Popular") return (b.popularityScore ?? 0) - (a.popularityScore ?? 0);
-    if (sortBy === "Newest") return b.releaseDate.localeCompare(a.releaseDate);
+    if (sortBy === "Newest") return parseTime(b.releaseDate) - parseTime(a.releaseDate);
     if (sortBy === "Highest Rated") return b.rating - a.rating;
     if (sortBy === "A–Z") return a.title.localeCompare(b.title);
     if (sortBy === "File Size") {
       const parseSize = (s: string) => {
         const v = parseFloat(s);
+        if (Number.isNaN(v)) return -Infinity;
         if (s.includes("TB")) return v * 1024;
         return v;
       };
@@ -93,7 +107,13 @@ export const BrowseView: React.FC = () => {
   });
 
   const totalPages = Math.ceil(sortedGames.length / ITEMS_PER_PAGE);
-  const pagedGames = sortedGames.slice((page - 1) * ITEMS_PER_PAGE, page * ITEMS_PER_PAGE);
+  // Clamp the page whenever the result set shrinks (filter/data poll change),
+  // so we never render an empty slice while showing "Page 4/2".
+  useEffect(() => {
+    setPage((p) => Math.max(1, Math.min(p, Math.max(1, totalPages))));
+  }, [totalPages]);
+  const safePage = Math.max(1, Math.min(page, Math.max(1, totalPages)));
+  const pagedGames = sortedGames.slice((safePage - 1) * ITEMS_PER_PAGE, safePage * ITEMS_PER_PAGE);
 
   const scrollTop = () => window.scrollTo({ top: 0, behavior: "smooth" });
 
