@@ -4,7 +4,7 @@ import fs from "fs";
 import compression from "compression";
 import { createServer as createViteServer } from "vite";
 import { getGameMetadata, checkBackendRateLimit, parseSteamPcRequirements } from "./server/metadataService";
-import { setRealScreenshots, summaryIsPlaceholder, devIsPlaceholder } from "./server/sources";
+import { setRealScreenshots, summaryIsPlaceholder, devIsPlaceholder, shouldUpgradeSummary } from "./server/sources";
 import {
   communityRouter,
 } from "./server/community";
@@ -384,7 +384,7 @@ async function startServer() {
       // Persist newly-pulled metadata back into the catalog so a single visit
       // makes the enrichment permanent instead of re-fetching it forever.
       let mutated = false;
-      if (metadata.summary && !metadata.summary.includes("fantastic game curated") && summaryIsPlaceholder(game.summary) && metadata.summary !== game.summary) {
+      if (metadata.summary && !metadata.summary.includes("fantastic game curated") && shouldUpgradeSummary(game.summary, metadata.summary) && metadata.summary !== game.summary) {
         game.summary = metadata.summary;
         mutated = true;
       }

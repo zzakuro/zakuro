@@ -34,6 +34,7 @@ import {
   setRealScreenshots,
   summaryIsPlaceholder,
   devIsPlaceholder,
+  shouldUpgradeSummary,
 } from "./sources";
 
 const GAMES_DB_PATH = path.join(process.cwd(), "data", "merged_enriched.json");
@@ -177,7 +178,7 @@ async function main() {
       if (details.title) {
         // Fill any still-missing OR placeholder fields (incomplete/mis-marked
         // entries plus repack placeholders like "Available via: ...").
-        if (details.summary && summaryIsPlaceholder(game.summary)) game.summary = details.summary;
+        if (details.summary && shouldUpgradeSummary(game.summary, details.summary)) game.summary = details.summary;
         if (details.releaseDate && (!game.releaseDate || game.releaseDate.includes("Unknown"))) {
           game.releaseDate = details.releaseDate;
         }

@@ -213,7 +213,7 @@ export const GameDetailView: React.FC = () => {
                   <h3 className="mb-3 font-display text-sm font-bold uppercase tracking-wider text-white">
                     About this Game
                   </h3>
-                  <p className="text-sm leading-relaxed text-zinc-400">
+                  <p className="whitespace-pre-line text-sm leading-relaxed text-zinc-400">
                     {summary || "No description available."}
                   </p>
                 </div>

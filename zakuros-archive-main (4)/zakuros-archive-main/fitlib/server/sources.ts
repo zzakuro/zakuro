@@ -699,6 +699,18 @@ export function devIsPlaceholder(s: string | undefined | null): boolean {
   return !s || /unknown (developer|publisher|company|studio)|^unknown$/i.test(s);
 }
 
+// Should a game's stored description be replaced by a freshly-pulled one?
+// True when the old text is a placeholder, or the new text is substantially
+// fuller (Steam's long "About this Game" beats the short blurb).
+export function shouldUpgradeSummary(oldS: string | undefined | null, newS: string | undefined | null): boolean {
+  if (!newS || !newS.trim()) return false;
+  const o = (oldS || "").trim();
+  const n = newS.trim();
+  if (!o) return true;
+  if (summaryIsPlaceholder(oldS)) return true;
+  return n.length >= o.length * 1.5 && n.length >= 250;
+}
+
 // Much gentler "should this appid be UNassigned?" predicate used by the grind
 // to drop dead/stale/mislabeled Steam-app-dump matches. Keeps CJK/non-Latin
 // titles (whose Steam names often differ in script), acronym expansions

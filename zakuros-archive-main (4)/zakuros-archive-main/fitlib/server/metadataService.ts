@@ -134,6 +134,24 @@ export function parseSteamPcRequirements(spec: string | undefined): PlatformRequ
   return { minimum };
 }
 
+// Steam "about_the_game" is BBCode/HTML ( "[h1]Plot[/h1] text<br>more text" ).
+// Convert it to readable multi-paragraph plain text for the detail page.
+function cleanSteamDescription(html: string | undefined): string | undefined {
+  if (!html) return undefined;
+  let t = html
+    .replace(/\[\/?[a-z0-9]+\]/gi, "")               // [h1], [/b], [*], ...
+    .replace(/<br\s*\/?>/gi, "\n")
+    .replace(/<\/?(?:p|div|li|ul|ol|strong|em)>/gi, "\n")
+    .replace(/<[^>]+>/g, "")
+    .replace(/\r/g, "")
+    .split("\n")
+    .map((line) => line.replace(/\s+/g, " ").trim())
+    .filter(Boolean)
+    .join("\n");
+  if (t.length > 5000) t = t.slice(0, 5000).replace(/\s+\S*$/, "");
+  return t || undefined;
+}
+
 export async function fetchSteamDetails(steamId: number): Promise<Partial<GameMetadataExtended>> {
   const url = `https://store.steampowered.com/api/appdetails?appids=${steamId}&l=english`;
   
@@ -170,7 +188,7 @@ export async function fetchSteamDetails(steamId: number): Promise<Partial<GameMe
 
     return {
       title: data.name,
-      summary: data.short_description || data.about_the_game,
+      summary: cleanSteamDescription(data.about_the_game) || data.short_description,
       rating: data.metacritic ? data.metacritic.score : undefined,
       releaseDate: normalizeSteamDate(data.release_date ? data.release_date.date : ""),
       developer: data.developers ? data.developers.join(", ") : "",
