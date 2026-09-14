@@ -194,7 +194,12 @@ export async function fetchSteamDetails(steamId: number): Promise<Partial<GameMe
           .map((m: any) => {
             const pick = (ratio: any) =>
               (ratio && (ratio.max || ratio["480"] || ratio["360"])) || undefined;
-            const src = pick(m.webm) || pick(m.mp4) || undefined;
+            const src =
+              pick(m.webm) ||
+              pick(m.mp4) ||
+              (m && m.id
+                ? `https://cdn.cloudflare.steamstatic.com/steam/apps/${m.id}/movie_max.mp4`
+                : undefined);
             return src ? { name: m.name, thumb: m.thumbnail, src } : undefined;
           })
           .filter((t: any): t is { name: string; thumb: string; src: string } => !!t)
