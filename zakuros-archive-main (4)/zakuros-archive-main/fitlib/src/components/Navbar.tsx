@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { Search, User, LogOut, Home, Compass, HelpCircle, X, TrendingUp, CornerDownLeft } from "lucide-react";
+import { Search, User, LogOut, Home, Compass, HelpCircle, X, TrendingUp, CornerDownLeft, Heart } from "lucide-react";
 import { useGame } from "../lib/gameContext";
 import { Game } from "../types";
 import { motion, AnimatePresence } from "motion/react";
