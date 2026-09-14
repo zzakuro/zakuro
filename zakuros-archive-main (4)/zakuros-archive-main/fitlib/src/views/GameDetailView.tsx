@@ -88,6 +88,7 @@ export const GameDetailView: React.FC = () => {
 
   const title = game.title;
   const summary = game.summary;
+  const trailers = game.trailers || [];
   const rating = game.rating;
   const releaseDate = game.releaseDate;
   const developer = game.developer;
@@ -204,6 +205,7 @@ export const GameDetailView: React.FC = () => {
             <div className="mb-6 flex gap-5 border-b border-white/5 text-xs font-semibold">
               {tabBtn("overview", "Overview")}
               {tabBtn("screenshots", "Screenshots")}
+              {trailers.length > 0 && tabBtn("trailers", "Trailers")}
               {tabBtn("community", "Community")}
             </div>
 
@@ -292,6 +294,27 @@ export const GameDetailView: React.FC = () => {
                     No screenshots available for this game.
                   </p>
                 )}
+              </div>
+            )}
+
+            {activeTab === "trailers" && (
+              <div id="trailers_tab">
+                <h3 className="mb-4 font-display text-sm font-bold uppercase tracking-wider text-white">
+                  Trailers
+                </h3>
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                  {trailers.map((t, idx) => (
+                    <div key={idx} className="group relative aspect-video overflow-hidden rounded-xl bg-zinc-900 ring-1 ring-white/[0.06]">
+                      <video
+                        src={t.src}
+                        poster={t.thumb}
+                        controls
+                        preload="none"
+                        className="h-full w-full object-cover"
+                      />
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
 
