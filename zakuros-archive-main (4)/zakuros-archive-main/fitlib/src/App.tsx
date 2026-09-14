@@ -29,6 +29,8 @@ export default function App() {
               <Route path="/browse" element={<BrowseView />} />
               <Route path="/game/:id" element={<GameDetailView />} />
               <Route path="/about" element={<AboutView />} />
+              <Route path="/help" element={<HelpView />} />
+              <Route path="/donate" element={<DonateView />} />
               <Route path="/login" element={<AuthView />} />
               <Route path="/register" element={<AuthView />} />
             </Routes>
