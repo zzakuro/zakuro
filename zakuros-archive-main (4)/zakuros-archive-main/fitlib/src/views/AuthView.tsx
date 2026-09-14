@@ -1,15 +1,17 @@
 ﻿import React, { useState } from "react";
-import { useNavigate, Link } from "react-router-dom";
-import { User, Lock, Mail, ChevronRight, Gamepad2, ArrowRight } from "lucide-react";
+import { useNavigate, Link, useLocation } from "react-router-dom";
+import { User, Lock, Mail, Gamepad2, ArrowRight } from "lucide-react";
 import { useGame } from "../lib/gameContext";
 import { motion } from "motion/react";
 
 export const AuthView: React.FC = () => {
   const { user, loginUser, registerUser } = useGame();
   const navigate = useNavigate();
+  const location = useLocation();
 
-  // Mode Toggler: true = login, false = signup
-  const [isLogin, setIsLogin] = useState(true);
+  // Mode Toggler: true = login, false = signup (driven by the route so
+  // /register actually lands on the register form).
+  const [isLogin, setIsLogin] = useState(() => !location.pathname.endsWith("/register"));
 
   // Form Fields
   const [username, setUsername] = useState("");
