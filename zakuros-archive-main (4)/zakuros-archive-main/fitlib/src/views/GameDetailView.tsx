@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import {
   Download, Heart, ThumbsUp, Star, HardDrive, Calendar,
@@ -7,7 +7,7 @@ import {
   Loader2,
 } from "lucide-react";
 import { useGame } from "../lib/gameContext";
-import { Game } from "../types";
+import { Game, GameTrailer } from "../types";
 import { motion, AnimatePresence } from "motion/react";
 import { RatingPanel } from "../components/RatingPanel";
 import { GameComments } from "../components/GameComments";
@@ -21,6 +21,7 @@ export const GameDetailView: React.FC = () => {
   const [reqOs, setReqOs] = useState<"windows" | "linux" | "mac">("windows");
   const [showDownloadMenu, setShowDownloadMenu] = useState<boolean>(false);
   const [enriching, setEnriching] = useState<boolean>(false);
+  const [trailers, setTrailers] = useState<GameTrailer[]>(game?.trailers || []);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   const game = games.find((g) => g.id === id);
@@ -74,6 +75,7 @@ export const GameDetailView: React.FC = () => {
       const res = await fetch(`/api/games/${encodeURIComponent(game.id)}/metadata`);
       if (!res.ok) throw new Error(`Steam refresh failed (${res.status})`);
       const meta = await res.json();
+      if (meta.trailers?.length) setTrailers(meta.trailers);
       showToast(meta.title ? `Refreshed details for ${meta.title}.` : "Metadata refreshed.");
     } catch (e: any) {
       showToast(e.message ?? "Steam refresh failed. Try again later.");
@@ -82,13 +84,30 @@ export const GameDetailView: React.FC = () => {
     }
   };
 
+  // Pull live Steam metadata once on open so trailers (and refresh button data)
+  // are available even before the offline grind has persisted them to disk.
+  useEffect(() => {
+    const ac = new AbortController();
+    (async () => {
+      try {
+        const res = await fetch(`/api/games/${encodeURIComponent(game.id)}/metadata`, { signal: ac.signal });
+        if (!res.ok) return;
+        const meta = await res.json();
+        if (meta.trailers?.length) setTrailers(meta.trailers);
+      } catch {
+        // ignore network/abort failures — trailers just stay empty
+      }
+    })();
+    return () => ac.abort();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [game.id]);
+
   const isWishlisted = user?.wishlist.includes(game.id) || false;
   const isLiked = user?.liked.includes(game.id) || false;
   const isBookmarked = bookmarks?.includes(game.id) || false;
 
   const title = game.title;
   const summary = game.summary;
-  const trailers = game.trailers || [];
   const rating = game.rating;
   const releaseDate = game.releaseDate;
   const developer = game.developer;
