@@ -100,8 +100,36 @@ export const HomeView: React.FC = () => {
     return { games: games.length, downloads, views, sources, genres: genres.size, repackers: repackers.size };
   }, [games]);
 
+  // Collapse repack-variant duplicates in the showcase rows: same Steam appid
+  // (or near-identical title when no appid) appears once, keeping the richest,
+  // most recent entry so we don't show 3× "Baldur's Gate" style repeats.
+  const uniqueShowcase = (list: Game[]): Game[] => {
+    const seen = new Map<string, Game>();
+    const key = (g: Game) =>
+      typeof g.steamId === "number"
+        ? `steam:${g.steamId}`
+        : `title:${g.title.toLowerCase().replace(/[^a-z0-9]+/g, "").trim()}`;
+    const score = (g: Game) =>
+      (g.rating || 0) + (g.downloadSources?.length || 0) * 0.01 + (g.screenshots?.length || 0) * 0.001;
+    for (const g of list) {
+      const k = key(g);
+      const prev = seen.get(k);
+      if (!prev) {
+        seen.set(k, g);
+        continue;
+      }
+      const prevWhen = Date.parse(prev.stats?.updatedAt || "");
+      const curWhen = Date.parse(g.stats?.updatedAt || "");
+      if (score(g) > score(prev) || (score(g) === score(prev) && curWhen > prevWhen)) {
+        seen.set(k, g);
+      }
+    }
+    return [...seen.values()];
+  };
+
   const carouselGames = useMemo(
-    () => [...games].filter((g) => g.rating > 0).sort((a, b) => b.rating - a.rating).slice(0, 5),
+    () =>
+      uniqueShowcase([...games].filter((g) => g.rating > 0).sort((a, b) => b.rating - a.rating)).slice(0, 5),
     [games]
   );
   const activeCarouselGame = carouselGames[carouselIndex];
@@ -117,11 +145,13 @@ export const HomeView: React.FC = () => {
     [games]
   );
   const popularGames = useMemo(
-    () => [...games].sort((a, b) => (b.popularityScore ?? 0) - (a.popularityScore ?? 0)).slice(0, 8),
+    () =>
+      uniqueShowcase([...games].sort((a, b) => (b.popularityScore ?? 0) - (a.popularityScore ?? 0))).slice(0, 8),
     [games]
   );
   const topRated = useMemo(
-    () => [...games].filter((g) => g.rating > 0).sort((a, b) => b.rating - a.rating).slice(0, 4),
+    () =>
+      uniqueShowcase([...games].filter((g) => g.rating > 0).sort((a, b) => b.rating - a.rating)).slice(0, 4),
     [games]
   );
   const newReleases = useMemo(() => {
