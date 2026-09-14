@@ -126,6 +126,10 @@ async function main() {
   // (re-derives the candidate list each resume; already-enriched games lacking
   // linux still count, so this is what backfills the whole catalog's badges.)
   const runStageB = async () => {
+    // A game needs re-visiting when a field is placeholder OR its summary is
+    // just a short blurb (<300 chars) — so the full Steam description upgrades it.
+    const needsTextUpgrade = (g: any) =>
+      summaryIsPlaceholder(g.summary) || (!!g.summary && g.summary.trim().length < 300);
     const candidates = games
       .filter((
         g
@@ -133,8 +137,8 @@ async function main() {
         !g.classic &&
         typeof g.steamId === "number"
       )
-      .filter((g) => !g.linux || (g.linux.native === undefined && !g.linux.tier) || screenshotsArePlaceholder(g) || summaryIsPlaceholder(g.summary) || devIsPlaceholder(g.developer) || devIsPlaceholder(g.publisher))
-      .filter((g) => !protonDone.has(g.steamId as number) || screenshotsArePlaceholder(g) || summaryIsPlaceholder(g.summary) || devIsPlaceholder(g.developer) || devIsPlaceholder(g.publisher))
+      .filter((g) => !g.linux || (g.linux.native === undefined && !g.linux.tier) || screenshotsArePlaceholder(g) || needsTextUpgrade(g) || devIsPlaceholder(g.developer) || devIsPlaceholder(g.publisher))
+      .filter((g) => !protonDone.has(g.steamId as number) || screenshotsArePlaceholder(g) || needsTextUpgrade(g) || devIsPlaceholder(g.developer) || devIsPlaceholder(g.publisher))
       .sort((a, b) => (b.popularityScore ?? 0) - (a.popularityScore ?? 0))
       .slice(0, limit);
 
