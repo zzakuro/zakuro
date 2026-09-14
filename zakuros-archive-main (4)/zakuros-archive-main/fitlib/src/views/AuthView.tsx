@@ -101,7 +101,7 @@ export const AuthView: React.FC = () => {
               <input
                 type="password"
                 required
-                placeholder="â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢"
+                placeholder="••••••••"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 className="w-full rounded-lg border border-zinc-850 bg-zinc-950/80 py-2.5 pl-10 pr-3 text-xs text-white placeholder-zinc-650 transition placeholder-zinc-650 focus:border-rose-500/50 focus:outline-none focus:ring-1 focus:ring-rose-500/30"

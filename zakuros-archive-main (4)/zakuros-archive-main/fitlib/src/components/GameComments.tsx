@@ -151,7 +151,7 @@ export const GameComments: React.FC<{ gameId: string }> = ({ gameId }) => {
             if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) post();
           }}
           maxLength={2000}
-          placeholder="Share your experience with this repack â€” install size, run config, issuesâ€¦"
+          placeholder="Share your experience with this repack — install size, run config, issues…"
           className="w-full resize-y rounded-lg border border-zinc-900 bg-black/40 p-3 text-xs text-zinc-200 placeholder-zinc-600 outline-none focus:border-rose-500/40 transition font-sans"
           rows={3}
         />

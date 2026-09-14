@@ -27,19 +27,19 @@ export const AboutView: React.FC = () => {
     {
       title: "Multi-Source Index",
       description:
-        "Zakuro's Archive aggregates release data from FitGirl, DODI, GOG, Xatab, SteamRip, OnlineFix, and more into a single searchable catalog. We don't pick winners â€” we index everything.",
+        "Zakuro's Archive aggregates release data from FitGirl, DODI, GOG, Xatab, SteamRip, OnlineFix, and more into a single searchable catalog. We don't pick winners — we index everything.",
       icon: Database,
     },
     {
       title: "No File Hosting",
       description:
-        "Zakuro's Archive stores only metadata â€” titles, descriptions, cover art, system requirements, and external links. No game files, torrents, or binaries are hosted here. All downloads originate from the source groups directly.",
+        "Zakuro's Archive stores only metadata — titles, descriptions, cover art, system requirements, and external links. No game files, torrents, or binaries are hosted here. All downloads originate from the source groups directly.",
       icon: Shield,
     },
     {
       title: "Search & Discovery",
       description:
-        "Browse by genre, repacker, release date, or search by title. Each game page shows all available download sources â€” torrent, magnet, or direct â€” so you can pick what works for you.",
+        "Browse by genre, repacker, release date, or search by title. Each game page shows all available download sources — torrent, magnet, or direct — so you can pick what works for you.",
       icon: Search,
     },
   ];
@@ -62,19 +62,19 @@ export const AboutView: React.FC = () => {
     },
     {
       q: "Are the download links safe?",
-      a: "Zakuro's Archive only indexes releases from established, well-known groups with long community track records. That said, we don't independently verify every file. Always download from the exact source URL listed, verify any checksums the repacker provides, and use a reputable antivirus. False positives from antivirus tools are common with repack installers â€” check the repacker's own site for known false positive reports.",
+      a: "Zakuro's Archive only indexes releases from established, well-known groups with long community track records. That said, we don't independently verify every file. Always download from the exact source URL listed, verify any checksums the repacker provides, and use a reputable antivirus. False positives from antivirus tools are common with repack installers — check the repacker's own site for known false positive reports.",
     },
     {
       q: "What's the difference between a repack and a direct download?",
-      a: "A repack (like FitGirl or DODI) recompresses the game into a smaller archive to reduce download size. When you run the installer, it decompresses back to the full game â€” no quality loss, but installation takes longer. A direct download is the game's original files without recompression, typically larger but faster to install.",
+      a: "A repack (like FitGirl or DODI) recompresses the game into a smaller archive to reduce download size. When you run the installer, it decompresses back to the full game — no quality loss, but installation takes longer. A direct download is the game's original files without recompression, typically larger but faster to install.",
     },
     {
       q: "How does the request queue work?",
-      a: "Community members can submit titles they want indexed. High-vote requests get visibility â€” but Zakuro's Archive doesn't produce repacks or uploads. Requests are community signals; the actual release depends on the repack groups themselves picking up a title.",
+      a: "Community members can submit titles they want indexed. High-vote requests get visibility — but Zakuro's Archive doesn't produce repacks or uploads. Requests are community signals; the actual release depends on the repack groups themselves picking up a title.",
     },
     {
       q: "Do you host torrents or magnet links?",
-      a: "No. Zakuro's Archive stores the magnet URI or external download URL as metadata alongside the game entry. Clicking a download link takes you directly to the source â€” we're never in the middle of the transfer.",
+      a: "No. Zakuro's Archive stores the magnet URI or external download URL as metadata alongside the game entry. Clicking a download link takes you directly to the source — we're never in the middle of the transfer.",
     },
     {
       q: "Why are some games missing Steam IDs or cover art?",
@@ -88,14 +88,14 @@ export const AboutView: React.FC = () => {
       {/* Hero */}
       <section className="text-center max-w-3xl mx-auto py-8">
         <span className="rounded-full bg-rose-950/40 border border-rose-500/20 px-3.5 py-1 text-[11px] font-bold text-rose-400 uppercase tracking-widest font-mono">
-          Game release index â€” not a host
+          Game release index — not a host
         </span>
         <h1 className="font-display font-black tracking-tight text-white mt-6 uppercase leading-tight text-4xl sm:text-5xl">
           One place to find<br />
           <span className="text-rose-400">every release</span>
         </h1>
         <p className="mt-4 text-zinc-400 text-sm leading-relaxed font-sans max-w-xl mx-auto">
-          Zakuro's Archive is a read-only index of PC game releases from reputable repack and direct-download groups. Search, filter, and find download sources â€” all in one place, with no ads and no file hosting.
+          Zakuro's Archive is a read-only index of PC game releases from reputable repack and direct-download groups. Search, filter, and find download sources — all in one place, with no ads and no file hosting.
         </p>
         <div className="mt-8 flex justify-center gap-3 flex-wrap">
           <a
@@ -154,7 +154,7 @@ export const AboutView: React.FC = () => {
           <span className="text-[10px] font-bold text-rose-400 uppercase tracking-widest font-mono">Sourced from</span>
           <h2 className="font-display font-black text-2xl text-white mt-1 uppercase">Indexed Release Groups</h2>
           <p className="text-zinc-500 text-xs mt-2 font-sans max-w-lg mx-auto">
-            These are the groups whose releases appear in the Zakuro's Archive catalog. Zakuro's Archive has no affiliation with any of them â€” we only index their public release metadata.
+            These are the groups whose releases appear in the Zakuro's Archive catalog. Zakuro's Archive has no affiliation with any of them — we only index their public release metadata.
           </p>
         </div>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">

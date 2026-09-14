@@ -61,7 +61,7 @@ const SOURCE_SYNC_INTERVAL_MS =
     ? Number(process.env.SOURCE_SYNC_INTERVAL_HOURS)
     : 6) * 60 * 60 * 1000;
 
-// â”€â”€ In-memory catalog â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── In-memory catalog ─────────────────────────────────────────────────────────
 // The catalog JSON is ~50MB. Parse it ONCE at startup and serve from memory.
 // Every earlier request did a synchronous 50MB read + parse, which froze the
 // event loop. gamesCatalog is the single source of truth while the process runs;
@@ -132,7 +132,7 @@ process.on("exit", () => {
   if (catalogDirty) persistCatalogSync();
 });
 
-// â”€â”€ Query helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Query helpers ─────────────────────────────────────────────────────────────
 
 interface CatalogQuery {
   q?: string;
@@ -586,7 +586,7 @@ async function startServer() {
       const parseField = (html: string, keyword: string): string => {
         if (!html) return "";
         const cleanHtml = html.replace(/<[^>]+>/g, " ");
-        const regex = new RegExp(`${keyword}\\s*:\\s*([^:\\n\\râ€¢]+)`, "i");
+        const regex = new RegExp(`${keyword}\\s*:\\s*([^:\\n\\r•]+)`, "i");
         const match = cleanHtml.match(regex);
         if (match && match[1]) {
           return match[1].trim().replace(/\s+/g, " ");
