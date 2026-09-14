@@ -71,7 +71,7 @@ export const AuthView: React.FC = () => {
         {/* Error Callout */}
         {error && (
           <div className="mb-4 rounded-lg bg-red-950/20 border border-red-500/20 p-3 text-xs text-red-400 font-mono">
-            âš ï¸ {error}
+            ⚠️ {error}
           </div>
         )}
 
