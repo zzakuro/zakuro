@@ -22,6 +22,9 @@ import { Link } from "react-router-dom";
 
 export const HelpView: React.FC = () => {
   const [activeFaq, setActiveFaq] = useState<number | null>(null);
+  // Guide topics: true = topic closed. Default everything open so the full
+  // depth is visible on first paint; clicking a header toggles it shut.
+  const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
 
   const quickLinks = [
     { icon: BookOpen, label: "The full guide", href: "#guide" },
