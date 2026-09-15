@@ -24,6 +24,7 @@ export const HelpView: React.FC = () => {
   const [activeFaq, setActiveFaq] = useState<number | null>(null);
 
   const quickLinks = [
+    { icon: BookOpen, label: "The full guide", href: "#guide" },
     { icon: Search, label: "Searching the catalog", href: "#search" },
     { icon: Download, label: "How downloads work", href: "#downloads" },
     { icon: Monitor, label: "Install guides", href: "#install" },
