@@ -220,33 +220,57 @@ export const HelpView: React.FC = () => {
         </div>
       </section>
 
-      {/* Step guides */}
-      {guideSections.map((s) => (
-        <section key={s.id} id={s.id} className="space-y-6 max-w-4xl mx-auto">
-          <div className="flex items-center gap-4">
-            <div className="h-11 w-11 shrink-0 rounded-xl bg-rose-950/20 border border-rose-500/20 flex items-center justify-center text-rose-400">
-              <s.icon className="h-5 w-5" />
-            </div>
-            <div>
-              <h2 className="font-display font-black text-xl text-white uppercase leading-tight">{s.title}</h2>
-              <p className="text-zinc-500 text-xs mt-1 max-w-2xl">{s.intro}</p>
-            </div>
-          </div>
-
-          <div className="space-y-4">
-            {s.steps.map((step, si) => (
-              <div key={si} className="rounded-xl border border-zinc-900 bg-zinc-950/40 p-5 relative overflow-hidden">
-                <span className="absolute right-4 top-3 font-mono text-[10px] font-bold text-zinc-700">{String(si + 1).padStart(2, "0")}</span>
-                <h3 className="font-display font-bold text-white uppercase text-xs mb-2 flex items-center gap-2">
-                  <ArrowRight className="h-3.5 w-3.5 text-rose-400" />
-                  {step.title}
-                </h3>
-                <p className="text-zinc-400 text-xs leading-relaxed font-sans">{step.body}</p>
+      {/* Step guides — click a topic header to collapse/expand */}
+      {guideSections.map((s) => {
+        const isOpen = collapsed[s.id] !== true;
+        return (
+          <section key={s.id} id={s.id} className="space-y-0 max-w-4xl mx-auto">
+            <button
+              onClick={() =>
+                setCollapsed((prev) => ({ ...prev, [s.id]: isOpen }))
+              }
+              className="w-full flex items-start text-left gap-4 rounded-xl border border-zinc-900 bg-zinc-950/40 p-5 hover:border-rose-500/20 transition"
+              aria-expanded={isOpen}
+            >
+              <div className="h-11 w-11 shrink-0 rounded-xl bg-rose-950/20 border border-rose-500/20 flex items-center justify-center text-rose-400">
+                <s.icon className="h-5 w-5" />
               </div>
-            ))}
-          </div>
-        </section>
-      ))}
+              <div className="min-w-0 flex-1">
+                <span className="font-display font-black text-xl text-white uppercase leading-tight block">{s.title}</span>
+                <p className="text-zinc-500 text-xs mt-1 max-w-2xl">{s.intro}</p>
+              </div>
+              <ChevronDown
+                className={`h-4 w-4 text-zinc-500 mt-2 flex-shrink-0 transition-transform duration-300 ${isOpen ? "rotate-180 text-rose-400" : ""}`}
+              />
+            </button>
+
+            <AnimatePresence initial={false}>
+              {isOpen && (
+                <motion.div
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: "auto", opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  transition={{ duration: 0.28, ease: "easeInOut" }}
+                  className="overflow-hidden"
+                >
+                  <div className="space-y-4 pt-1">
+                    {s.steps.map((step, si) => (
+                      <div key={si} className="rounded-xl border border-zinc-900 bg-zinc-950/40 p-5 relative overflow-hidden">
+                        <span className="absolute right-4 top-3 font-mono text-[10px] font-bold text-zinc-700">{String(si + 1).padStart(2, "0")}</span>
+                        <h3 className="font-display font-bold text-white uppercase text-xs mb-2 flex items-center gap-2">
+                          <ArrowRight className="h-3.5 w-3.5 text-rose-400" />
+                          {step.title}
+                        </h3>
+                        <p className="text-zinc-400 text-xs leading-relaxed font-sans">{step.body}</p>
+                      </div>
+                    ))}
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </section>
+        );
+      })}
 
       {/* Guide — install, patches, errors, save files */}
       <section id="guide" className="space-y-6 max-w-4xl mx-auto">
