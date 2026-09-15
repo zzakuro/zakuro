@@ -9,6 +9,13 @@ import {
   ArrowRight,
   Lock,
   ChevronDown,
+  BookOpen,
+  FileArchive,
+  Wrench,
+  HardDrive,
+  AlertTriangle,
+  CheckCircle2,
+  FolderCog,
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { Link } from "react-router-dom";
