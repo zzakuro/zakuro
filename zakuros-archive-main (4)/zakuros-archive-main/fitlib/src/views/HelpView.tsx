@@ -247,6 +247,165 @@ export const HelpView: React.FC = () => {
         </section>
       ))}
 
+      {/* Guide — install, patches, errors, save files */}
+      <section id="guide" className="space-y-6 max-w-4xl mx-auto">
+        <div className="flex items-center gap-4">
+          <div className="h-11 w-11 shrink-0 rounded-xl bg-rose-950/20 border border-rose-500/20 flex items-center justify-center text-rose-400">
+            <BookOpen className="h-5 w-5" />
+          </div>
+          <div>
+            <h2 className="font-display font-black text-xl text-white uppercase leading-tight">From download to running</h2>
+            <p className="text-zinc-500 text-xs mt-1 max-w-2xl">
+              The full lifecycle in one place — stage, extract, patch, troubleshoot, and find your saves. Follow these and most titles just work.
+            </p>
+          </div>
+        </div>
+
+        {/* Step 0 — Prepare */}
+        <div className="rounded-xl border border-zinc-900 bg-zinc-950/40 p-5 relative overflow-hidden">
+          <span className="absolute right-4 top-3 font-mono text-[10px] font-bold text-zinc-700">01</span>
+          <h3 className="font-display font-bold text-white uppercase text-xs mb-2 flex items-center gap-2">
+            <ShieldCheck className="h-3.5 w-3.5 text-rose-400" />
+            Step 0 — Prepare, before you extract
+          </h3>
+          <ul className="text-zinc-400 text-xs leading-relaxed font-sans space-y-2">
+            <li><span className="text-rose-400 font-bold">Exclude the folder in your antivirus first.</span> Cracked installers trip generic AV heuristics — Windows Defender silently deletes the launcher or a DLL mid-extraction Colors. Pick one folder for all your games (e.g. <code className="font-mono text-rose-300">D:\Games\Zakuro</code>) and add it to exclusions. You don't need to disable the AV.</li>
+            <li><span className="text-rose-400 font-bold">Guide for specific AVs:</span> Windows Security → Virus & threat protection → Manage settings → Exclusions → Add exclusion → folder. Avast/AVG: Settings → Exceptions. Kaspersky: Threats and Exclusions. Bitdefender: Exceptions. Malwarebytes: Allow List.</li>
+            <li><span className="text-rose-400 font-bold">Warning:</span> if the game won't launch after extracting, your AV deleted the launcher. Restore it from quarantine, add the folder exclusion, then re-extract.</li>
+          </ul>
+        </div>
+
+        {/* Hardware / DL info tile */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="rounded-xl border border-zinc-900 bg-zinc-950/40 p-5">
+            <div className="flex items-center gap-2 mb-2">
+              <HardDrive className="h-3.5 w-3.5 text-rose-400" />
+              <h4 className="font-display font-bold text-white uppercase text-xs">Hardware you'll want</h4>
+            </div>
+            <p className="text-zinc-400 text-xs leading-relaxed font-sans">
+              8GB RAM minimum (16GB recommended), ~100GB free on the drive you install to, and a wired connection during the download. The archive page lists the exact space and RAM each title needs before you commit.
+            </p>
+          </div>
+          <div className="rounded-xl border border-zinc-900 bg-zinc-950/40 p-5">
+            <div className="flex items-center gap-2 mb-2">
+              <Wrench className="h-3.5 w-3.5 text-rose-400" />
+              <h4 className="font-display font-bold text-white uppercase text-xs">Download size vs install size</h4>
+            </div>
+            <p className="text-zinc-400 text-xs leading-relaxed font-sans">
+              Repack = smaller archive (repcks for capped connections), but the installer decompresses everything locally — a 6GB repack can take 30–60 min to install. Direct = bigger download, done in minutes. Both say their sizes in the entry.
+            </p>
+          </div>
+        </div>
+
+        {/* Step 1 — Extract */}
+        <div className="rounded-xl border border-zinc-900 bg-zinc-950/40 p-5 relative overflow-hidden">
+          <span className="absolute right-4 top-3 font-mono text-[10px] font-bold text-zinc-700">02</span>
+          <h3 className="font-display font-bold text-white uppercase text-xs mb-2 flex items-center gap-2">
+            <FileArchive className="h-3.5 w-3.5 text-rose-400" />
+            Step 1 — Extract every part
+          </h3>
+          <ul className="text-zinc-400 text-xs leading-relaxed font-sans space-y-2">
+            <li>Use 7-Zip (free) or WinRAR. Keep every part in the same folder and don't rename any of them.</li>
+            <li>Right-click <code className="font-mono text-rose-300">part1</code> → Extract Here. The remaining parts unpack automatically — don't double-click part2, part3, etc.</li>
+            <li>Extraction can take a few minutes for large releases. You need space about equal to the un-packed size.</li>
+            <li><span className="text-rose-400 font-bold">"Cannot find next volume":</span> a part is missing or renamed — check the download finished, that no browser added a <code className="font-mono">(1)</code> suffix, and rename it back.</li>
+          </ul>
+        </div>
+
+        {/* Step 2 — README + runtimes */}
+        <div className="rounded-xl border border-zinc-900 bg-zinc-950/40 p-5 relative overflow-hidden">
+          <span className="absolute right-4 top-3 font-mono text-[10px] font-bold text-zinc-700">03</span>
+          <h3 className="font-display font-bold text-white uppercase text-xs mb-2 flex items-center gap-2">
+            <CheckCircle2 className="h-3.5 w-3.5 text-rose-400" />
+            Step 2 — Read README.html, install runtimes once
+          </h3>
+          <ul className="text-zinc-400 text-xs leading-relaxed font-sans space-y-2">
+            <li>Open <code className="font-mono text-rose-300">README.html</code> inside the extracted folder. It lists the exact .exe to run Verified by the badge, any redistributables to install first, and game-specific notes. Always read it before launching.</li>
+            <li><span className="text-rose-400 font-bold">Install these once</span> and most titles are covered: <span className="text-white">Visual C++ All-in-One, DirectX End-User Runtime, .NET Desktop Runtime (v6 and v8)</span>. Some folders bundle them under <code className="font-mono">_Redist</code> — running the bundles is harmless even if you already have a version.</li>
+          </ul>
+        </div>
+
+        {/* Step 3 — Launch */}
+        <div className="rounded-xl border border-zinc-900 bg-zinc-950/40 p-5 relative overflow-hidden">
+          <span className="absolute right-4 top-3 font-mono text-[10px] font-bold text-zinc-700">04</span>
+          <h3 className="font-display font-bold text-white uppercase text-xs mb-2 flex items-center gap-2">
+            <Monitor className="h-3.5 w-3.5 text-rose-400" />
+            Step 3 — Launch
+          </h3>
+          <ul className="text-zinc-400 text-xs leading-relaxed font-sans space-y-2">
+            <li>Run the .exe named in README.html — often the game's name, sometimes <code className="font-mono text-rose-300">Launcher.exe</code>.</li>
+            <li>First launch: right-click → <span className="text-white">Run as Administrator</span> to let the game create its save folder.</li>
+            <li>Nothing happens for a few seconds? Give it time — first launches build shader caches.</li>
+            <li>Crash, freeze, or a missing DLL? Jump to the error table below.</li>
+          </ul>
+        </div>
+
+        {/* Error fix table */}
+        <div className="rounded-xl border border-zinc-900 bg-zinc-950/40 p-5">
+          <h3 className="font-display font-bold text-white uppercase text-xs mb-3 flex items-center gap-2">
+            <AlertTriangle className="h-3.5 w-3.5 text-rose-400" />
+            Quick error fix-up
+          </h3>
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-[11px] font-sans">
+              <thead>
+                <tr className="border-b border-zinc-900 text-zinc-500 font-mono text-[10px] uppercase tracking-wider">
+                  <th className="py-2 pr-4 font-bold">Symptom</th>
+                  <th className="py-2 font-bold">Fix</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-zinc-900 text-zinc-300">
+                <tr><td className="py-2.5 pr-4 font-mono text-rose-300">MSVCP140.dll / VCRUNTIME140.dll</td><td className="py-2.5">Install the Visual C++ All-in-One pack.</td></tr>
+                <tr><td className="py-2.5 pr-4 font-mono text-rose-300">XINPUT1_3.dll / d3dx9_*.dll</td><td className="py-2.5">Install the DirectX End-User Runtime.</td></tr>
+                <tr><td className="py-2.5 pr-4 font-mono text-rose-300">0xc000007b</td><td className="py-2.5">Missing/mismatched Visual C++ — reinstall the All-in-One pack, reboot.</td></tr>
+                <tr><td className="py-2.5 pr-4 font-mono text-rose-300">0xc0000142</td><td className="py-2.5">Run as Administrator; check your Windows username has no non-Latin chars; re-run VС++ pack.</td></tr>
+                <tr><td className="py-2.5 pr-4 font-mono text-rose-300">"Please launch via Steam"</td><td className="py-2.5">AV deleted <code className="font-mono">steam_api64.dll</code>. Restore from quarantine or re-extract.</td></tr>
+                <tr><td className="py-2.5 pr-4 font-mono text-rose-300">Instant exit / black screen</td><td className="py-2.5">Disable overlays (Discord, Steam, GeForce, RivaTuner); run as Admin; uncheck Read-only; update GPU driver.</td></tr>
+                <tr><td className="py-2.5 pr-4 font-mono text-rose-300">CRC failed / Data error</td><td className="py-2.5">A part is corrupted — re-download it, preferably from a different mirror.</td></tr>
+                <tr><td className="py-2.5 pr-4 font-mono text-rose-300">Access denied on extract</td><td className="py-2.5">Extract to a folder you own (e.g. <code className="font-mono">D:\Games\Zakuro</code>), not Program Files.</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <p className="mt-3 text-zinc-500 text-[10px] font-mono">
+            Danger: never download DLLs from random sites — that's a classic malware vector. Restore from AV quarantine or re-extract instead.
+          </p>
+        </div>
+
+        {/* Save files */}
+        <div className="rounded-xl border border-zinc-900 bg-zinc-950/40 p-5">
+          <h3 className="font-display font-bold text-white uppercase text-xs mb-3 flex items-center gap-2">
+            <FolderCog className="h-3.5 w-3.5 text-rose-400" />
+            Finding save files
+          </h3>
+          <p className="text-zinc-400 text-xs mb-3 font-sans">Paste these into Explorer's address bar:</p>
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-[11px] font-sans">
+              <thead>
+                <tr className="border-b border-zinc-900 text-zinc-500 font-mono text-[10px] uppercase tracking-wider">
+                  <th className="py-2 pr-4 font-bold">Path</th>
+                  <th className="py-2 font-bold">What lives there</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-zinc-900 text-zinc-300">
+                <tr><td className="py-2.5 pr-4 font-mono text-rose-300">%USERPROFILE%\Saved Games</td><td className="py-2.5">Many modern games</td></tr>
+                <tr><td className="py-2.5 pr-4 font-mono text-rose-300">%USERPROFILE%\Documents</td><td className="py-2.5">Most games, in a subfolder named after the game</td></tr>
+                <tr><td className="py-2.5 pr-4 font-mono text-rose-300">%LOCALAPPDATA%</td><td className="py-2.5">Many Steam and Uplay titles</td></tr>
+                <tr><td className="py-2.5 pr-4 font-mono text-rose-300">%APPDATA%</td><td className="py-2.5">General saves and config</td></tr>
+                <tr><td className="py-2.5 pr-4 font-mono text-rose-300">%APPDATA%\EMPRESS</td><td className="py-2.5">EMPRESS-cracked titles</td></tr>
+                <tr><td className="py-2.5 pr-4 font-mono text-rose-300">%APPDATA%\Goldberg Social Club Emu Saves</td><td className="py-2.5">Ubisoft via Goldberg emu</td></tr>
+                <tr><td className="py-2.5 pr-4 font-mono text-rose-300">%APPDATA%\Goldberg UplayEmu Saves</td><td className="py-2.5">Ubisoft via Goldberg emu</td></tr>
+                <tr><td className="py-2.5 pr-4 font-mono text-rose-300">%APPDATA%\.1911\</td><td className="py-2.5">1911 releases</td></tr>
+                <tr><td className="py-2.5 pr-4 font-mono text-rose-300">%APPDATA%\SOVEREIGN</td><td className="py-2.5">SOVEREIGN releases</td></tr>
+                <tr><td className="py-2.5 pr-4 font-mono text-rose-300">%USERPROFILE%\Documents\onlinefix\&lt;appid&gt;</td><td className="py-2.5">OnlineFix co-op saves</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <p className="mt-3 text-zinc-500 text-[10px] font-mono">
+            Still stuck? Re-read README.html, check the game's comment section, try a different mirror, then <Link to="/donate" className="text-rose-400 hover:text-rose-300">support the archive</Link> if we helped.
+          </p>
+        </div>
+      </section>
+
       {/* FAQ */}
       <section className="space-y-6 max-w-4xl mx-auto">
         <div className="text-center">
