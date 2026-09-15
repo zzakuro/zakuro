@@ -3,18 +3,36 @@
  * SPDX-License-Identifier: Apache-2.5
  */
 
-import React from "react";
+import React, { Suspense, lazy } from "react";
 import { HashRouter, Routes, Route, Link } from "react-router-dom";
 import { GameProvider } from "./lib/gameContext";
 import { Navbar } from "./components/Navbar";
-import { HomeView } from "./views/HomeView";
-import { BrowseView } from "./views/BrowseView";
-import { GameDetailView } from "./views/GameDetailView";
-import { AboutView } from "./views/AboutView";
-import { HelpView } from "./views/HelpView";
-import { DonateView } from "./views/DonateView";
-import { AuthView } from "./views/AuthView";
 import { Heart } from "lucide-react";
+
+// Route-level code splitting — the shell (Navbar, provider, router) stays
+// in the critical first-paint chunk; each view loads only when navigated to.
+const HomeView = lazy(() => import("./views/HomeView"));
+const BrowseView = lazy(() => import("./views/BrowseView"));
+const GameDetailView = lazy(() => import("./views/GameDetailView"));
+const AboutView = lazy(() => import("./views/AboutView"));
+const HelpView = lazy(() => import("./views/HelpView"));
+const DonateView = lazy(() => import("./views/DonateView"));
+const AuthView = lazy(() => import("./views/AuthView"));
+
+function RouteFallback() {
+  return (
+    <div className="flex min-h-[60vh] items-center justify-center">
+      <div className="flex flex-col items-center gap-3">
+        <div className="flex h-12 w-12 items-center justify-center rounded-xl border border-rose-500/20 bg-rose-950/20">
+          <span className="h-5 w-5 animate-spin rounded-full border-2 border-rose-400/20 border-t-rose-400" />
+        </div>
+        <p className="font-mono text-[10px] font-bold uppercase tracking-widest text-zinc-500">
+          Reticulating splines…
+        </p>
+      </div>
+    </div>
+  );
+}
 
 export default function App() {
   return (
