@@ -11,13 +11,13 @@ import { Heart } from "lucide-react";
 
 // Route-level code splitting — the shell (Navbar, provider, router) stays
 // in the critical first-paint chunk; each view loads only when navigated to.
-const HomeView = lazy(() => import("./views/HomeView"));
-const BrowseView = lazy(() => import("./views/BrowseView"));
-const GameDetailView = lazy(() => import("./views/GameDetailView"));
-const AboutView = lazy(() => import("./views/AboutView"));
-const HelpView = lazy(() => import("./views/HelpView"));
-const DonateView = lazy(() => import("./views/DonateView"));
-const AuthView = lazy(() => import("./views/AuthView"));
+const HomeView = lazy(() => import("./views/HomeView").then((m) => ({ default: m.HomeView })));
+const BrowseView = lazy(() => import("./views/BrowseView").then((m) => ({ default: m.BrowseView })));
+const GameDetailView = lazy(() => import("./views/GameDetailView").then((m) => ({ default: m.GameDetailView })));
+const AboutView = lazy(() => import("./views/AboutView").then((m) => ({ default: m.AboutView })));
+const HelpView = lazy(() => import("./views/HelpView").then((m) => ({ default: m.HelpView })));
+const DonateView = lazy(() => import("./views/DonateView").then((m) => ({ default: m.DonateView })));
+const AuthView = lazy(() => import("./views/AuthView").then((m) => ({ default: m.AuthView })));
 
 function RouteFallback() {
   return (
