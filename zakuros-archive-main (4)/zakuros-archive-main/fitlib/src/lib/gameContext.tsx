@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
+import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from "react";
 import {
   Game,
   UserSession,
@@ -40,6 +40,9 @@ interface GameContextType {
   games: Game[];
   loading: boolean;
   error: string | null;
+  showNSFW: boolean;
+  setShowNSFW: (v: boolean) => void;
+  nsfwCount: number;
   searchQuery: string;
   setSearchQuery: (q: string) => void;
   loginUser: (username: string) => void;
@@ -80,6 +83,7 @@ const GameContext = createContext<GameContextType | undefined>(undefined);
 export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<UserSession | null>(null);
   const [games, setGames] = useState<Game[]>([]);
+  const [showNSFW, setShowNSFWRaw] = useState<boolean>(() => localStorage.getItem("zakuro_nsfw") === "1");
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState<string>("");
@@ -95,6 +99,26 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
     setVisitorId(vid);
   }, []);
+
+  // Persist the NSFW visibility preference (default: hidden)
+  useEffect(() => {
+    localStorage.setItem("zakuro_nsfw", showNSFW ? "1" : "0");
+  }, [showNSFW]);
+
+  const setShowNSFW = useCallback((v: boolean) => setShowNSFWRaw(v), []);
+
+  // NSFW games are hidden by default app-wide; the navbar toggle opts back in.
+  // Kept in the context so every surface (rails, grids, search, top genres)
+  // respects the same switch automatically.
+  const NSFW_GENRES = ["nsfw", "porn", "hentai", "adult"];
+  const visibleGames = useMemo(
+    () =>
+      showNSFW
+        ? games
+        : games.filter((g) => !(g.genres || []).some((x) => NSFW_GENRES.includes(x.toLowerCase().trim()))),
+    [games, showNSFW]
+  );
+  const nsfwCount = games.length - visibleGames.length;
 
   const authorKey = user ? `u:${user.username}` : `v:${visitorId}`;
   const authorName = user ? user.username : `Guest`;
@@ -428,9 +452,12 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     <GameContext.Provider
       value={{
         user,
-        games,
+        games: visibleGames,
         loading,
         error,
+        showNSFW,
+        setShowNSFW,
+        nsfwCount,
         searchQuery,
         setSearchQuery,
         loginUser,
