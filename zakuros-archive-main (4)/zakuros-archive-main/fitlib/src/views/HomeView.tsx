@@ -15,7 +15,7 @@ import {
   Layers,
 } from "lucide-react";
 import { useGame } from "../lib/gameContext";
-import { GameCard } from "../components/GameCard";
+import { GameCard, PlaceholderCover } from "../components/GameCard";
 import { Game } from "../types";
 
 /* ---------- helpers ---------- */
@@ -90,6 +90,7 @@ export const HomeView: React.FC = () => {
   const navigate = useNavigate();
   const [carouselIndex, setCarouselIndex] = useState(0);
   const [paused, setPaused] = useState(false);
+  const [heroImgFailed, setHeroImgFailed] = useState(false);
 
   const stats = useMemo(() => {
     const downloads = games.reduce((s, g) => s + (g.stats?.downloads || 0), 0);
@@ -135,6 +136,16 @@ export const HomeView: React.FC = () => {
     [games]
   );
   const activeCarouselGame = carouselGames[carouselIndex];
+
+  // Reset the image-failure flag whenever the hero game changes.
+  useEffect(() => {
+    setHeroImgFailed(false);
+  }, [activeCarouselGame?.id]);
+
+  const heroSrc = activeCarouselGame.steamId
+    ? `https://cdn.akamai.steamstatic.com/steam/apps/${activeCarouselGame.steamId}/library_hero.jpg`
+    : activeCarouselGame.screenshot || activeCarouselGame.coverImage || "";
+  const showHeroBackdrop = !heroSrc || heroImgFailed;
 
   // If the pool shrinks (catalog poll), never let the index dangle out of range.
   useEffect(() => {
@@ -217,19 +228,28 @@ export const HomeView: React.FC = () => {
             >
               <div className="absolute inset-0 z-10 bg-gradient-to-t from-[#09090b] via-[#09090b]/40 to-transparent" />
               <div className="absolute inset-0 z-10 bg-gradient-to-r from-[#09090b]/90 via-transparent to-[#09090b]/20" />
-              <motion.img
-                src={
-                  activeCarouselGame.steamId
-                    ? `https://cdn.akamai.steamstatic.com/steam/apps/${activeCarouselGame.steamId}/library_hero.jpg`
-                    : activeCarouselGame.screenshot
-                }
-                alt={activeCarouselGame.title}
-                referrerPolicy="no-referrer"
-                initial={{ scale: 1.06 }}
-                animate={{ scale: 1 }}
-                transition={{ duration: 9, ease: "easeOut" }}
-                className="h-full w-full object-cover opacity-60 saturate-[0.9]"
-              />
+              {showHeroBackdrop ? (
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.8 }}
+                  className="absolute inset-0 scale-105 opacity-70 blur-[2px] saturate-[0.9]"
+                >
+                  <PlaceholderCover title={activeCarouselGame.title} />
+                </motion.div>
+              ) : (
+                <motion.img
+                  src={heroSrc}
+                  alt={activeCarouselGame.title}
+                  referrerPolicy="no-referrer"
+                  initial={{ scale: 1.06 }}
+                  animate={{ scale: 1 }}
+                  transition={{ duration: 9, ease: "easeOut" }}
+                  onError={() => setHeroImgFailed(true)}
+                  className="h-full w-full object-cover opacity-60 saturate-[0.9]"
+                />
+              )}
             </motion.div>
           </AnimatePresence>
 
@@ -361,7 +381,11 @@ export const HomeView: React.FC = () => {
                     : "opacity-50 ring-white/10 hover:opacity-100"
                 }`}
               >
-                <img src={g.coverImage} alt={g.title} className="h-full w-full object-cover" />
+                {g.coverImage ? (
+                  <img src={g.coverImage} alt={g.title} className="h-full w-full object-cover" />
+                ) : (
+                  <PlaceholderCover title={g.title} className="p-2 [&_span:first-child]:text-sm" />
+                )}
               </button>
             ))}
           </div>

@@ -31,12 +31,12 @@ function coverInitials(s: string): string {
   return (fromWords || Array.from(s).slice(0, 2).join("")).toUpperCase();
 }
 
-const PlaceholderCover: React.FC<{ title: string }> = ({ title }) => {
+export const PlaceholderCover: React.FC<{ title: string; className?: string }> = ({ title, className }) => {
   const hue = hashHue(title || "?");
   const hue2 = (hue + 40) % 360;
   return (
     <div
-      className="relative flex h-full w-full flex-col justify-between overflow-hidden p-4"
+      className={`relative flex h-full w-full flex-col justify-between overflow-hidden p-4 ${className ?? ""}`}
       style={{
         background: `linear-gradient(160deg, hsl(${hue} 55% 26%), hsl(${hue2} 60% 12%) 60%, #0d0d10)`,
       }}
@@ -119,14 +119,14 @@ export const GameCard: React.FC<GameCardProps> = ({ game, badge }) => {
         )}
 
         {/* Hover overlay */}
-        <div className="absolute inset-0 flex flex-col justify-between bg-gradient-to-t from-black/90 via-black/30 to-transparent p-3 opacity-0 transition-opacity duration-300 group-hover:opacity-100">
+        <div className="absolute inset-0 flex flex-col justify-between bg-gradient-to-t from-black/90 via-black/30 to-transparent p-3 opacity-0 transition-opacity duration-300 group-hover:opacity-100 group-focus-within:opacity-100">
           <div className="flex justify-end">
             <span className="flex items-center gap-1 rounded-md bg-black/70 px-1.5 py-0.5 text-[10px] font-semibold text-zinc-300">
               <Eye className="h-3 w-3 text-rose-400" />
               {((game.stats?.views ?? 0) / 1000).toFixed(0)}k
             </span>
           </div>
-          <div className="translate-y-2 transition-transform duration-300 group-hover:translate-y-0">
+          <div className="translate-y-2 transition-transform duration-300 group-hover:translate-y-0 group-focus-within:translate-y-0">
             <p className="line-clamp-3 text-[11px] leading-relaxed text-zinc-300">
               {game.summary || "No description available."}
             </p>

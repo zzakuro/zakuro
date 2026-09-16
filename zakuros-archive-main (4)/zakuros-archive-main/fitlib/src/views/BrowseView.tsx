@@ -80,7 +80,7 @@ export const BrowseView: React.FC = () => {
       : true;
     const matchesRating = selectedMinRating ? game.rating >= selectedMinRating : true;
     const matchesClassic = showClassic ? game.classic === true : true;
-    const matchesCover = showClassic ? true : showNoCover ? true : !!game.coverImage;
+    const matchesCover = showNoCover ? !game.coverImage : true;
     return matchesSearch && matchesGenre && matchesDeveloper && matchesYear && matchesRating && matchesClassic && matchesCover;
   });
 
@@ -270,7 +270,7 @@ export const BrowseView: React.FC = () => {
                   showNoCover ? activeFilterCls : idleFilterCls
                 }`}
               >
-                {showNoCover ? "✓ Showing all games" : "Show games without cover"}
+                {showNoCover ? "✓ Coverless only" : "Coverless games only"}
               </button>
             </FilterGroup>
           </aside>
