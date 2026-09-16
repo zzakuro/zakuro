@@ -89,12 +89,6 @@ export const GameCard: React.FC<GameCardProps> = ({ game, badge }) => {
         {/* Bottom scrim for contrast */}
         <div className="pointer-events-none absolute inset-x-0 bottom-0 h-2/5 bg-gradient-to-t from-[#0d0d10]/80 to-transparent" />
 
-        {/* Rating pill */}
-        <div className="absolute left-2 top-2 flex items-center gap-1 rounded-md bg-black/75 px-1.5 py-0.5 text-[10px] font-bold text-white ring-1 ring-white/10 backdrop-blur-sm">
-          <Star className="h-3 w-3 fill-rose-400 text-rose-400" />
-          <span>{game.rating > 0 ? `${game.rating}%` : "—"}</span>
-        </div>
-
         {/* NEW / HOT / UPDATED badge */}
         {badge && (
           <span
@@ -139,17 +133,19 @@ export const GameCard: React.FC<GameCardProps> = ({ game, badge }) => {
       </div>
 
       {/* Meta */}
-      <div className="flex flex-1 flex-col justify-between gap-2 p-3.5">
+      <div className="flex flex-1 flex-col justify-between gap-1.5 p-3.5">
         <h3 className="line-clamp-1 font-display text-[15px] font-semibold text-zinc-100 transition group-hover:text-rose-400">
           {game.title}
         </h3>
-        <div className="flex items-center justify-between gap-2">
-          <span className="truncate rounded bg-white/[0.04] px-1.5 py-0.5 text-[10px] font-medium capitalize text-zinc-400 ring-1 ring-white/[0.06]">
+        <div className="flex items-center gap-2 text-[10px]">
+          <span className="flex shrink-0 items-center gap-1 font-bold text-rose-400">
+            <Star className="h-3 w-3 fill-rose-400 text-rose-400" />
+            {game.rating > 0 ? `${game.rating}%` : "—"}
+          </span>
+          <span className="truncate font-medium capitalize text-zinc-500">
             {game.genres[0] ?? "Game"}
           </span>
-          {relativeUpdate && (
-            <span className="shrink-0 font-mono text-[10px] text-zinc-600">{relativeUpdate}</span>
-          )}
+          <span className="ml-auto shrink-0 font-mono text-zinc-600">{relativeUpdate}</span>
         </div>
       </div>
     </Link>
