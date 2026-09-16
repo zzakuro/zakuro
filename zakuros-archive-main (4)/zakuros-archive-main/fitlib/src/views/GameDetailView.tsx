@@ -27,6 +27,33 @@ export const GameDetailView: React.FC = () => {
   const [trailers, setTrailers] = useState<GameTrailer[]>(game?.trailers || []);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
+  // Reset per-game UI state when navigating between game pages (otherwise a
+  // previous game's trailers/tab leak onto the next one).
+  useEffect(() => {
+    setTrailers(game?.trailers || []);
+    const keys = Object.keys(game?.systemRequirements ?? {});
+    setReqOs((keys[0] as "windows" | "linux" | "mac") || "windows");
+  }, [game?.id]);
+
+  // Pull live Steam metadata once on open so trailers (and refresh button data)
+  // are available even before the offline grind has persisted them to disk.
+  useEffect(() => {
+    if (!game?.id) return;
+    const ac = new AbortController();
+    (async () => {
+      try {
+        const res = await fetch(`/api/games/${encodeURIComponent(game.id)}/metadata`, { signal: ac.signal });
+        if (!res.ok) return;
+        const meta = await res.json();
+        if (meta.trailers?.length) setTrailers(meta.trailers);
+      } catch {
+        // ignore network/abort failures — trailers just stay empty
+      }
+    })();
+    return () => ac.abort();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [game?.id]);
+
   const showToast = (msg: string) => {
     setToastMessage(msg);
     setTimeout(() => setToastMessage(null), 3000);
@@ -85,34 +112,9 @@ export const GameDetailView: React.FC = () => {
     }
   };
 
-  // Reset per-game UI state when navigating between game pages (otherwise a
-  // previous game's trailers/tab leak onto the next one).
-  useEffect(() => {
-    setTrailers(game?.trailers || []);
-    const keys = Object.keys(game?.systemRequirements ?? {});
-    setReqOs((keys[0] as "windows" | "linux" | "mac") || "windows");
-  }, [game?.id]);
   const systemRequirements = game.systemRequirements ?? {};
   const reqKeys = Object.keys(systemRequirements);
   const activeReq = (systemRequirements as any)[reqOs] ? reqOs : ((reqKeys[0] || "windows") as "windows" | "linux" | "mac");
-
-  // Pull live Steam metadata once on open so trailers (and refresh button data)
-  // are available even before the offline grind has persisted them to disk.
-  useEffect(() => {
-    const ac = new AbortController();
-    (async () => {
-      try {
-        const res = await fetch(`/api/games/${encodeURIComponent(game.id)}/metadata`, { signal: ac.signal });
-        if (!res.ok) return;
-        const meta = await res.json();
-        if (meta.trailers?.length) setTrailers(meta.trailers);
-      } catch {
-        // ignore network/abort failures — trailers just stay empty
-      }
-    })();
-    return () => ac.abort();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [game.id]);
 
   const isWishlisted = user?.wishlist.includes(game.id) || false;
   const isLiked = user?.liked.includes(game.id) || false;
