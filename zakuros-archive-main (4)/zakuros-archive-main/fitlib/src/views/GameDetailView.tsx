@@ -610,8 +610,16 @@ export const GameDetailView: React.FC = () => {
                 <span className="font-display text-xs font-bold uppercase tracking-widest text-zinc-400">
                   Rating
                 </span>
-                <span className="flex items-center gap-1.5 font-display text-lg font-bold text-rose-400">
-                  <Star className="h-4 w-4 fill-rose-400" />
+                <span
+                  className={`flex items-center gap-1.5 font-display text-lg font-bold ${
+                    rating >= 85
+                      ? "text-emerald-400 [&>svg]:fill-emerald-400 [&>svg]:text-emerald-400"
+                      : rating >= 70
+                        ? "text-amber-400 [&>svg]:fill-amber-400 [&>svg]:text-amber-400"
+                        : "text-rose-400 [&>svg]:fill-rose-400"
+                  }`}
+                >
+                  <Star className="h-4 w-4" />
                   {rating > 0 ? `${rating}% positive` : "Unrated"}
                 </span>
               </div>

@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { Link } from "react-router-dom";
+import { PageHero, Reveal } from "../components/PageHero";
 
 export const HelpView: React.FC = () => {
   const [activeFaq, setActiveFaq] = useState<number | null>(null);
@@ -196,34 +197,34 @@ export const HelpView: React.FC = () => {
   return (
     <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8 space-y-20">
       {/* Hero */}
-      <section className="text-center max-w-3xl mx-auto py-8">
-        <span className="inline-block rounded-full bg-rose-950/40 border border-rose-500/20 px-3.5 py-1 text-[11px] font-bold text-rose-400 uppercase tracking-widest font-mono">
-          Full help & support
-        </span>
-        <h1 className="font-display font-black tracking-tight text-white mt-6 uppercase leading-tight text-4xl sm:text-5xl">
-          We've got you<br />
-          <span className="text-rose-400">covered</span>
-        </h1>
-        <p className="mt-4 text-zinc-400 text-sm leading-relaxed font-sans max-w-xl mx-auto">
-          Every question the community actually asks, answered once. From the Ctrl+K trick to Proton badges — pick a topic or search the FAQ below.
-        </p>
-
+      <PageHero
+        eyebrow="Full help & support"
+        title={
+          <>
+            We've got you
+            <br />
+            <span className="text-gradient animate">covered</span>
+          </>
+        }
+        lead="Every question the community actually asks, answered once. From the Ctrl+K trick to Proton badges — pick a topic or search the FAQ below."
+      >
         {/* Quick topic nav */}
         <div className="mt-7 flex flex-wrap justify-center gap-2">
           {quickLinks.map((q, idx) => (
             <a
               key={idx}
               href={q.href}
-              className="flex items-center gap-1.5 rounded-full border border-zinc-900 bg-zinc-950/50 px-4 py-2 text-[11px] font-bold text-zinc-300 hover:border-rose-500/40 hover:text-white font-mono transition"
+              className="flex items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.03] px-4 py-2 text-[11px] font-bold text-zinc-300 hover:border-rose-500/40 hover:text-white font-mono transition"
             >
               <q.icon className="h-3.5 w-3.5 text-rose-400" />
               {q.label}
             </a>
           ))}
         </div>
-      </section>
+      </PageHero>
 
       {/* Step guides — click a topic header to collapse/expand */}
+      <Reveal>
       {guideSections.map((s) => {
         const isOpen = collapsed[s.id] !== true;
         return (
@@ -232,10 +233,10 @@ export const HelpView: React.FC = () => {
               onClick={() =>
                 setCollapsed((prev) => ({ ...prev, [s.id]: isOpen }))
               }
-              className="w-full flex items-start text-left gap-4 rounded-xl border border-zinc-900 bg-zinc-950/40 p-5 hover:border-rose-500/20 transition"
+              className="w-full flex items-start text-left gap-4 panel panel-hover p-5"
               aria-expanded={isOpen}
             >
-              <div className="h-11 w-11 shrink-0 rounded-xl bg-rose-950/20 border border-rose-500/20 flex items-center justify-center text-rose-400">
+              <div className="h-11 w-11 shrink-0 rounded-xl bg-rose-500/10 border border-rose-500/20 flex items-center justify-center text-rose-400">
                 <s.icon className="h-5 w-5" />
               </div>
               <div className="min-w-0 flex-1">
@@ -258,7 +259,7 @@ export const HelpView: React.FC = () => {
                 >
                   <div className="space-y-4 pt-1">
                     {s.steps.map((step, si) => (
-                      <div key={si} className="rounded-xl border border-zinc-900 bg-zinc-950/40 p-5 relative overflow-hidden">
+                      <div key={si} className="panel panel-hover rounded-xl p-5 relative overflow-hidden">
                         <span className="absolute right-4 top-3 font-mono text-[10px] font-bold text-zinc-700">{String(si + 1).padStart(2, "0")}</span>
                         <h3 className="font-display font-bold text-white uppercase text-xs mb-2 flex items-center gap-2">
                           <ArrowRight className="h-3.5 w-3.5 text-rose-400" />
@@ -274,6 +275,7 @@ export const HelpView: React.FC = () => {
           </section>
         );
       })}
+      </Reveal>
 
       {/* Guide — install, patches, errors, save files */}
       <section id="guide" className="space-y-6 max-w-4xl mx-auto">
@@ -290,7 +292,7 @@ export const HelpView: React.FC = () => {
         </div>
 
         {/* Step 0 — Prepare */}
-        <div className="rounded-xl border border-zinc-900 bg-zinc-950/40 p-5 relative overflow-hidden">
+        <div className="panel panel-hover rounded-xl p-5 relative overflow-hidden">
           <span className="absolute right-4 top-3 font-mono text-[10px] font-bold text-zinc-700">01</span>
           <h3 className="font-display font-bold text-white uppercase text-xs mb-2 flex items-center gap-2">
             <ShieldCheck className="h-3.5 w-3.5 text-rose-400" />
@@ -305,7 +307,7 @@ export const HelpView: React.FC = () => {
 
         {/* Hardware / DL info tile */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div className="rounded-xl border border-zinc-900 bg-zinc-950/40 p-5">
+          <div className="panel panel-hover rounded-xl p-5">
             <div className="flex items-center gap-2 mb-2">
               <HardDrive className="h-3.5 w-3.5 text-rose-400" />
               <h4 className="font-display font-bold text-white uppercase text-xs">Hardware you'll want</h4>
@@ -314,7 +316,7 @@ export const HelpView: React.FC = () => {
               8GB RAM minimum (16GB recommended), ~100GB free on the drive you install to, and a wired connection during the download. The archive page lists the exact space and RAM each title needs before you commit.
             </p>
           </div>
-          <div className="rounded-xl border border-zinc-900 bg-zinc-950/40 p-5">
+          <div className="panel panel-hover rounded-xl p-5">
             <div className="flex items-center gap-2 mb-2">
               <Wrench className="h-3.5 w-3.5 text-rose-400" />
               <h4 className="font-display font-bold text-white uppercase text-xs">Download size vs install size</h4>
@@ -326,7 +328,7 @@ export const HelpView: React.FC = () => {
         </div>
 
         {/* Step 1 — Extract */}
-        <div className="rounded-xl border border-zinc-900 bg-zinc-950/40 p-5 relative overflow-hidden">
+        <div className="panel panel-hover rounded-xl p-5 relative overflow-hidden">
           <span className="absolute right-4 top-3 font-mono text-[10px] font-bold text-zinc-700">02</span>
           <h3 className="font-display font-bold text-white uppercase text-xs mb-2 flex items-center gap-2">
             <FileArchive className="h-3.5 w-3.5 text-rose-400" />
@@ -341,7 +343,7 @@ export const HelpView: React.FC = () => {
         </div>
 
         {/* Step 2 — README + runtimes */}
-        <div className="rounded-xl border border-zinc-900 bg-zinc-950/40 p-5 relative overflow-hidden">
+        <div className="panel panel-hover rounded-xl p-5 relative overflow-hidden">
           <span className="absolute right-4 top-3 font-mono text-[10px] font-bold text-zinc-700">03</span>
           <h3 className="font-display font-bold text-white uppercase text-xs mb-2 flex items-center gap-2">
             <CheckCircle2 className="h-3.5 w-3.5 text-rose-400" />
@@ -354,7 +356,7 @@ export const HelpView: React.FC = () => {
         </div>
 
         {/* Step 3 — Launch */}
-        <div className="rounded-xl border border-zinc-900 bg-zinc-950/40 p-5 relative overflow-hidden">
+        <div className="panel panel-hover rounded-xl p-5 relative overflow-hidden">
           <span className="absolute right-4 top-3 font-mono text-[10px] font-bold text-zinc-700">04</span>
           <h3 className="font-display font-bold text-white uppercase text-xs mb-2 flex items-center gap-2">
             <Monitor className="h-3.5 w-3.5 text-rose-400" />
@@ -369,7 +371,7 @@ export const HelpView: React.FC = () => {
         </div>
 
         {/* Error fix table */}
-        <div className="rounded-xl border border-zinc-900 bg-zinc-950/40 p-5">
+        <div className="panel panel-hover rounded-xl p-5">
           <h3 className="font-display font-bold text-white uppercase text-xs mb-3 flex items-center gap-2">
             <AlertTriangle className="h-3.5 w-3.5 text-rose-400" />
             Quick error fix-up
@@ -400,7 +402,7 @@ export const HelpView: React.FC = () => {
         </div>
 
         {/* Save files */}
-        <div className="rounded-xl border border-zinc-900 bg-zinc-950/40 p-5">
+        <div className="panel panel-hover rounded-xl p-5">
           <h3 className="font-display font-bold text-white uppercase text-xs mb-3 flex items-center gap-2">
             <FolderCog className="h-3.5 w-3.5 text-rose-400" />
             Finding save files
@@ -445,7 +447,7 @@ export const HelpView: React.FC = () => {
           {faqs.map((faq, idx) => {
             const isOpen = activeFaq === idx;
             return (
-              <div key={idx} className="rounded-xl border border-zinc-900 bg-zinc-950/45 overflow-hidden">
+              <div key={idx} className="panel panel-hover rounded-xl overflow-hidden">
                 <button
                   onClick={() => setActiveFaq(isOpen ? null : idx)}
                   className="w-full flex items-center justify-between p-5 text-left hover:bg-zinc-900/10 transition"
@@ -462,7 +464,7 @@ export const HelpView: React.FC = () => {
                       transition={{ duration: 0.25 }}
                       className="overflow-hidden"
                     >
-                      <div className="p-5 border-t border-zinc-900/60 text-zinc-400 text-xs sm:text-sm leading-relaxed font-sans bg-[#0c0c14]/15">
+                      <div className="p-5 border-t border-white/5 text-zinc-400 text-xs sm:text-sm leading-relaxed font-sans bg-white/[0.02]">
                         {faq.a}
                       </div>
                     </motion.div>
@@ -494,7 +496,7 @@ export const HelpView: React.FC = () => {
           </a>
           <Link
             to="/donate"
-            className="flex items-center gap-2 rounded-full border border-zinc-800 px-6 py-2.5 text-xs font-bold text-zinc-300 hover:text-white hover:border-zinc-700 transition"
+            className="flex items-center gap-2 rounded-full border border-white/10 px-6 py-2.5 text-xs font-bold text-zinc-300 hover:text-white hover:border-zinc-700 transition"
           >
             Support the archive
           </Link>

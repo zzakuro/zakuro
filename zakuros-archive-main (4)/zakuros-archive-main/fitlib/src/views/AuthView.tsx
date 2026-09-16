@@ -52,16 +52,16 @@ export const AuthView: React.FC = () => {
         initial={{ opacity: 0, scale: 0.98 }}
         animate={{ opacity: 1, scale: 1 }}
         transition={{ duration: 0.3 }}
-        className="w-full max-w-md rounded-2xl border border-zinc-900 bg-zinc-950/40 p-8 backdrop-blur-sm shadow-2xl relative"
+        className="panel w-full max-w-md rounded-2xl p-8 shadow-2xl relative"
       >
         
         {/* Brand visual header decoration */}
         <div className="text-center mb-8">
           <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-rose-500/10 text-rose-400 font-black ring-1 ring-rose-500/30 mx-auto mb-3">
-            F
+            Z
           </span>
           <h2 className="font-display font-black text-white text-2xl uppercase tracking-wider">
-            {isLogin ? "Sign in to Zakuro's Archive" : "Create Zakuro's Archive Account"}
+            {isLogin ? "Sign in to the archive" : "Create archive account"}
           </h2>
           <p className="text-xs text-zinc-500 mt-1 font-mono">
             Enable game track wishlisting and voting.
@@ -88,7 +88,7 @@ export const AuthView: React.FC = () => {
                 placeholder="e.g. repacker99"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
-                className="w-full rounded-lg border border-zinc-850 bg-zinc-950/80 py-2.5 pl-10 pr-3 text-xs text-white placeholder-zinc-650 transition placeholder-zinc-600 focus:border-rose-500/50 focus:outline-none focus:ring-1 focus:ring-rose-500/30"
+                className="w-full rounded-lg border border-white/10 bg-[#0d0d10] py-2.5 pl-10 pr-3 text-xs text-white transition placeholder-zinc-600 focus:border-rose-500/50 focus:outline-none focus:ring-1 focus:ring-rose-500/30"
               />
               <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-500" />
             </div>
@@ -104,7 +104,7 @@ export const AuthView: React.FC = () => {
                 placeholder="••••••••"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full rounded-lg border border-zinc-850 bg-zinc-950/80 py-2.5 pl-10 pr-3 text-xs text-white placeholder-zinc-650 transition placeholder-zinc-650 focus:border-rose-500/50 focus:outline-none focus:ring-1 focus:ring-rose-500/30"
+                className="w-full rounded-lg border border-white/10 bg-[#0d0d10] py-2.5 pl-10 pr-3 text-xs text-white transition placeholder-zinc-650 focus:border-rose-500/50 focus:outline-none focus:ring-1 focus:ring-rose-500/30"
               />
               <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-500" />
             </div>
@@ -122,7 +122,7 @@ export const AuthView: React.FC = () => {
         </form>
 
         {/* Toggle Mode Link indicator */}
-        <div className="mt-6 text-center border-t border-zinc-900 pt-5 text-xs">
+        <div className="mt-6 text-center border-t border-white/5 pt-5 text-xs">
           <button
             type="button"
             onClick={() => {

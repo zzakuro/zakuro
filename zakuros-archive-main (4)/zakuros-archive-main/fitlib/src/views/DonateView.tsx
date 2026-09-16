@@ -43,23 +43,23 @@ export const DonateView: React.FC = () => {
     <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8 space-y-20">
 
       {/* Hero */}
-      <section className="text-center max-w-3xl mx-auto py-8">
-        <span className="rounded-full bg-rose-950/40 border border-rose-500/20 px-3.5 py-1 text-[11px] font-bold text-rose-400 uppercase tracking-widest font-mono">
-          Keep the index alive
-        </span>
-        <h1 className="font-display font-black tracking-tight text-white mt-6 uppercase leading-tight text-4xl sm:text-5xl">
-          Support the<br />
-          <span className="text-rose-400">archive</span>
-        </h1>
-        <p className="mt-4 text-zinc-400 text-sm leading-relaxed font-sans max-w-xl mx-auto">
-          Zakuro's Archive is free, open, and ad-free. Donations are sent straight to the wallets below — no cards, no PayPal, no middleman. Every contribution covers server costs, API quota, and mirror checks.
-        </p>
-      </section>
+      <PageHero
+        eyebrow="Keep the index alive"
+        title={
+          <>
+            Support the
+            <br />
+            <span className="text-gradient animate">archive</span>
+          </>
+        }
+        lead="Zakuro's Archive is free, open, and ad-free. Donations are sent straight to the wallets below — no cards, no PayPal, no middleman. Every contribution covers server costs, API quota, and mirror checks."
+      />
 
       {/* Crypto wallets */}
+      <Reveal>
       <section id="funds" className="max-w-3xl mx-auto">
-        <div className="rounded-2xl border border-zinc-900 bg-zinc-950/40 overflow-hidden">
-          <div className="border-b border-zinc-900 p-6 sm:p-8">
+        <div className="panel overflow-hidden rounded-2xl">
+          <div className="border-b border-white/5 p-6 sm:p-8">
             <span className="text-[10px] font-bold text-rose-400 uppercase tracking-widest font-mono">Direct crypto</span>
             <h2 className="font-display font-black text-2xl text-white mt-1 uppercase">Send a wallet</h2>
             <p className="text-zinc-500 text-xs mt-2 font-mono">
@@ -68,8 +68,8 @@ export const DonateView: React.FC = () => {
           </div>
           <div className="p-6 sm:p-8 space-y-3">
             {wallets.map((w) => (
-              <div key={w.key} className="flex items-center gap-3 rounded-xl border border-zinc-900 bg-zinc-950/40 p-4">
-                <div className="hidden sm:flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-zinc-900 border border-zinc-800">
+              <div key={w.key} className="panel flex items-center gap-3 p-4">
+                <div className="hidden sm:flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-white/[0.04] border border-white/10">
                   <span className="font-mono text-[9px] font-black text-rose-400">{w.ticker}</span>
                 </div>
                 <div className="min-w-0 flex-1">
@@ -78,7 +78,7 @@ export const DonateView: React.FC = () => {
                 </div>
                 <button
                   onClick={() => copyAddress(w.key, w.address)}
-                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-zinc-800 hover:border-rose-500/40 transition"
+                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-white/10 hover:border-rose-500/40 transition"
                   aria-label={`Copy ${w.name} address`}
                 >
                   {copied === w.key ? (
@@ -96,8 +96,10 @@ export const DonateView: React.FC = () => {
           Demo addresses: production wallets are wired at launch.
         </p>
       </section>
+      </Reveal>
 
       {/* Where funds go */}
+      <Reveal>
       <section className="space-y-6 max-w-4xl mx-auto">
         <div className="text-center">
           <span className="text-[10px] font-bold text-rose-400 uppercase tracking-widest font-mono">Transparency</span>
@@ -106,8 +108,8 @@ export const DonateView: React.FC = () => {
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           {useOfFunds.map((item, idx) => (
-            <div key={idx} className="flex gap-4 rounded-xl border border-zinc-900 bg-zinc-950/40 p-5">
-              <div className="h-9 w-9 shrink-0 rounded-lg bg-rose-950/20 border border-rose-500/20 flex items-center justify-center text-rose-400">
+            <div key={idx} className="panel panel-hover flex gap-4 p-5">
+              <div className="h-9 w-9 shrink-0 rounded-lg bg-rose-500/10 border border-rose-500/20 flex items-center justify-center text-rose-400">
                 <item.icon className="h-4 w-4" />
               </div>
               <div>
@@ -118,9 +120,11 @@ export const DonateView: React.FC = () => {
           ))}
         </div>
       </section>
+      </Reveal>
 
       {/* Closing CTA */}
-      <section className="rounded-2xl border border-zinc-900 bg-zinc-950/40 p-8 text-center max-w-4xl mx-auto">
+      <Reveal>
+      <section className="panel rounded-2xl border-rose-500/15 p-8 text-center max-w-4xl mx-auto">
         <Heart className="h-8 w-8 text-rose-400 mx-auto mb-3" />
         <h3 className="font-display font-black text-white uppercase text-xl">Only crypto counts</h3>
         <p className="text-zinc-400 text-xs mt-2 max-w-xl mx-auto">
@@ -134,6 +138,7 @@ export const DonateView: React.FC = () => {
           <ArrowRight className="h-3.5 w-3.5" />
         </Link>
       </section>
+      </Reveal>
 
     </div>
   );
