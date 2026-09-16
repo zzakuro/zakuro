@@ -666,16 +666,19 @@ export function stabilizeCatalog(games: Game[]): { games: Game[]; merged: number
   let regen = 0;
   const seen = new Set<string>();
   for (const g of out) {
-    let id = (g.id || "").trim();
-    if (!id || seen.has(id)) {
-      const base = makeId(g.title || "") || "game";
-      id = seen.has(base) ? `${base}-${HASH_BASE36(g.title || g.id || "")}` : base;
-      let guard = 0;
-      while (seen.has(id) && guard++ < 100) id = `${base}-${HASH_BASE36(g.title || "")}-${guard}`;
-      g.id = id;
-      regen++;
+    const id = (g.id || "").trim();
+    if (id && !seen.has(id)) {
+      seen.add(id);
+      continue;
     }
-    seen.add(id);
+    const base = makeId(g.title || "") || "game";
+    const h = HASH_BASE36(g.title || g.id || "");
+    let candidate = `${base}-${h}`;
+    let suffix = 1;
+    while (seen.has(candidate)) candidate = `${base}-${h}-${suffix++}`;
+    g.id = candidate;
+    seen.add(candidate);
+    regen++;
   }
 
   return { games: out, merged, regen };
