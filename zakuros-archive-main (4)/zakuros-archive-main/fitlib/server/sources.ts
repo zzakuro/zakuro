@@ -529,6 +529,158 @@ function buildGame(merged: MergedKey, repackers: string[]): Game {
   };
 }
 
+// ── Catalog stabilization: fix broken ids + collapse duplicate games ─────────
+// Source feeds carry junk/numeric/colliding ids and duplicate rows (same title,
+// title variants under one Steam appid, or identical rows from a giant dump).
+// Ids are regenerated deterministically (idempotent across runs), and every
+// duplicate group is folded into the most complete survivor, keeping a union of
+// download links and the best metadata.
+
+const HASH_BASE36 = (s: string): string => {
+  let h = 0;
+  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0;
+  return h.toString(36).padStart(6, "0");
+};
+
+function stabilizeScore(g: Game): number {
+  return (
+    (g.coverImage ? 10 : 0) +
+    (typeof g.steamId === "number" ? 8 : 0) +
+    (g.summary && g.summary.length > 40 ? 4 : g.summary ? 1 : 0) +
+    (g.developer ? 3 : 0) +
+    (g.releaseDate && !/unknown/i.test(g.releaseDate) ? 1 : 0) +
+    (g.linux && (g.linux.tier || g.linux.native) ? 2 : 0) +
+    Math.min(g.downloadSources?.length || 0, 6) +
+    (g.classic ? -1 : 0) +
+    (g.id ? 2 : 0)
+  );
+}
+
+function foldInto(winner: Game, other: Game): void {
+  if (!winner.coverImage && other.coverImage) winner.coverImage = other.coverImage;
+  if (!winner.screenshot && other.screenshot) winner.screenshot = other.screenshot;
+  if (!winner.screenshots?.length && other.screenshots?.length) winner.screenshots = other.screenshots;
+  if (typeof winner.steamId !== "number" && typeof other.steamId === "number") winner.steamId = other.steamId;
+  if (!winner.developer && other.developer) winner.developer = other.developer;
+  if (!winner.publisher && other.publisher) winner.publisher = other.publisher;
+  if (other.summary && (!winner.summary || winner.summary.length < other.summary.length)) winner.summary = other.summary;
+  if (!winner.linux && other.linux) winner.linux = other.linux;
+  if ((!winner.releaseDate || /unknown/i.test(winner.releaseDate)) && other.releaseDate && !/unknown/i.test(other.releaseDate)) {
+    winner.releaseDate = other.releaseDate;
+  }
+  if (!winner.rating && other.rating) winner.rating = other.rating;
+  if (!winner.magnetLink && other.magnetLink) winner.magnetLink = other.magnetLink;
+  if (!winner.fileSize && other.fileSize) winner.fileSize = other.fileSize;
+  if (other.classic && !winner.classic) winner.classic = true;
+
+  if (other.downloadSources?.length) {
+    const urls = new Set((winner.downloadSources || []).map((s) => s.url));
+    for (const s of other.downloadSources) {
+      if (!urls.has(s.url)) {
+        winner.downloadSources = winner.downloadSources || [];
+        winner.downloadSources.push(s);
+        urls.add(s.url);
+      }
+    }
+  }
+  if (other.genres?.length) {
+    const have = new Set((winner.genres || []).map((x) => x.toLowerCase()));
+    for (const g of other.genres) {
+      if (!have.has(g.toLowerCase())) {
+        winner.genres = winner.genres || [];
+        winner.genres.push(g);
+        have.add(g.toLowerCase());
+      }
+    }
+    winner.genres = winner.genres.slice(0, 12);
+  }
+  if (other.trailers?.length) {
+    const have = new Set((winner.trailers || []).map((t) => t.src));
+    for (const t of other.trailers) {
+      if (!have.has(t.src)) {
+        winner.trailers = winner.trailers || [];
+        winner.trailers.push(t);
+        have.add(t.src);
+      }
+    }
+  }
+  if (other.stats) {
+    const a = Date.parse(winner.stats?.updatedAt || "");
+    const b = Date.parse(other.stats.updatedAt || "");
+    if (isNaN(a) || (b > a)) {
+      winner.stats = { ...(winner.stats || { downloads: 0, views: 0, updatedAt: "" }), ...other.stats };
+    }
+  }
+}
+
+export function stabilizeCatalog(games: Game[]): { games: Game[]; merged: number; regen: number } {
+  let merged = 0;
+  const doomed = new Set<Game>();
+
+  const processGroup = (group: Game[]) => {
+    if (group.length < 2) return;
+    let best = group[0];
+    let bestScore = -1;
+    for (const g of group) {
+      const s = stabilizeScore(g);
+      if (s > bestScore) {
+        bestScore = s;
+        best = g;
+      }
+    }
+    for (const g of group) {
+      if (g === best || doomed.has(g)) continue;
+      foldInto(best, g);
+      doomed.add(g);
+    }
+  };
+
+  // 1) exact title duplicates (normalized key)
+  const byKey = new Map<string, Game[]>();
+  for (const g of games) {
+    const k = normalizeForMatch(g.title || "");
+    if (!k) continue;
+    const arr = byKey.get(k) ?? [];
+    arr.push(g);
+    byKey.set(k, arr);
+  }
+  for (const [, group] of byKey) processGroup(group);
+
+  // 2) cross-title duplicates that share one Steam appid (edition/locale/punct variants)
+  const bySteam = new Map<number, Game[]>();
+  for (const g of games) {
+    if (g.classic || typeof g.steamId !== "number") continue;
+    const arr = bySteam.get(g.steamId) ?? [];
+    arr.push(g);
+    bySteam.set(g.steamId, arr);
+  }
+  for (const [, group] of bySteam) {
+    const live = group.filter((g) => !doomed.has(g));
+    processGroup(live);
+  }
+
+  const out = games.filter((g) => !doomed.has(g));
+  merged = games.length - out.length;
+
+  // 3) deterministic unique ids (idempotent: stable order + content-derived suffixes)
+  let regen = 0;
+  const seen = new Set<string>();
+  for (const g of out) {
+    let id = (g.id || "").trim();
+    if (!id || seen.has(id)) {
+      const base = makeId(g.title || "") || "game";
+      id = seen.has(base) ? `${base}-${HASH_BASE36(g.title || g.id || "")}` : base;
+      let guard = 0;
+      while (seen.has(id) && guard++ < 100) id = `${base}-${HASH_BASE36(g.title || "")}-${guard}`;
+      g.id = id;
+      regen++;
+    }
+    seen.add(id);
+  }
+
+  return { games: out, merged, regen };
+}
+
 // ── Steam enrichment for newly added PC titles ───────────────────────────────
 
 const STEAM_SEARCH_URL = (term: string) =>
@@ -1173,7 +1325,7 @@ export async function syncSources(params: {
   }
 
   // Rebuild the catalog from the merged index.
-  const rebuilt: Game[] = [];
+  let rebuilt: Game[] = [];
   let added = 0;
   let updated = 0;
   let unchanged = 0;
@@ -1242,6 +1394,15 @@ export async function syncSources(params: {
       rebuilt.push(existing);
       unchanged++;
     }
+  }
+
+  // Collapse duplicate rows + regenerate broken/colliding ids (deterministic).
+  const stabilized = stabilizeCatalog(rebuilt);
+  rebuilt = stabilized.games;
+  if (stabilized.merged > 0 || stabilized.regen > 0) {
+    console.log(
+      `[Sync] Clean: ${stabilized.merged} duplicate rows merged, ${stabilized.regen} ids regenerated`
+    );
   }
 
   rebuilt.sort((a, b) => a.title.localeCompare(b.title));
