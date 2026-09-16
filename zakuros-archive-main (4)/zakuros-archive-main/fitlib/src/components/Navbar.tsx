@@ -221,6 +221,8 @@ export const Navbar: React.FC = () => {
   const [genresOpen, setGenresOpen] = useState(false);
   const [showDropdown, setShowDropdown] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
+  const [scrollProgress, setScrollProgress] = useState(0);
 
   const navItems = [
     { label: "Games", path: "/browse" },
@@ -260,8 +262,33 @@ export const Navbar: React.FC = () => {
     setGenresOpen(false);
   }, [location.pathname, location.search]);
 
+  // Shrink + reading-progress bar while scrolling
+  useEffect(() => {
+    const onScroll = () => {
+      const y = window.scrollY;
+      setScrolled(y > 8);
+      const max = document.documentElement.scrollHeight - window.innerHeight;
+      setScrollProgress(max > 0 ? Math.min(1, Math.max(0, y / max)) : 0);
+    };
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
   return (
-    <header className="sticky top-0 z-50 w-full border-b border-white/5 bg-[#0a0a0c]/90 backdrop-blur-xl">
+    <header
+      className={`sticky top-0 z-50 w-full border-b backdrop-blur-xl transition-all duration-300 ${
+        scrolled
+          ? "border-white/10 bg-[#0a0a0c]/95 shadow-lg shadow-black/30"
+          : "border-white/5 bg-[#0a0a0c]/90"
+      }`}
+    >
+      {/* Reading progress */}
+      <span
+        aria-hidden
+        className="pointer-events-none absolute inset-x-0 top-0 z-10 h-[2px] origin-left bg-gradient-to-r from-rose-500 via-rose-400 to-transparent"
+        style={{ transform: `scaleX(${scrollProgress})` }}
+      />
       <div className="mx-auto flex h-14 max-w-7xl items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
         {/* Brand */}
         <Link to="/" className="flex items-center gap-2.5 transition hover:opacity-90">

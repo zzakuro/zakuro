@@ -76,7 +76,17 @@ class ErrorBoundary extends React.Component<
 
 function RoutedBoundary({ children }: { children: React.ReactNode }) {
   const location = useLocation();
-  return <ErrorBoundary key={location.pathname}>{children}</ErrorBoundary>;
+  return (
+    // Entrance animation keyed to the route + error isolation per path.
+    <motion.div
+      key={location.pathname}
+      initial={{ opacity: 0, y: 14 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.42, ease: [0.22, 1, 0.36, 1] }}
+    >
+      <ErrorBoundary key={location.pathname}>{children}</ErrorBoundary>
+    </motion.div>
+  );
 }
 
 export default function App() {
