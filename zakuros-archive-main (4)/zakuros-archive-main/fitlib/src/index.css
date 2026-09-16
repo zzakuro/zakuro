@@ -138,8 +138,58 @@ body::after {
   scrollbar-width: none;
 }
 
-/* Legacy carousel dot active state */
+/* Legcarousel dot active state */
 .carousel-dot-active {
   background-color: var(--color-accent) !important;
   box-shadow: 0 0 8px var(--color-accent);
+}
+
+/* ------------------------------------------------------------------ */
+/* Global button feel — every button animates on hover + press.        */
+/* Uses the individual `scale`/`box-shadow` properties so utilities    */
+/* like -translate-y (arrow keys, dropdowns) are never clobbered.      */
+/* ------------------------------------------------------------------ */
+button {
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+button:not(:disabled) {
+  cursor: pointer;
+}
+/* Smooth state changes are animated everywhere, not just where a class said so. */
+button {
+  transition: color 170ms ease,
+    background-color 170ms ease,
+    border-color 170ms ease,
+    box-shadow 170ms ease,
+    opacity 170ms ease,
+    filter 170ms ease,
+    scale 170ms cubic-bezier(0.4, 0, 0.2, 1),
+    transform 170ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+/* Universal soft hover highlight — no layout shift, applies to all buttons. */
+button:not(:disabled):hover {
+  box-shadow: inset 0 0 0 1000px rgba(255, 255, 255, 0.04);
+}
+/* Press feedback on every single click. */
+button:not(:disabled):active {
+  scale: 0.97;
+}
+@media (prefers-reduced-motion: reduce) {
+  button {
+    transition: none;
+  }
+  button:not(:disabled):active {
+    scale: 1;
+  }
+}
+
+/* Off-screen homepage sections skip paid layout/image work until scrolled near. */
+@supports (content-visibility: auto) {
+  #home_view section,
+  #browse_view section,
+  #game_detail_view section {
+    content-visibility: auto;
+    contain-intrinsic-size: auto 480px;
+  }
 }

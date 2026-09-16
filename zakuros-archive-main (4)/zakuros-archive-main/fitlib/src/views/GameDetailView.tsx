@@ -4,10 +4,10 @@ import {
   Download, Heart, ThumbsUp, Star, HardDrive,
   ShieldAlert, Monitor, Cpu, Server, Database, Share2,
   Sparkles, CheckCircle, ExternalLink, ArrowLeft, Gamepad2, Bookmark, X,
-  Loader2, Eye, CalendarClock, Library,
+  Loader2, Eye, CalendarClock, Library, ChevronLeft, ChevronRight, Play,
 } from "lucide-react";
 import { useGame } from "../lib/gameContext";
-import { Game } from "../types";
+import { Game, GameTrailer } from "../types";
 import { motion, AnimatePresence } from "motion/react";
 import { RatingPanel } from "../components/RatingPanel";
 import { GameComments } from "../components/GameComments";
@@ -28,19 +28,78 @@ export const GameDetailView: React.FC = () => {
   const [shotIdx, setShotIdx] = useState<number>(0);
   const [featBroken, setFeatBroken] = useState<boolean>(false);
   const [heroBroken, setHeroBroken] = useState<boolean>(false);
+  const [trailers, setTrailers] = useState<GameTrailer[]>([]);
+  const [activeTrailer, setActiveTrailer] = useState<GameTrailer | null>(null);
+
+  // Safe, hook-order-stable screenshot list (also used by the keyboard handler).
+  const shots = useMemo(() => {
+    if (!game) return [] as string[];
+    const s =
+      game.screenshots && game.screenshots.length > 0
+        ? game.screenshots
+        : game.screenshot
+          ? [game.screenshot]
+          : game.coverImage
+            ? [game.coverImage]
+            : [];
+    return s;
+  }, [game]);
 
   // Reset per-game UI state when navigating between game pages.
   useEffect(() => {
     setShotIdx(0);
     setFeatBroken(false);
     setHeroBroken(false);
+    setTrailers(game?.trailers || []);
+    setActiveTrailer(null);
     const keys = Object.keys(game?.systemRequirements ?? {});
     setReqOs((keys[0] as "windows" | "linux" | "mac") || "windows");
   }, [game?.id]);
 
+  // Pull live Steam metadata once on open so trailers appear even before
+  // the offline grind has persisted them to disk.
   useEffect(() => {
-    setFeatBroken(false);
-  }, [shotIdx]);
+    if (!game?.id) return;
+    const ac = new AbortController();
+    (async () => {
+      try {
+        const res = await fetch(`/api/games/${encodeURIComponent(game.id)}/metadata`, { signal: ac.signal });
+        if (!res.ok) return;
+        const meta = await res.json();
+        if (meta.trailers?.length) setTrailers(meta.trailers);
+      } catch {
+        // ignore network/abort failures — trailers just stay as they were
+      }
+    })();
+    return () => ac.abort();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [game?.id]);
+
+  // Keep the gallery index in range if the screenshot list shrinks.
+  useEffect(() => {
+    if (shots.length === 0) return;
+    setShotIdx((i) => Math.min(i, shots.length - 1));
+  }, [shots.length]);
+
+  // Arrow keys navigate the gallery; Escape closes the trailer lightbox.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (activeTrailer) {
+        if (e.key === "Escape") setActiveTrailer(null);
+        return;
+      }
+      if (shots.length <= 1) return;
+      if (e.key === "ArrowRight") {
+        setShotIdx((i) => (i + 1) % shots.length);
+        setFeatBroken(false);
+      } else if (e.key === "ArrowLeft") {
+        setShotIdx((i) => (i - 1 + shots.length) % shots.length);
+        setFeatBroken(false);
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [shots.length, activeTrailer]);
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
@@ -109,14 +168,7 @@ export const GameDetailView: React.FC = () => {
   const year = (releaseDate || "").match(/(19|20)\d{2}/)?.[0] ?? releaseDate;
 
   // Screenshot gallery (fall back to a single cover in a wide frame).
-  const screenshots =
-    game.screenshots && game.screenshots.length > 0
-      ? game.screenshots
-      : game.screenshot
-        ? [game.screenshot]
-        : game.coverImage
-          ? [game.coverImage]
-          : [];
+  const screenshots = shots;
   const featureShot = screenshots[shotIdx % Math.max(screenshots.length, 1)] || "";
 
   // Hero backdrop: Steam library hero art when known, else first screenshot.
@@ -287,17 +339,69 @@ export const GameDetailView: React.FC = () => {
           <section className="space-y-12 lg:col-span-2">
             {/* Screenshot gallery */}
             <div>
-              <div className="relative aspect-video w-full overflow-hidden rounded-2xl bg-[#0d0d10] ring-1 ring-white/[0.08]">
-                {featureShot && !featBroken ? (
-                  <img
-                    src={featureShot}
-                    alt={`${title} screenshot ${shotIdx + 1}`}
-                    referrerPolicy="no-referrer"
-                    className="h-full w-full object-cover"
-                    onError={() => setFeatBroken(true)}
-                  />
-                ) : (
-                  <PlaceholderCover title={title} />
+              <div className="group relative aspect-video w-full overflow-hidden rounded-2xl bg-[#0d0d10] ring-1 ring-white/[0.08]">
+                <div className="flex h-full w-full items-center justify-center">
+                  {featureShot && !featBroken ? (
+                    <img
+                      src={featureShot}
+                      alt={`${title} screenshot ${shotIdx + 1}`}
+                      referrerPolicy="no-referrer"
+                      fetchPriority="high"
+                      decoding="async"
+                      className="h-full w-full object-cover"
+                      onError={() => setFeatBroken(true)}
+                    />
+                  ) : (
+                    <PlaceholderCover title={title} />
+                  )}
+                </div>
+
+                {/* Counter chip */}
+                {screenshots.length > 1 && (
+                  <span className="pointer-events-none absolute bottom-3 right-3 z-10 rounded-md bg-black/70 px-2 py-1 font-mono text-[10px] font-bold text-zinc-200 ring-1 ring-white/10 backdrop-blur-sm">
+                    {shotIdx + 1} / {screenshots.length}
+                  </span>
+                )}
+
+                {/* Prev / Next arrows */}
+                {screenshots.length > 1 && (
+                  <>
+                    <button
+                      onClick={() => {
+                        setShotIdx((i) => (i - 1 + screenshots.length) % screenshots.length);
+                        setFeatBroken(false);
+                      }}
+                      aria-label="Previous screenshot"
+                      className="absolute left-3 top-1/2 z-20 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full border border-white/15 bg-black/60 text-zinc-200 backdrop-blur-md transition hover:border-rose-500/50 hover:bg-black/80 hover:text-rose-300"
+                    >
+                      <ChevronLeft className="h-5 w-5" />
+                    </button>
+                    <button
+                      onClick={() => {
+                        setShotIdx((i) => (i + 1) % screenshots.length);
+                        setFeatBroken(false);
+                      }}
+                      aria-label="Next screenshot"
+                      className="absolute right-3 top-1/2 z-20 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full border border-white/15 bg-black/60 text-zinc-200 backdrop-blur-md transition hover:border-rose-500/50 hover:bg-black/80 hover:text-rose-300"
+                    >
+                      <ChevronRight className="h-5 w-5" />
+                    </button>
+                  </>
+                )}
+
+                {screenshots.length > 1 && (
+                  <div className="absolute bottom-3 left-3 z-10 flex gap-1.5">
+                    {screenshots.map((_, i) => (
+                      <button
+                        key={i}
+                        onClick={() => setShotIdx(i)}
+                        aria-label={`Go to screenshot ${i + 1}`}
+                        className={`h-1 rounded-full transition-all duration-300 ${
+                          i === shotIdx ? "w-6 bg-rose-500" : "w-3 bg-white/25 hover:bg-white/50"
+                        }`}
+                      />
+                    ))}
+                  </div>
                 )}
               </div>
 
@@ -306,7 +410,10 @@ export const GameDetailView: React.FC = () => {
                   {screenshots.map((s, i) => (
                     <button
                       key={i}
-                      onClick={() => setShotIdx(i)}
+                      onClick={() => {
+                        setShotIdx(i);
+                        setFeatBroken(false);
+                      }}
                       aria-label={`Show screenshot ${i + 1}`}
                       className={`h-16 w-28 shrink-0 overflow-hidden rounded-lg bg-zinc-900 ring-1 transition ${
                         i === shotIdx
@@ -314,12 +421,52 @@ export const GameDetailView: React.FC = () => {
                           : "ring-white/10 opacity-60 hover:opacity-100"
                       }`}
                     >
-                      <img src={s} alt="" loading="lazy" referrerPolicy="no-referrer" className="h-full w-full object-cover" />
+                      <img src={s} alt="" loading="lazy" decoding="async" referrerPolicy="no-referrer" className="h-full w-full object-cover" />
                     </button>
                   ))}
                 </div>
               )}
             </div>
+
+            {/* Trailers — compact clickable cards that open a lightbox */}
+            {trailers.filter((t) => t?.src).length > 0 && (
+              <div id="trailers">
+                <h2 className="mb-4 font-display text-2xl font-bold tracking-tight text-white">
+                  Trailers
+                </h2>
+                <div className="no-scrollbar -mx-1 flex gap-3 overflow-x-auto px-1 pb-1">
+                  {trailers.filter((t) => t?.src).map((t, idx) => (
+                    <button
+                      key={idx}
+                      onClick={() => setActiveTrailer(t)}
+                      className="group relative aspect-video w-52 shrink-0 overflow-hidden rounded-xl bg-[#0d0d10] text-left ring-1 ring-white/10 transition hover:-translate-y-0.5 hover:ring-rose-500/50 hover:shadow-xl hover:shadow-black"
+                    >
+                      {t.thumb ? (
+                        <img
+                          src={t.thumb}
+                          alt={t.name || `Trailer ${idx + 1}`}
+                          loading="lazy"
+                          decoding="async"
+                          referrerPolicy="no-referrer"
+                          className="h-full w-full object-cover opacity-80 transition duration-300 group-hover:opacity-100 group-hover:scale-[1.04]"
+                        />
+                      ) : (
+                        <div className="h-full w-full bg-gradient-to-br from-zinc-800 to-black" />
+                      )}
+                      <span className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 transition duration-300 group-hover:opacity-100" />
+                      <span className="absolute inset-0 flex items-center justify-center">
+                        <span className="flex h-10 w-10 items-center justify-center rounded-full bg-rose-500/90 text-white shadow-lg shadow-rose-500/30 ring-1 ring-white/20 transition duration-300 group-hover:scale-110">
+                          <Play className="h-4 w-4 fill-current" />
+                        </span>
+                      </span>
+                      <span className="absolute inset-x-0 bottom-0 p-2.5 font-mono text-[10px] font-bold text-zinc-200 [text-shadow:0_1px_2px_rgba(0,0,0,.9)]">
+                        {t.name || `Trailer ${idx + 1}`}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* About this game */}
             <div id="about_game">
@@ -673,6 +820,50 @@ export const GameDetailView: React.FC = () => {
           </section>
         )}
       </main>
+
+      {/* Trailer lightbox */}
+      <AnimatePresence>
+        {activeTrailer && (
+          <div className="fixed inset-0 z-[70] flex items-center justify-center p-4">
+            <motion.button
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setActiveTrailer(null)}
+              aria-label="Close trailer"
+              className="absolute inset-0 cursor-default bg-black/90 backdrop-blur-sm"
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 15 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 15 }}
+              transition={{ duration: 0.18, ease: "easeOut" }}
+              className="relative z-10 w-full max-w-3xl overflow-hidden rounded-2xl border border-white/10 bg-black shadow-2xl shadow-black"
+            >
+              <button
+                onClick={() => setActiveTrailer(null)}
+                className="absolute right-3 top-3 z-20 rounded-full bg-black/70 p-1.5 text-zinc-300 ring-1 ring-white/10 transition hover:text-white"
+              >
+                <X className="h-4 w-4" />
+              </button>
+              <video
+                src={activeTrailer.src}
+                poster={activeTrailer.thumb}
+                controls
+                autoPlay
+                playsInline
+                className="aspect-video w-full bg-black"
+              />
+              <div className="px-4 py-3">
+                <span className="font-mono text-[10px] font-bold uppercase tracking-widest text-rose-400">
+                  {title}
+                </span>
+                <p className="mt-0.5 text-sm font-semibold text-zinc-200">{activeTrailer.name || "Trailer"}</p>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
       {/* Download modal */}
       <AnimatePresence>

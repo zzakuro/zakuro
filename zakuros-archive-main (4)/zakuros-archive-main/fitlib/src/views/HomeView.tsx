@@ -190,6 +190,8 @@ export const HomeView: React.FC = () => {
                   src={heroSrc}
                   alt={activeCarouselGame.title}
                   referrerPolicy="no-referrer"
+                  fetchPriority="high"
+                  decoding="async"
                   initial={{ scale: 1.06 }}
                   animate={{ scale: 1 }}
                   transition={{ duration: 9, ease: "easeOut" }}
@@ -329,7 +331,7 @@ export const HomeView: React.FC = () => {
                 }`}
               >
                 {g.coverImage ? (
-                  <img src={g.coverImage} alt={g.title} className="h-full w-full object-cover" />
+                  <img src={g.coverImage} alt={g.title} loading="lazy" decoding="async" className="h-full w-full object-cover" />
                 ) : (
                   <PlaceholderCover title={g.title} className="p-2 [&_span:first-child]:text-sm" />
                 )}
@@ -393,6 +395,7 @@ export const HomeView: React.FC = () => {
                       src={g.coverImage}
                       alt={g.title}
                       loading="lazy"
+                      decoding="async"
                       className="h-full w-full object-cover transition duration-300 group-hover:scale-110"
                     />
                   </span>
