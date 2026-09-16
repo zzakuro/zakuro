@@ -186,8 +186,8 @@ export const HomeView: React.FC = () => {
               transition={{ duration: 0.8 }}
               className="absolute inset-0"
             >
-              <div className="absolute inset-0 z-10 bg-gradient-to-t from-[#09090b] via-[#09090b]/40 to-transparent" />
-              <div className="absolute inset-0 z-10 bg-gradient-to-r from-[#09090b]/90 via-transparent to-[#09090b]/20" />
+              <div className="absolute inset-0 z-10 bg-gradient-to-t from-[#09090b] via-[#09090b]/35 via-45% to-transparent" />
+              <div className="absolute inset-0 z-10 bg-gradient-to-r from-[#09090b]/85 via-[#09090b]/20 via-40% to-[#09090b]/10" />
               {showHeroBackdrop ? (
                 <motion.div
                   initial={{ opacity: 0 }}
@@ -215,9 +215,9 @@ export const HomeView: React.FC = () => {
             </motion.div>
           </AnimatePresence>
 
-          {/* Ambient color wash */}
-          <div className="aurora-blob bottom-[-25%] left-[-12%] h-[42vh] w-[42vw] bg-rose-600/20" />
-          <div className="aurora-blob right-[-15%] top-[-35%] h-[55vh] w-[36vw] bg-rose-500/15" />
+          {/* Ambient color wash — long, diffuse fade so it reads as atmosphere, not a patch */}
+          <div className="aurora-blob aurora-blob-soft bottom-[-30%] left-[-14%] h-[55vh] w-[48vw] bg-rose-600/10" />
+          <div className="aurora-blob aurora-blob-soft right-[-18%] top-[-38%] h-[65vh] w-[42vw] bg-rose-500/[0.08]" />
 
           <button
             onClick={() => setCarouselIndex((p) => (p - 1 + carouselGames.length) % carouselGames.length)}

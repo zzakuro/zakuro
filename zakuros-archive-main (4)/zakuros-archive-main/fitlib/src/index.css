@@ -307,6 +307,10 @@ body::before {
 .aurora-blob:nth-child(3) {
   animation-delay: -9s;
 }
+.aurora-blob-soft {
+  filter: blur(150px);
+  animation-duration: 22s;
+}
 
 /* Staggered card entrance (governed by inline animation-delay). */
 @keyframes card-rise {

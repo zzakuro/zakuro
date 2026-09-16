@@ -33,9 +33,9 @@ export const PageHero: React.FC<{
   actions?: React.ReactNode;
 }> = ({ eyebrow, title, lead, children, actions }) => (
   <section className="relative mx-auto max-w-3xl overflow-hidden pb-10 pt-16 text-center">
-    <div className="aurora-blob left-[-10%] top-[-30%] h-64 w-64 bg-rose-500/15" />
-    <div className="aurora-blob right-[-12%] top-[10%] h-72 w-72 bg-rose-500/10" />
-    <div className="aurora-blob bottom-[-40%] left-1/3 h-64 w-64 bg-violet-500/10" />
+    <div className="aurora-blob aurora-blob-soft left-[-22%] top-[-40%] h-[55vh] w-[42vw] bg-rose-500/[0.09]" />
+    <div className="aurora-blob aurora-blob-soft right-[-24%] top-[5%] h-[60vh] w-[40vw] bg-violet-500/[0.06]" />
+    <div className="aurora-blob aurora-blob-soft bottom-[-45%] left-[28%] h-[55vh] w-[45vw] bg-rose-500/[0.05]" />
 
     <Reveal className="relative">
       <span className="mb-5 inline-flex items-center gap-2 rounded-full border border-rose-500/25 bg-rose-500/10 px-3.5 py-1.5 font-mono text-[10px] font-bold uppercase tracking-[0.2em] text-rose-400">
