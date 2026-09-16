@@ -20,9 +20,20 @@ export const BrowseView: React.FC = () => {
   const ITEMS_PER_PAGE = 60;
 
   const queryParam = searchParams.get("q") || "";
+  const genreParam = searchParams.get("genre") || "";
   useEffect(() => {
     if (queryParam) setSearchQuery(queryParam);
   }, [queryParam, setSearchQuery]);
+
+  // Deep-link genre: /browse?genre=X selects that genre in the filter panel.
+  // Clears a stale text search so navigation actually lands on the genre.
+  useEffect(() => {
+    if (genreParam) {
+      setSelectedGenre(genreParam);
+      setSidebarOpen(true);
+      if (!queryParam) setSearchQuery("");
+    }
+  }, [genreParam, queryParam, setSearchQuery]);
 
   useEffect(() => {
     setPage(1);

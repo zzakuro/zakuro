@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { Search, User, LogOut, X, TrendingUp, CornerDownLeft, ChevronDown } from "lucide-react";
+import { Search, User, LogOut, X, TrendingUp, CornerDownLeft, ChevronDown, Eye, EyeOff } from "lucide-react";
 import { useGame } from "../lib/gameContext";
 import { Game } from "../types";
 import { motion, AnimatePresence } from "motion/react";
@@ -215,7 +215,7 @@ const SearchOverlay: React.FC<{ open: boolean; onClose: () => void }> = ({ open,
 /*  Navbar                                                             */
 /* ------------------------------------------------------------------ */
 export const Navbar: React.FC = () => {
-  const { games, user, logoutUser } = useGame();
+  const { games, user, logoutUser, nsfwCount, showNSFW, setShowNSFW } = useGame();
   const location = useLocation();
   const navigate = useNavigate();
   const [genresOpen, setGenresOpen] = useState(false);
@@ -236,7 +236,11 @@ export const Navbar: React.FC = () => {
 
   const goBrowser = (genre: string) => {
     setGenresOpen(false);
-    navigate(`/browse?q=${encodeURIComponent(genre)}`);
+    if (genre) {
+      navigate(`/browse?genre=${encodeURIComponent(genre)}`);
+    } else {
+      navigate(`/browse`);
+    }
   };
 
   // Global Ctrl/Cmd+K shortcut opens the search overlay
@@ -366,6 +370,27 @@ export const Navbar: React.FC = () => {
             <kbd className="hidden items-center gap-0.5 rounded border border-white/10 bg-black/40 px-1.5 py-0.5 font-mono text-[9px] text-zinc-500 xl:flex">
               Ctrl&nbsp;K
             </kbd>
+          </button>
+
+          <button
+            onClick={() => setShowNSFW(!showNSFW)}
+            title={
+              showNSFW
+                ? "NSFW games are currently visible — click to hide them"
+                : `${nsfwCount.toLocaleString()} NSFW titles hidden — click to show them`
+            }
+            aria-pressed={showNSFW}
+            className={`relative flex h-8 shrink-0 items-center gap-1.5 rounded-full border px-3 text-[11px] font-bold transition sm:px-3.5 ${
+              showNSFW
+                ? "border-rose-500/50 bg-rose-500/15 text-rose-300"
+                : "border-amber-500/50 bg-amber-500/10 text-amber-300"
+            }`}
+          >
+            {showNSFW ? <Eye className="h-3.5 w-3.5" /> : <EyeOff className="h-3.5 w-3.5" />}
+            <span className="hidden md:inline">{showNSFW ? "NSFW On" : "NSFW Hidden"}</span>
+            <span
+              className={`h-1.5 w-1.5 rounded-full ${showNSFW ? "bg-rose-400" : "bg-amber-400"}`}
+            />
           </button>
 
           <ThemeSwitcher />

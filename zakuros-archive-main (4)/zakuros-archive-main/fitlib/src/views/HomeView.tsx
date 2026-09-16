@@ -433,7 +433,7 @@ export const HomeView: React.FC = () => {
               return (
                 <button
                   key={genre}
-                  onClick={() => navigate(`/browse?q=${encodeURIComponent(genre)}`)}
+                  onClick={() => navigate(`/browse?genre=${encodeURIComponent(genre)}`)}
                   className="group relative h-36 overflow-hidden rounded-2xl text-left ring-1 ring-white/[0.06] transition hover:-translate-y-0.5 hover:ring-rose-500/40 hover:shadow-2xl hover:shadow-black"
                   style={{
                     background: `linear-gradient(135deg, hsl(${hue} 55% 24%), hsl(${hue2} 60% 9%) 65%)`,
