@@ -280,12 +280,12 @@ export const Navbar: React.FC = () => {
       {/* Reading progress — a hairline along the very top of the viewport */}
       <span
         aria-hidden
-        className="pointer-events-none fixed inset-x-0 top-0 z-10 h-[2px] origin-left bg-gradient-to-r from-rose-500 via-rose-400 to-transparent"
+        className="pointer-events-none fixed inset-x-0 top-0 z-[60] h-[2px] origin-left bg-gradient-to-r from-rose-500 via-rose-400 to-transparent"
         style={{ transform: `scaleX(${scrollProgress})` }}
       />
 
       {/* Floating glass pill nav — the site chrome in one seated capsule */}
-      <div className="mx-auto flex max-w-[1200px] items-center gap-3 px-3 pt-3 pb-1.5 sm:px-5">
+      <div className="mx-auto flex max-w-[1200px] items-center gap-3 px-3 sm:px-5">
         <div
           className={`flex h-12 w-full items-center justify-between gap-2 rounded-full border bg-[#0a0a0c]/85 px-2.5 backdrop-blur-2xl transition-all duration-300 sm:gap-3 sm:px-3 ${
             scrolled
