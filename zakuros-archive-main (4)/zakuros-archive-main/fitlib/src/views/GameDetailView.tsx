@@ -81,11 +81,23 @@ export const GameDetailView: React.FC = () => {
     setShotIdx((i) => Math.min(i, shots.length - 1));
   }, [shots.length]);
 
+  // Trailers with a playable source — these are what the lightbox can cycle through.
+  const playableTrailers = useMemo(() => trailers.filter((t) => t?.src), [trailers]);
+
   // Arrow keys navigate the gallery; Escape closes the trailer lightbox.
+  // While a trailer is open, arrows cycle through the playable trailer list.
   useEffect(() => {
+    const stepTrailer = (dir: 1 | -1) => {
+      if (playableTrailers.length <= 1) return;
+      const i = playableTrailers.findIndex((t) => t === activeTrailer || t.src === activeTrailer?.src);
+      const next = playableTrailers[(i + dir + playableTrailers.length) % playableTrailers.length];
+      if (next) setActiveTrailer(next);
+    };
     const onKey = (e: KeyboardEvent) => {
       if (activeTrailer) {
         if (e.key === "Escape") setActiveTrailer(null);
+        else if (e.key === "ArrowRight") stepTrailer(1);
+        else if (e.key === "ArrowLeft") stepTrailer(-1);
         return;
       }
       if (shots.length <= 1) return;
@@ -99,7 +111,7 @@ export const GameDetailView: React.FC = () => {
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [shots.length, activeTrailer]);
+  }, [shots.length, activeTrailer, playableTrailers]);
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
@@ -429,13 +441,13 @@ export const GameDetailView: React.FC = () => {
             </div>
 
             {/* Trailers — compact clickable cards that open a lightbox */}
-            {trailers.filter((t) => t?.src).length > 0 && (
+            {playableTrailers.length > 0 && (
               <div id="trailers">
                 <h2 className="mb-4 font-display text-2xl font-bold tracking-tight text-white">
                   Trailers
                 </h2>
                 <div className="no-scrollbar -mx-1 flex gap-3 overflow-x-auto px-1 pb-1">
-                  {trailers.filter((t) => t?.src).map((t, idx) => (
+                  {playableTrailers.map((t, idx) => (
                     <button
                       key={idx}
                       onClick={() => setActiveTrailer(t)}
@@ -854,7 +866,38 @@ export const GameDetailView: React.FC = () => {
               >
                 <X className="h-4 w-4" />
               </button>
+
+              {playableTrailers.length > 1 && (
+                <>
+                  <button
+                    onClick={() => {
+                      const i = playableTrailers.findIndex((t) => t === activeTrailer || t.src === activeTrailer?.src);
+                      const prev = playableTrailers[(i - 1 + playableTrailers.length) % playableTrailers.length];
+                      if (prev) setActiveTrailer(prev);
+                    }}
+                    aria-label="Previous trailer"
+                    className="absolute left-3 top-1/2 z-20 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full border border-white/15 bg-black/70 text-zinc-200 backdrop-blur-md transition hover:border-rose-500/50 hover:text-rose-300"
+                  >
+                    <ChevronLeft className="h-5 w-5" />
+                  </button>
+                  <button
+                    onClick={() => {
+                      const i = playableTrailers.findIndex((t) => t === activeTrailer || t.src === activeTrailer?.src);
+                      const next = playableTrailers[(i + 1) % playableTrailers.length];
+                      if (next) setActiveTrailer(next);
+                    }}
+                    aria-label="Next trailer"
+                    className="absolute right-3 top-1/2 z-20 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full border border-white/15 bg-black/70 text-zinc-200 backdrop-blur-md transition hover:border-rose-500/50 hover:text-rose-300"
+                  >
+                    <ChevronRight className="h-5 w-5" />
+                  </button>
+                  <span className="pointer-events-none absolute bottom-3 right-3 z-20 rounded-md bg-black/70 px-2 py-1 font-mono text-[10px] font-bold text-zinc-200 ring-1 ring-white/10 backdrop-blur-sm">
+                    {(playableTrailers.findIndex((t) => t === activeTrailer || t.src === activeTrailer?.src) + 1) || 1} / {playableTrailers.length}
+                  </span>
+                </>
+              )}
               <video
+                key={activeTrailer.src}
                 src={activeTrailer.src}
                 poster={activeTrailer.thumb}
                 controls
