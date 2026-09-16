@@ -18,6 +18,7 @@ const AboutView = lazy(() => import("./views/AboutView").then((m) => ({ default:
 const HelpView = lazy(() => import("./views/HelpView").then((m) => ({ default: m.HelpView })));
 const DonateView = lazy(() => import("./views/DonateView").then((m) => ({ default: m.DonateView })));
 const AuthView = lazy(() => import("./views/AuthView").then((m) => ({ default: m.AuthView })));
+const SourcesView = lazy(() => import("./views/SourcesView").then((m) => ({ default: m.SourcesView })));
 
 function RouteFallback() {
   return (
@@ -93,6 +94,7 @@ export default function App() {
               <Route path="/game/:id" element={<GameDetailView />} />
               <Route path="/about" element={<AboutView />} />
               <Route path="/help" element={<HelpView />} />
+              <Route path="/sources" element={<SourcesView />} />
               <Route path="/donate" element={<DonateView />} />
               <Route path="/login" element={<AuthView />} />
               <Route path="/register" element={<AuthView />} />
@@ -125,6 +127,7 @@ export default function App() {
                     <li><Link to="/browse" className="transition hover:text-rose-400">Library</Link></li>
                     <li><Link to="/about" className="transition hover:text-rose-400">FAQ & safety</Link></li>
                     <li><Link to="/help" className="transition hover:text-rose-400">Help & guides</Link></li>
+                    <li><Link to="/sources" className="transition hover:text-rose-400">Our sources</Link></li>
                     <li><Link to="/donate" className="transition hover:text-rose-400">Support the archive</Link></li>
                   </ul>
                 </div>
