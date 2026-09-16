@@ -362,6 +362,19 @@ async function startServer() {
     });
   });
 
+  // Public list of indexed sources — names only (no URLs exposed).
+  app.get("/api/sources", (_req, res) => {
+    try {
+      const sources = readSourcesConfig(SOURCES_CONFIG_PATH)
+        .filter((s) => s.enabled)
+        .map((s) => ({ name: s.name, category: s.category }));
+      res.json({ total: sources.length, sources });
+    } catch (e: any) {
+      console.error("[Sources] Failed to list sources:", e.message);
+      res.status(500).json({ error: "Failed to list sources." });
+    }
+  });
+
   // A. Get Games Catalog (served from in-memory cache, with search/pagination)
   app.get("/api/games", (req, res) => {
     try {
