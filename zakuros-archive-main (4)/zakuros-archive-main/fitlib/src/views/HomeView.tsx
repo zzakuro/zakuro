@@ -358,39 +358,65 @@ export const HomeView: React.FC = () => {
         </section>
       )}
 
-      <main className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        {/* 2. Latest releases rail */}
-        <section className="mt-14">
-          <SectionHeader
-            eyebrow="✦ Latest Games"
-            title="Latest Releases"
-            action={{ label: "View all games", to: "/browse" }}
-          />
-          <Rail>
-            {latestGames.map((g) => (
-              <div key={g.id} className="w-48 shrink-0 sm:w-52">
-                <GameCard game={g} badge={isNew(g) ? "NEW" : isUpdated(g) ? "UPDATED" : undefined} />
-              </div>
-            ))}
-          </Rail>
-        </section>
-
-        {/* 3. Trending grid */}
-        <section className="mt-16">
-          <SectionHeader
-            eyebrow="✦ Trending Games"
-            title="Trending Now"
-            action={{ label: "Browse top", to: "/browse?sort=Most%20Popular" }}
-          />
-          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
-            {popularGames.map((g) => (
-              <GameCard key={g.id} game={g} badge="HOT" />
+      {/* Genre ticker band */}
+      {marqueeGenres.length > 0 && (
+        <section className="marquee-paused marquee-mask relative overflow-hidden border-b border-white/5 bg-[#0b0b0e]/80 py-3">
+          <div className="animate-marquee flex w-max items-center gap-8 whitespace-nowrap px-4">
+            {[...marqueeGenres, ...marqueeGenres].map(([genre, count], i) => (
+              <button
+                key={`${genre}-${i}`}
+                onClick={() => navigate(`/browse?genre=${encodeURIComponent(genre)}`)}
+                className="group flex items-center gap-2 font-mono text-xs text-zinc-500 transition hover:text-rose-400"
+              >
+                <span className="font-bold uppercase tracking-widest">{genre}</span>
+                <span className="text-[10px] text-zinc-700 transition group-hover:text-rose-500/70">
+                  {count.toLocaleString()}
+                </span>
+                <span className="text-rose-500/40">✦</span>
+              </button>
             ))}
           </div>
         </section>
+      )}
+
+      <main className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        {/* 2. Latest releases rail */}
+        <Reveal>
+          <section className="mt-14">
+            <SectionHeader
+              eyebrow="✦ Latest Games"
+              title="Latest Releases"
+              action={{ label: "View all games", to: "/browse" }}
+            />
+            <Rail>
+              {latestGames.map((g) => (
+                <div key={g.id} className="w-48 shrink-0 sm:w-52">
+                  <GameCard game={g} badge={isNew(g) ? "NEW" : isUpdated(g) ? "UPDATED" : undefined} />
+                </div>
+              ))}
+            </Rail>
+          </section>
+        </Reveal>
+
+        {/* 3. Trending grid */}
+        <Reveal delay={0.05}>
+          <section className="mt-16">
+            <SectionHeader
+              eyebrow="✦ Trending Games"
+              title="Trending Now"
+              action={{ label: "Browse top", to: "/browse?sort=Most%20Popular" }}
+            />
+            <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
+              {popularGames.map((g) => (
+                <GameCard key={g.id} game={g} badge="HOT" />
+              ))}
+            </div>
+          </section>
+        </Reveal>
 
         {/* 4. Top rated leaderboard */}
-        <section className="mt-16">
+        <Reveal delay={0.05}>
+          <section className="mt-16">
           <SectionHeader
             eyebrow="✦ Critically Acclaimed"
             title="Top Rated"
@@ -437,10 +463,11 @@ export const HomeView: React.FC = () => {
               </Link>
             ))}
           </div>
-        </section>
+        </Reveal>
 
         {/* 5. Featured Collections */}
-        <section className="mt-16">
+        <Reveal delay={0.05}>
+          <section className="mt-16">
           <SectionHeader
             eyebrow="✦ Featured Collections"
             title="Browse by Genre"
@@ -460,6 +487,8 @@ export const HomeView: React.FC = () => {
                   }}
                 >
                   <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent" />
+                  <div className="absolute inset-0 opacity-0 transition-opacity duration-300 group-hover:opacity-100 bg-[radial-gradient(120%_120%_at_20%_0%,rgba(255,255,255,0.16),transparent_55%)]" />
+                  <div className="absolute -inset-px opacity-0 transition-opacity duration-300 group-hover:opacity-100 bg-[conic-gradient(from_180deg_at_50%_-20%,transparent_0deg,rgba(244,63,94,0.35)_120deg,transparent_260deg)]" />
                   <div className="relative z-10 flex h-full flex-col justify-between p-5">
                     <span className="font-mono text-[9px] font-bold uppercase tracking-[0.2em] text-white/50">
                       Collection
@@ -477,22 +506,25 @@ export const HomeView: React.FC = () => {
             })}
           </div>
         </section>
+        </Reveal>
 
         {/* 6. New releases rail */}
-        <section className="mt-16">
-          <SectionHeader
-            eyebrow="✦ Fresh Off The Press"
-            title="New Releases"
-            action={{ label: "View all", to: "/browse" }}
-          />
-          <Rail>
-            {newReleases.map((g) => (
-              <div key={g.id} className="w-48 shrink-0 sm:w-52">
-                <GameCard game={g} badge={isNew(g) ? "NEW" : undefined} />
-              </div>
-            ))}
-          </Rail>
-        </section>
+        <Reveal delay={0.05}>
+          <section className="mt-16">
+            <SectionHeader
+              eyebrow="✦ Fresh Off The Press"
+              title="New Releases"
+              action={{ label: "View all", to: "/browse" }}
+            />
+            <Rail>
+              {newReleases.map((g) => (
+                <div key={g.id} className="w-48 shrink-0 sm:w-52">
+                  <GameCard game={g} badge={isNew(g) ? "NEW" : undefined} />
+                </div>
+              ))}
+            </Rail>
+          </section>
+        </Reveal>
       </main>
 
       {error && !loading && (

@@ -66,6 +66,14 @@ export const GameCard: React.FC<GameCardProps> = ({ game, badge }) => {
 
   const showPlaceholder = !game.coverImage || imgFailed;
 
+  // Score-coloured rating: high scores read green/gold, mid amber, rest brand rose.
+  const ratingTone =
+    game.rating >= 85
+      ? "text-emerald-400 [&>svg]:fill-emerald-400 [&>svg]:text-emerald-400"
+      : game.rating >= 70
+        ? "text-amber-400 [&>svg]:fill-amber-400 [&>svg]:text-amber-400"
+        : "text-rose-400 [&>svg]:fill-rose-400 [&>svg]:text-rose-400";
+
   return (
     <Link
       to={`/game/${game.id}`}
@@ -89,6 +97,9 @@ export const GameCard: React.FC<GameCardProps> = ({ game, badge }) => {
 
         {/* Bottom scrim for contrast */}
         <div className="pointer-events-none absolute inset-x-0 bottom-0 h-2/5 bg-gradient-to-t from-[#0d0d10]/80 to-transparent" />
+
+        {/* Shine sweep on hover */}
+        <div className="pointer-events-none absolute left-[-75%] top-0 h-full w-1/2 -skew-x-[20deg] bg-gradient-to-r from-transparent via-white/15 to-transparent opacity-0 transition-all duration-700 ease-out group-hover:left-full group-hover:opacity-100" />
 
         {/* NEW / HOT / UPDATED badge */}
         {badge && (
@@ -139,8 +150,8 @@ export const GameCard: React.FC<GameCardProps> = ({ game, badge }) => {
           {game.title}
         </h3>
         <div className="flex items-center gap-2 text-[10px]">
-          <span className="flex shrink-0 items-center gap-1 font-bold text-rose-400">
-            <Star className="h-3 w-3 fill-rose-400 text-rose-400" />
+          <span className={`flex shrink-0 items-center gap-1 text-[10px] font-bold ${ratingTone}`}>
+            <Star className="h-3 w-3" />
             {game.rating > 0 ? `${game.rating}%` : "—"}
           </span>
           <span className="truncate font-medium capitalize text-zinc-500">
