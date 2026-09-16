@@ -7,12 +7,8 @@ import {
   ChevronRight,
   ChevronLeft,
   Play,
-  Globe,
-  Flame,
-  Database,
   ArrowRight,
   Sparkles,
-  Layers,
 } from "lucide-react";
 import { useGame } from "../lib/gameContext";
 import { GameCard, PlaceholderCover } from "../components/GameCard";
@@ -26,33 +22,6 @@ const daysSince = (iso: string): number => {
 const isNew = (g: Game) => daysSince(g.releaseDate) <= 120;
 const isUpdated = (g: Game) => daysSince(g.stats.updatedAt) <= 30;
 
-const compactNum = (v: number): string => {
-  if (v >= 1_000_000) return `${(v / 1_000_000).toFixed(1)}M`;
-  if (v >= 10_000) return `${(v / 1000).toFixed(0)}k`;
-  return v.toLocaleString();
-};
-
-const AnimatedNumber: React.FC<{ value: number; compact?: boolean; duration?: number }> = ({
-  value,
-  compact = false,
-  duration = 900,
-}) => {
-  const [current, setCurrent] = useState(0);
-  useEffect(() => {
-    let start: number | null = null;
-    let raf = 0;
-    const step = (ts: number) => {
-      if (!start) start = ts;
-      const progress = Math.min((ts - start) / duration, 1);
-      setCurrent(Math.floor(progress * value));
-      if (progress < 1) raf = requestAnimationFrame(step);
-    };
-    raf = requestAnimationFrame(step);
-    return () => cancelAnimationFrame(raf);
-  }, [value, duration]);
-  return <span>{compact ? compactNum(current) : current.toLocaleString()}</span>;
-};
-
 const SectionHeader: React.FC<{
   eyebrow: string;
   title: React.ReactNode;
@@ -60,11 +29,11 @@ const SectionHeader: React.FC<{
 }> = ({ eyebrow, title, action }) => (
   <div className="mb-5 flex items-end justify-between gap-4">
     <div>
-      <p className="mb-1.5 flex items-center gap-2 font-mono text-[10px] font-bold uppercase tracking-[0.2em] text-rose-400">
-        <span className="h-1 w-1 rounded-full bg-rose-400" />
+      <p className="mb-1.5 flex items-center gap-1.5 font-mono text-[10px] font-bold uppercase tracking-[0.2em] text-rose-400">
+        <Sparkles className="h-3 w-3" />
         {eyebrow}
       </p>
-      <h2 className="font-display text-xl font-bold tracking-tight text-white sm:text-2xl">{title}</h2>
+      <h2 className="font-display text-2xl font-bold tracking-tight text-white sm:text-3xl">{title}</h2>
     </div>
     {action && (
       <Link
@@ -91,17 +60,6 @@ export const HomeView: React.FC = () => {
   const [carouselIndex, setCarouselIndex] = useState(0);
   const [paused, setPaused] = useState(false);
   const [heroImgFailed, setHeroImgFailed] = useState(false);
-
-  const stats = useMemo(() => {
-    const downloads = games.reduce((s, g) => s + (g.stats?.downloads || 0), 0);
-    const views = games.reduce((s, g) => s + (g.stats?.views || 0), 0);
-    const sources = games.reduce((s, g) => s + (g.downloadSources?.length || 0), 0);
-    const genres = new Set<string>();
-    const repackers = new Set<string>();
-    games.forEach((g) => (g.genres || []).forEach((x) => genres.add(x)));
-    games.forEach((g) => (g.downloadSources || []).forEach((ds) => ds.repacker && repackers.add(ds.repacker)));
-    return { games: games.length, downloads, views, sources, genres: genres.size, repackers: repackers.size };
-  }, [games]);
 
   // Collapse repack-variant duplicates in the showcase rows: same Steam appid
   // (or near-identical title when no appid) appears once, keeping the richest,
@@ -185,10 +143,8 @@ export const HomeView: React.FC = () => {
   const genreCounts = useMemo(() => {
     const map = new Map<string, number>();
     games.forEach((g) => (g.genres || []).forEach((x) => map.set(x, (map.get(x) || 0) + 1)));
-    return [...map.entries()].sort((a, b) => b[1] - a[1]).slice(0, 12);
+    return [...map.entries()].sort((a, b) => b[1] - a[1]).slice(0, 6);
   }, [games]);
-
-  const sourceNames = ["FitGirl Repacks", "DODI", "GOG", "Xatab", "SteamRip", "OnlineFix", "ATOP Games", "Rexa Games"];
 
   if (loading) {
     return (
@@ -199,15 +155,6 @@ export const HomeView: React.FC = () => {
     );
   }
 
-  const statItems = [
-    { label: "Games Indexed", value: stats.games, icon: Database },
-    { label: "Downloads", value: stats.downloads, icon: Download },
-    { label: "Total Views", value: stats.views, icon: Globe },
-    { label: "Genres", value: stats.genres, icon: Flame },
-    { label: "Repackers", value: stats.repackers, icon: Layers },
-    { label: "Sources", value: stats.sources, icon: Database },
-  ];
-
   return (
     <div id="home_view" className="relative pb-16">
       {/* 1. Hero carousel */}
@@ -215,7 +162,7 @@ export const HomeView: React.FC = () => {
         <section
           onMouseEnter={() => setPaused(true)}
           onMouseLeave={() => setPaused(false)}
-          className="relative h-[80vh] min-h-[540px] w-full overflow-hidden border-b border-white/5 bg-black"
+          className="relative h-[78vh] min-h-[520px] w-full overflow-hidden border-b border-white/5 bg-black"
         >
           <AnimatePresence mode="wait">
             <motion.div
@@ -268,7 +215,7 @@ export const HomeView: React.FC = () => {
             <ChevronRight className="h-5 w-5" />
           </button>
 
-          <div className="absolute inset-0 z-20 mx-auto flex max-w-7xl flex-col justify-end px-4 pb-24 sm:px-6 lg:px-8">
+          <div className="absolute inset-0 z-20 mx-auto flex max-w-7xl flex-col justify-end px-4 pb-20 sm:px-6 lg:px-8">
             <motion.div
               initial={{ y: 14, opacity: 0 }}
               animate={{ y: 0, opacity: 1 }}
@@ -392,47 +339,13 @@ export const HomeView: React.FC = () => {
         </section>
       )}
 
-      {/* 2. Stats bar */}
-      <section className="border-b border-white/5 bg-[#0c0c0e]/80">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-3 gap-x-6 gap-y-6 py-6 md:grid-cols-6">
-            {statItems.map((it) => (
-              <div key={it.label}>
-                <p className="font-display text-xl font-bold text-white sm:text-2xl">
-                  <AnimatedNumber value={it.value} compact />
-                </p>
-                <p className="mt-0.5 font-mono text-[9px] font-bold uppercase tracking-[0.18em] text-zinc-500">
-                  {it.label}
-                </p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* 3. Sources strip */}
-      <section className="border-b border-white/5">
-        <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-center gap-x-8 gap-y-1.5 px-4 py-3.5 sm:justify-between sm:px-6 lg:px-8">
-          <span className="flex items-center gap-1.5 font-mono text-[9px] font-bold uppercase tracking-[0.25em] text-zinc-600">
-            <Layers className="h-3 w-3" /> Indexing from
-          </span>
-          <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-1">
-            {sourceNames.map((s) => (
-              <span key={s} className="font-mono text-[11px] font-semibold text-zinc-500 transition hover:text-rose-400/80">
-                {s}
-              </span>
-            ))}
-          </div>
-        </div>
-      </section>
-
       <main className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        {/* 4. Latest releases rail */}
+        {/* 2. Latest releases rail */}
         <section className="mt-14">
           <SectionHeader
-            eyebrow="Just updated"
+            eyebrow="✦ Latest Games"
             title="Latest Releases"
-            action={{ label: "View all", to: "/browse" }}
+            action={{ label: "View all games", to: "/browse" }}
           />
           <Rail>
             {latestGames.map((g) => (
@@ -443,11 +356,11 @@ export const HomeView: React.FC = () => {
           </Rail>
         </section>
 
-        {/* 5. Most popular grid */}
+        {/* 3. Trending grid */}
         <section className="mt-16">
           <SectionHeader
-            eyebrow="Most wanted"
-            title="Most Popular"
+            eyebrow="✦ Trending Games"
+            title="Trending Now"
             action={{ label: "Browse top", to: "/browse?sort=Most%20Popular" }}
           />
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
@@ -457,10 +370,10 @@ export const HomeView: React.FC = () => {
           </div>
         </section>
 
-        {/* 6. Top rated leaderboard */}
+        {/* 4. Top rated leaderboard */}
         <section className="mt-16">
           <SectionHeader
-            eyebrow="Critically acclaimed"
+            eyebrow="✦ Critically Acclaimed"
             title="Top Rated"
             action={{ label: "Highest rated", to: "/browse?sort=Highest%20Rated" }}
           />
@@ -474,16 +387,20 @@ export const HomeView: React.FC = () => {
                 <span className="w-7 shrink-0 text-center font-display text-lg font-bold text-zinc-700 transition group-hover:text-rose-400">
                   {index + 1}
                 </span>
-                <span className="h-14 w-10 shrink-0 overflow-hidden rounded-md bg-zinc-900 ring-1 ring-white/5">
-                  {g.coverImage && (
+                {g.coverImage ? (
+                  <span className="h-14 w-10 shrink-0 overflow-hidden rounded-md bg-zinc-900 ring-1 ring-white/5">
                     <img
                       src={g.coverImage}
                       alt={g.title}
                       loading="lazy"
                       className="h-full w-full object-cover transition duration-300 group-hover:scale-110"
                     />
-                  )}
-                </span>
+                  </span>
+                ) : (
+                  <span className="h-14 w-10 shrink-0 overflow-hidden rounded-md ring-1 ring-white/5">
+                    <PlaceholderCover title={g.title} className="p-1.5 [&_span:first-child]:text-[10px] [&_span:last-child]:text-[9px]" />
+                  </span>
+                )}
                 <span className="min-w-0 flex-1">
                   <span className="block truncate font-display text-sm font-semibold text-zinc-100 transition group-hover:text-rose-400">
                     {g.title}
@@ -502,29 +419,49 @@ export const HomeView: React.FC = () => {
           </div>
         </section>
 
-        {/* 7. Browse by genre */}
+        {/* 5. Featured Collections */}
         <section className="mt-16">
-          <SectionHeader eyebrow="Discover" title="Browse by Genre" action={{ label: "All genres", to: "/browse" }} />
-          <div className="flex flex-wrap gap-2">
-            {genreCounts.map(([genre, count]) => (
-              <button
-                key={genre}
-                onClick={() => navigate(`/browse?q=${encodeURIComponent(genre)}`)}
-                className="group flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-4 py-2 text-xs font-medium text-zinc-300 transition hover:border-rose-500/40 hover:text-white"
-              >
-                {genre}
-                <span className="font-mono text-[10px] text-zinc-600 transition group-hover:text-rose-400">
-                  {count}
-                </span>
-              </button>
-            ))}
+          <SectionHeader
+            eyebrow="✦ Featured Collections"
+            title="Browse by Genre"
+            action={{ label: "All genres", to: "/browse" }}
+          />
+          <div className="grid grid-cols-2 gap-4 md:grid-cols-3">
+            {genreCounts.map(([genre, count], i) => {
+              const hue = (i * 61 + 8) % 360;
+              const hue2 = (hue + 42) % 360;
+              return (
+                <button
+                  key={genre}
+                  onClick={() => navigate(`/browse?q=${encodeURIComponent(genre)}`)}
+                  className="group relative h-36 overflow-hidden rounded-2xl text-left ring-1 ring-white/[0.06] transition hover:-translate-y-0.5 hover:ring-rose-500/40 hover:shadow-2xl hover:shadow-black"
+                  style={{
+                    background: `linear-gradient(135deg, hsl(${hue} 55% 24%), hsl(${hue2} 60% 9%) 65%)`,
+                  }}
+                >
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent" />
+                  <div className="relative z-10 flex h-full flex-col justify-between p-5">
+                    <span className="font-mono text-[9px] font-bold uppercase tracking-[0.2em] text-white/50">
+                      Collection
+                    </span>
+                    <div>
+                      <h3 className="font-display text-xl font-bold text-white">{genre}</h3>
+                      <p className="mt-1 flex items-center gap-1.5 font-mono text-[11px] text-white/60">
+                        {count.toLocaleString()} games
+                        <ArrowRight className="h-3 w-3 transition-transform duration-300 group-hover:translate-x-1" />
+                      </p>
+                    </div>
+                  </div>
+                </button>
+              );
+            })}
           </div>
         </section>
 
-        {/* 8. New releases rail */}
+        {/* 6. New releases rail */}
         <section className="mt-16">
           <SectionHeader
-            eyebrow="Fresh off the press"
+            eyebrow="✦ Fresh Off The Press"
             title="New Releases"
             action={{ label: "View all", to: "/browse" }}
           />

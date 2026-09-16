@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { Search, User, LogOut, Compass, X, TrendingUp, CornerDownLeft, Heart, ChevronDown } from "lucide-react";
+import { Search, User, LogOut, X, TrendingUp, CornerDownLeft, ChevronDown } from "lucide-react";
 import { useGame } from "../lib/gameContext";
 import { Game } from "../types";
 import { motion, AnimatePresence } from "motion/react";
@@ -223,9 +223,9 @@ export const Navbar: React.FC = () => {
   const [searchOpen, setSearchOpen] = useState(false);
 
   const navItems = [
-    { label: "Games", path: "/browse", icon: Compass },
-    { label: "Sources", path: "/sources", icon: null },
-    { label: "Donate", path: "/donate", icon: Heart, highlighted: true },
+    { label: "Games", path: "/browse" },
+    { label: "Sources", path: "/sources" },
+    { label: "Donate", path: "/donate", highlighted: true },
   ];
 
   const topGenres = useMemo(() => {

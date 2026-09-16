@@ -103,70 +103,32 @@ export default function App() {
           </div>
 
           {/* Footer */}
-          <footer className="relative z-10 mt-20 border-t border-white/5 bg-[#0a0a0c] py-12 text-xs text-zinc-500">
-            <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-              <div className="grid grid-cols-2 gap-10 border-b border-white/5 pb-10 md:grid-cols-4">
-                <div className="col-span-2 space-y-3 md:col-span-1">
-                  <div className="flex items-center gap-2 font-display text-sm font-bold tracking-widest text-white">
-                    <span className="flex h-6 w-6 items-center justify-center rounded-md bg-gradient-to-br from-rose-500 to-rose-700 text-xs font-black text-white">
-                      Z
-                    </span>
-                    <span>ZAKURO'S<span className="text-rose-400"> ARCHIVE</span></span>
-                  </div>
-                  <p className="max-w-xs leading-relaxed text-zinc-500">
-                    A read-only index of PC game releases. We host metadata, never game files.
-                  </p>
-                </div>
-
-                <div className="space-y-2.5">
-                  <span className="block font-display text-[10px] font-bold uppercase tracking-wider text-zinc-300">
-                    Index Directory
-                  </span>
-                  <ul className="space-y-1.5 font-mono">
-                    <li><Link to="/" className="transition hover:text-rose-400">Main / Home</Link></li>
-                    <li><Link to="/browse" className="transition hover:text-rose-400">Library</Link></li>
-                    <li><Link to="/about" className="transition hover:text-rose-400">FAQ & safety</Link></li>
-                    <li><Link to="/help" className="transition hover:text-rose-400">Help & guides</Link></li>
-                    <li><Link to="/sources" className="transition hover:text-rose-400">Our sources</Link></li>
-                    <li><Link to="/donate" className="transition hover:text-rose-400">Support the archive</Link></li>
-                  </ul>
-                </div>
-
-                <div className="space-y-2.5">
-                  <span className="block font-display text-[10px] font-bold uppercase tracking-wider text-zinc-300">
-                    Communities
-                  </span>
-                  <ul className="space-y-1.5 font-mono">
-                    <li><a href="https://discord.gg" target="_blank" rel="noopener noreferrer" className="transition hover:text-rose-400">Discord Portal</a></li>
-                    <li><a href="https://reddit.com" target="_blank" rel="noopener noreferrer" className="transition hover:text-rose-400">Reddit Sub</a></li>
-                    <li><a href="https://github.com" target="_blank" rel="noopener noreferrer" className="transition hover:text-rose-400">GitHub Repos</a></li>
-                  </ul>
-                </div>
-
-                <div className="space-y-2.5 font-mono">
-                  <span className="block font-display text-[10px] font-bold uppercase tracking-wider text-zinc-300">
-                    System Status
-                  </span>
-                  <div className="space-y-1 text-[11px]">
-                    <p className="flex items-center gap-1.5">
-                      <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-                      All Servers Active
-                    </p>
-                    <p className="text-zinc-600">IP verification: SSL Clean</p>
-                    <p className="text-zinc-600">Archival Library: Lossless x64</p>
-                  </div>
-                </div>
+          <footer className="relative z-10 border-t border-white/5 bg-[#0a0a0c] py-10 text-xs text-zinc-500">
+            <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-6 px-4 sm:px-6 md:flex-row lg:px-8">
+              <div className="flex items-center gap-2.5">
+                <span className="flex h-6 w-6 items-center justify-center rounded-md bg-gradient-to-br from-rose-500 to-rose-700 text-xs font-black text-white">
+                  Z
+                </span>
+                <span className="font-display text-sm font-bold tracking-widest text-white">
+                  ZAKURO'S<span className="text-rose-400"> ARCHIVE</span>
+                </span>
+                <span className="hidden font-mono text-[10px] text-zinc-600 sm:inline">
+                  — a read-only index of PC game releases
+                </span>
               </div>
 
-              <div className="flex flex-col items-center justify-between gap-4 pt-8 md:flex-row">
-                <p className="font-mono text-[10px] text-zinc-600">
-                  © 2026 Zakuro's Archive Database Indexer. Developed with{" "}
-                  <Heart className="inline h-3 w-3 fill-rose-500 text-rose-500" /> for archival gaming preservation.
-                </p>
-                <p className="font-mono text-[10px] text-zinc-600">
-                  Preserving raw source files with lossless storage codes
-                </p>
-              </div>
+              <nav className="flex flex-wrap items-center justify-center gap-5 font-mono text-[11px]">
+                <Link to="/" className="transition hover:text-rose-400">Home</Link>
+                <Link to="/browse" className="transition hover:text-rose-400">Library</Link>
+                <Link to="/sources" className="transition hover:text-rose-400">Sources</Link>
+                <Link to="/help" className="transition hover:text-rose-400">Help</Link>
+                <Link to="/donate" className="transition hover:text-rose-400">Donate</Link>
+              </nav>
+
+              <p className="font-mono text-[10px] text-zinc-600">
+                © 2026 Zakuro's Archive Indexer, made with{" "}
+                <Heart className="inline h-3 w-3 fill-rose-500 text-rose-500" /> for archival preservation.
+              </p>
             </div>
           </footer>
         </div>
