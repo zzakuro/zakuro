@@ -44,6 +44,14 @@ const STATE_PATH = path.join(process.cwd(), "data", "steam_grind_state.json");
 const LOCK_PATH = path.join(process.cwd(), "data", ".grind-active");
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+const withTimeout = <T>(p: Promise<T>, ms: number, what: string): Promise<T> =>
+  new Promise((resolve, reject) => {
+    const t = setTimeout(() => reject(new Error(what + " timed out")), ms);
+    p.then(
+      (v) => { clearTimeout(t); resolve(v); },
+      (e) => { clearTimeout(t); reject(e); }
+    );
+  });
 const argLimit = Number(process.argv.find((a) => a.startsWith("--limit="))?.split("=")[1]);
 const noOnline = process.argv.includes("--no-online");
 const skipStageA = process.argv.includes("--skip-stage-a");
@@ -163,8 +171,8 @@ async function main() {
       await sleep(1250);
       try {
         const [details, proton] = await Promise.all([
-          fetchSteamDetails(appid),
-          fetchProtonSummary(appid),
+          withTimeout(fetchSteamDetails(appid), 20000, `steam ${appid}`),
+          withTimeout(fetchProtonSummary(appid), 20000, `proton ${appid}`),
         ]);
 
 // Live-title verification: drop dead/stale/mislabeled dump matches so we
