@@ -142,9 +142,9 @@ export const HomeView: React.FC = () => {
     setHeroImgFailed(false);
   }, [activeCarouselGame?.id]);
 
-  const heroSrc = activeCarouselGame.steamId
+  const heroSrc = activeCarouselGame?.steamId
     ? `https://cdn.akamai.steamstatic.com/steam/apps/${activeCarouselGame.steamId}/library_hero.jpg`
-    : activeCarouselGame.screenshot || activeCarouselGame.coverImage || "";
+    : activeCarouselGame?.screenshot || activeCarouselGame?.coverImage || "";
   const showHeroBackdrop = !heroSrc || heroImgFailed;
 
   // If the pool shrinks (catalog poll), never let the index dangle out of range.
