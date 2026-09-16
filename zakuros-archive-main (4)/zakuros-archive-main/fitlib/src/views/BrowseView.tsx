@@ -1,11 +1,13 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { useSearchParams } from "react-router-dom";
 import { SlidersHorizontal, Search, X, ChevronDown, RotateCcw } from "lucide-react";
 import { useGame } from "../lib/gameContext";
 import { GameCard } from "../components/GameCard";
 
+type FilterPill = { key: string; label: string; clear: () => void };
+
 export const BrowseView: React.FC = () => {
-  const { games, searchQuery, setSearchQuery } = useGame();
+  const { games, searchQuery, setSearchQuery, loading } = useGame();
   const [searchParams, setSearchParams] = useSearchParams();
 
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -140,6 +142,51 @@ export const BrowseView: React.FC = () => {
     "w-full rounded-lg border border-white/10 bg-[#0d0d10] py-2 pl-3 pr-8 text-xs text-zinc-300 outline-none transition focus:border-rose-500/50";
   const activeFilterCls = "bg-rose-500/10 border-rose-500/40 text-rose-400";
   const idleFilterCls = "bg-[#0d0d10] border-white/10 text-zinc-400 hover:border-white/25 hover:text-white";
+  const chipActiveCls = "border-rose-500/40 bg-rose-500/10 text-rose-400";
+  const chipIdleCls = "border-white/10 bg-[#0d0d10] text-zinc-400 hover:border-white/25 hover:text-white";
+
+  // Top genres quick-chip rail (kept in sync with the sidebar select + URL).
+  const quickGenres = useMemo(() => {
+    const map = new Map<string, number>();
+    games.forEach((g) => (g.genres || []).forEach((x) => map.set(x, (map.get(x) || 0) + 1)));
+    return [...map.entries()].sort((a, b) => b[1] - a[1]).slice(0, 18);
+  }, [games]);
+
+  const selectQuickGenre = (genre: string) => {
+    setSelectedGenre(genre);
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      if (genre) next.set("genre", genre);
+      else next.delete("genre");
+      return next;
+    });
+  };
+
+  // Active-filter pills for one-tap removal of any individual constraint.
+  const activePills: FilterPill[] = [
+    selectedGenre && {
+      key: "genre",
+      label: `Genre · ${selectedGenre}`,
+      clear: () => {
+        setSelectedGenre("");
+        setSearchParams((prev) => {
+          const n = new URLSearchParams(prev);
+          n.delete("genre");
+          return n;
+        });
+      },
+    },
+    selectedDeveloper && { key: "dev", label: `Developer · ${selectedDeveloper}`, clear: () => setSelectedDeveloper("") },
+    selectedYear && { key: "year", label: `Year · ${selectedYear}`, clear: () => setSelectedYear("") },
+    selectedMinRating && {
+      key: "rating",
+      label: `${selectedMinRating}+ Rating`,
+      clear: () => setSelectedMinRating(""),
+    },
+    showClassic && { key: "classic", label: "Classic & Retro", clear: () => setShowClassic(false) },
+    showNoCover && { key: "cover", label: "Coverless only", clear: () => setShowNoCover(false) },
+    searchQuery && { key: "search", label: `"${searchQuery}"`, clear: () => setSearchQuery("") },
+  ].filter((p): p is FilterPill => !!p);
 
   return (
     <div id="browse_view" className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
@@ -184,6 +231,28 @@ export const BrowseView: React.FC = () => {
             <ChevronDown className="pointer-events-none absolute right-4 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-zinc-500" />
           </div>
         </div>
+      </div>
+
+      {/* Genre quick chips */}
+      <div className="no-scrollbar -mx-4 mb-6 flex items-center gap-2 overflow-x-auto px-4 pb-1 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8">
+        <button
+          onClick={() => selectQuickGenre("")}
+          className={`shrink-0 rounded-full border px-3.5 py-1.5 font-mono text-[11px] font-bold transition ${!selectedGenre ? chipActiveCls : chipIdleCls}`}
+        >
+          All
+        </button>
+        {quickGenres.map(([genre, count]) => (
+          <button
+            key={genre}
+            onClick={() => selectQuickGenre(genre)}
+            className={`shrink-0 rounded-full border px-3.5 py-1.5 font-mono text-[11px] font-bold transition ${
+              selectedGenre === genre ? chipActiveCls : chipIdleCls
+            }`}
+          >
+            {genre}
+            <span className="ml-1.5 font-mono text-[9px] opacity-60">{count.toLocaleString()}</span>
+          </button>
+        ))}
       </div>
 
       <div className="flex flex-col items-start gap-8 lg:flex-row">
@@ -289,22 +358,13 @@ export const BrowseView: React.FC = () => {
 
         {/* Grid */}
         <section className="flex-1">
-          <div className="mb-6 flex items-center justify-between">
-            <p className="font-mono text-xs text-zinc-500">
-              Showing <span className="font-bold text-rose-400">{sortedGames.length.toLocaleString()}</span>
-              {totalPages > 1 && <span className="text-zinc-600"> · Page {page}/{totalPages}</span>}
-            </p>
-            {sortedGames.length < games.length && (
-              <button
-                onClick={handleClearFilters}
-                className="font-mono text-xs font-bold text-rose-500 underline transition hover:text-rose-400"
-              >
-                Clear all filters
-              </button>
-            )}
-          </div>
-
-          {sortedGames.length === 0 ? (
+          {loading ? (
+            <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 xl:grid-cols-4">
+              {Array.from({ length: 12 }).map((_, i) => (
+                <div key={i} className="skeleton aspect-[3/4]" />
+              ))}
+            </div>
+          ) : sortedGames.length === 0 ? (
             <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-white/10 bg-white/[0.02] p-12 text-center">
               <Search className="mb-4 h-10 w-10 text-zinc-700" />
               <h3 className="font-display text-sm font-bold text-zinc-300">No Game Found</h3>
@@ -320,9 +380,44 @@ export const BrowseView: React.FC = () => {
             </div>
           ) : (
             <>
+              {/* Active filter pills */}
+              {activePills.length > 0 && (
+                <div className="mb-5 flex flex-wrap items-center gap-2">
+                  {activePills.map((pill) => (
+                    <button
+                      key={pill.key}
+                      onClick={pill.clear}
+                      className="group flex items-center gap-1.5 rounded-full border border-rose-500/25 bg-rose-500/10 py-1 pl-3 pr-1.5 text-[11px] font-bold text-rose-300 transition hover:border-rose-500/50"
+                    >
+                      {pill.label}
+                      <span className="flex h-4 w-4 items-center justify-center rounded-full bg-rose-500/15 text-rose-300 transition group-hover:bg-rose-500 group-hover:text-white">
+                        <X className="h-2.5 w-2.5" />
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              <div className="mb-6 flex items-center justify-between">
+                <p className="font-mono text-xs text-zinc-500">
+                  Showing <span className="font-bold text-rose-400">{sortedGames.length.toLocaleString()}</span>
+                  {totalPages > 1 && <span className="text-zinc-600"> · Page {page}/{totalPages}</span>}
+                </p>
+                {sortedGames.length < games.length && (
+                  <button
+                    onClick={handleClearFilters}
+                    className="font-mono text-xs font-bold text-rose-500 underline transition hover:text-rose-400"
+                  >
+                    Clear all filters
+                  </button>
+                )}
+              </div>
+
               <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 xl:grid-cols-4">
-                {pagedGames.map((game) => (
-                  <GameCard key={game.id} game={game} />
+                {pagedGames.map((game, i) => (
+                  <div key={game.id} className="card-enter h-full" style={{ animationDelay: `${(i % 12) * 28}ms` }}>
+                    <GameCard game={game} />
+                  </div>
                 ))}
               </div>
 
