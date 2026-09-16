@@ -7,8 +7,8 @@
   --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
 
   /* Zakuro's Archive — pomegranate editorial dark theme */
-  --color-dark-bg: #09090b;
-  --color-dark-surface: #0d0d10;
+  --color-dark-bg: #09090c;
+  --color-dark-surface: #0d0d11;
   --color-dark-surface-hover: #141419;
   --color-accent: #f43f5e;
   --color-accent-deep: #e11d48;
@@ -119,7 +119,7 @@ body::after {
   height: 8px;
 }
 ::-webkit-scrollbar-track {
-  background: #09090b;
+  background: #09090c;
 }
 ::-webkit-scrollbar-thumb {
   background: #232329;
@@ -287,7 +287,7 @@ body::before {
   animation-play-state: paused;
 }
 
-/* Aurora blobs for hero backdrops. */
+/* Aurora blobs for hero backdrops + site ambience. */
 @keyframes aurora-drift {
   0% { transform: translate3d(0, 0, 0) scale(1); }
   50% { transform: translate3d(6%, -8%, 0) scale(1.12); }
@@ -297,9 +297,19 @@ body::before {
   position: absolute;
   border-radius: 9999px;
   filter: blur(90px);
+  mix-blend-mode: screen;
   pointer-events: none;
   animation: aurora-drift 14s ease-in-out infinite;
   will-change: transform;
+}
+/* Alternate drift for site-wide ambience (offset blobs feel less mechanical). */
+@keyframes aurora-drift-alt {
+  0% { transform: translate3d(0, 0, 0) scale(1.05); }
+  50% { transform: translate3d(-7%, 6%, 0) scale(0.94); }
+  100% { transform: translate3d(0, 0, 0) scale(1.05); }
+}
+.aurora-blob-alt {
+  animation-name: aurora-drift-alt;
 }
 .aurora-blob:nth-child(2) {
   animation-delay: -5s;
@@ -310,6 +320,11 @@ body::before {
 .aurora-blob-soft {
   filter: blur(150px);
   animation-duration: 22s;
+}
+
+/* Screen blend helper — used by card glow blooms so light only adds. */
+.blend-screen {
+  mix-blend-mode: screen;
 }
 
 /* Staggered card entrance (governed by inline animation-delay). */

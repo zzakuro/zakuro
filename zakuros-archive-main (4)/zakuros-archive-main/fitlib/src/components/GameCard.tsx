@@ -75,10 +75,21 @@ export const GameCard: React.FC<GameCardProps> = ({ game, badge }) => {
         : "text-rose-400 [&>svg]:fill-rose-400 [&>svg]:text-rose-400";
 
   return (
-    <Link
-      to={`/game/${game.id}`}
-      className="group relative flex h-full flex-col overflow-hidden rounded-xl bg-[#0d0d10] ring-1 ring-white/[0.06] transition-all duration-300 hover:-translate-y-1 hover:ring-rose-500/50 hover:shadow-2xl hover:shadow-rose-950/20"
-    >
+    <div className="group relative flex h-full">
+      {/* Hover bloom — a soft tri-color aura that bleeds out past the card edges */}
+      <div
+        aria-hidden
+        className="blend-screen pointer-events-none absolute -inset-2 opacity-0 blur-2xl transition-opacity duration-500 group-hover:opacity-100"
+      >
+        <div className="absolute left-[6%] top-[4%] h-28 w-28 rounded-full bg-rose-500/50" />
+        <div className="absolute right-[8%] top-[26%] h-24 w-24 rounded-full bg-violet-500/50" />
+        <div className="absolute bottom-[6%] left-[22%] h-24 w-24 rounded-full bg-rose-300/40" />
+      </div>
+
+      <Link
+        to={`/game/${game.id}`}
+        className="relative flex h-full w-full flex-col overflow-hidden rounded-xl bg-[#0d0d10] ring-1 ring-white/[0.06] transition-all duration-300 hover:-translate-y-1 hover:ring-rose-500/50 hover:shadow-2xl hover:shadow-rose-950/20"
+      >
       {/* Cover */}
       <div className="relative aspect-[3/4] w-full overflow-hidden bg-zinc-900">
         {showPlaceholder ? (
@@ -144,22 +155,22 @@ export const GameCard: React.FC<GameCardProps> = ({ game, badge }) => {
         </div>
       </div>
 
-      {/* Meta */}
       <div className="flex flex-1 flex-col justify-between gap-1.5 p-3.5">
-        <h3 className="line-clamp-1 font-display text-[15px] font-semibold text-zinc-100 transition group-hover:text-rose-400">
-          {game.title}
-        </h3>
-        <div className="flex items-center gap-2 text-[10px]">
-          <span className={`flex shrink-0 items-center gap-1 text-[10px] font-bold ${ratingTone}`}>
-            <Star className="h-3 w-3" />
-            {game.rating > 0 ? `${game.rating}%` : "—"}
-          </span>
-          <span className="truncate font-medium capitalize text-zinc-500">
-            {game.genres[0] ?? "Game"}
-          </span>
-          <span className="ml-auto shrink-0 font-mono text-zinc-600">{relativeUpdate}</span>
+          <h3 className="line-clamp-1 font-display text-[15px] font-semibold text-zinc-100 transition group-hover:text-rose-400">
+            {game.title}
+          </h3>
+          <div className="flex items-center gap-2 text-[10px]">
+            <span className={`flex shrink-0 items-center gap-1 text-[10px] font-bold ${ratingTone}`}>
+              <Star className="h-3 w-3" />
+              {game.rating > 0 ? `${game.rating}%` : "—"}
+            </span>
+            <span className="truncate font-medium capitalize text-zinc-500">
+              {game.genres[0] ?? "Game"}
+            </span>
+            <span className="ml-auto shrink-0 font-mono text-zinc-600">{relativeUpdate}</span>
+          </div>
         </div>
-      </div>
-    </Link>
+      </Link>
+    </div>
   );
 };

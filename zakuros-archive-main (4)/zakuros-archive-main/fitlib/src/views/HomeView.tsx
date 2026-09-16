@@ -154,6 +154,19 @@ export const HomeView: React.FC = () => {
     return [...map.entries()].sort((a, b) => b[1] - a[1]).slice(0, 24);
   }, [games]);
 
+  // Live catalog pulse — numbers computed from the loaded index.
+  const catalogStats = useMemo(() => {
+    const genres = new Set<string>();
+    let downloads = 0;
+    let updated30 = 0;
+    for (const g of games) {
+      (g.genres || []).forEach((x) => genres.add(x));
+      downloads += g.stats?.downloads ?? 0;
+      if (isUpdated(g)) updated30++;
+    }
+    return { games: games.length, genres: genres.size, downloads, updated30 };
+  }, [games]);
+
   if (loading) {
     return (
       <div className="mx-auto max-w-7xl space-y-10 px-4 py-14 sm:px-6 lg:px-8">
@@ -186,8 +199,8 @@ export const HomeView: React.FC = () => {
               transition={{ duration: 0.8 }}
               className="absolute inset-0"
             >
-              <div className="absolute inset-0 z-10 bg-gradient-to-t from-[#09090b] via-[#09090b]/35 via-45% to-transparent" />
-              <div className="absolute inset-0 z-10 bg-gradient-to-r from-[#09090b]/85 via-[#09090b]/20 via-40% to-[#09090b]/10" />
+              <div className="absolute inset-0 z-10 bg-gradient-to-t from-[var(--color-dark-bg)] via-[var(--color-dark-bg)]/35 via-45% to-transparent" />
+              <div className="absolute inset-0 z-10 bg-gradient-to-r from-[var(--color-dark-bg)]/85 via-[var(--color-dark-bg)]/20 via-40% to-[var(--color-dark-bg)]/10" />
               {showHeroBackdrop ? (
                 <motion.div
                   initial={{ opacity: 0 }}
@@ -378,6 +391,45 @@ export const HomeView: React.FC = () => {
           </div>
         </section>
       )}
+
+      {/* Live catalog pulse — a data strip beneath the hero */}
+      <section className="border-b border-white/5 bg-[#0b0b0d]/80 backdrop-blur-sm">
+        <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-x-8 gap-y-3 px-4 py-4 sm:px-6 lg:px-8">
+          <span className="flex items-center gap-2 font-mono text-[10px] font-bold uppercase tracking-[0.2em] text-zinc-500">
+            <span className="relative flex h-2 w-2">
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-60" />
+              <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-400" />
+            </span>
+            Live index
+          </span>
+          <div className="flex flex-wrap items-center gap-x-8 gap-y-3">
+            <span className="flex flex-col gap-0.5">
+              <span className="font-mono text-[9px] uppercase tracking-widest text-zinc-600">Indexed games</span>
+              <span className="font-display text-lg font-bold text-white">
+                {catalogStats.games.toLocaleString()}
+              </span>
+            </span>
+            <span className="flex flex-col gap-0.5">
+              <span className="font-mono text-[9px] uppercase tracking-widest text-zinc-600">Genres</span>
+              <span className="font-display text-lg font-bold text-white">
+                {catalogStats.genres.toLocaleString()}
+              </span>
+            </span>
+            <span className="flex flex-col gap-0.5">
+              <span className="font-mono text-[9px] uppercase tracking-widest text-zinc-600">Updated 30d</span>
+              <span className="font-display text-lg font-bold text-emerald-400">
+                {catalogStats.updated30.toLocaleString()}
+              </span>
+            </span>
+            <span className="flex flex-col gap-0.5">
+              <span className="font-mono text-[9px] uppercase tracking-widest text-zinc-600">Downloads (indexed)</span>
+              <span className="font-display text-lg font-bold text-rose-400">
+                {catalogStats.downloads.toLocaleString()}
+              </span>
+            </span>
+          </div>
+        </div>
+      </section>
 
       <main className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         {/* 2. Latest releases rail */}

@@ -93,12 +93,13 @@ export default function App() {
   return (
     <GameProvider>
       <HashRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
-        <div className="relative flex min-h-screen flex-col bg-[#09090b] text-zinc-100 antialiased selection:bg-rose-500 selection:text-white">
-          {/* Site-wide aurora ambience — sits behind all content, barely there */}
+        <div className="relative flex min-h-screen flex-col bg-[var(--color-dark-bg)] text-zinc-100 antialiased selection:bg-rose-500 selection:text-white">
+          {/* Site-wide aurora ambience — screen-blended pools, barely there */}
           <div aria-hidden className="pointer-events-none fixed inset-0 overflow-hidden">
-            <div className="aurora-blob aurora-blob-soft left-[-14%] top-[-22%] h-[60vh] w-[46vw] bg-rose-500/[0.06]" />
-            <div className="aurora-blob aurora-blob-soft right-[-16%] top-[30%] h-[58vh] w-[42vw] bg-violet-500/[0.05]" />
-            <div className="aurora-blob aurora-blob-soft bottom-[-30%] left-[16%] h-[60vh] w-[50vw] bg-rose-500/[0.05]" />
+            <div className="aurora-blob aurora-blob-soft left-[-14%] top-[-22%] h-[60vh] w-[46vw] bg-rose-500/[0.07]" />
+            <div className="aurora-blob aurora-blob-soft aurora-blob-alt right-[-16%] top-[30%] h-[58vh] w-[42vw] bg-violet-500/[0.06]" />
+            <div className="aurora-blob aurora-blob-soft aurora-blob-alt bottom-[-30%] left-[16%] h-[60vh] w-[50vw] bg-rose-500/[0.05]" />
+            <div className="aurora-blob aurora-blob-soft right-[-12%] bottom-[-26%] h-[56vh] w-[44vw] bg-violet-500/[0.05]" />
           </div>
 
           <Navbar />
