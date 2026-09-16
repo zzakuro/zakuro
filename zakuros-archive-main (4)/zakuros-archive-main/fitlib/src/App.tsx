@@ -4,7 +4,7 @@
  */
 
 import React, { Suspense, lazy } from "react";
-import { HashRouter, Routes, Route, Link } from "react-router-dom";
+import { HashRouter, Routes, Route, Link, useLocation } from "react-router-dom";
 import { GameProvider } from "./lib/gameContext";
 import { Navbar } from "./components/Navbar";
 import { Heart } from "lucide-react";
@@ -34,15 +34,60 @@ function RouteFallback() {
   );
 }
 
+// Safety net: a render error anywhere in a view must not take down the whole
+// app with a blank page. The boundary resets on every route change so a single
+// broken route never traps the user on a black screen.
+class ErrorBoundary extends React.Component<
+  { children: React.ReactNode },
+  { error: Error | null }
+> {
+  state = { error: null as Error | null };
+
+  static getDerivedStateFromError(error: Error) {
+    return { error };
+  }
+
+  componentDidCatch(error: Error, info: React.ErrorInfo) {
+    console.error("[ErrorBoundary]", error, info);
+  }
+
+  render() {
+    if (this.state.error) {
+      return (
+        <div className="flex h-[70vh] flex-col items-center justify-center gap-4 px-4 text-center">
+          <h2 className="font-display text-xl font-bold uppercase text-white">SOMETHING WENT WRONG</h2>
+          <p className="max-w-md text-xs text-zinc-500">{this.state.error.message}</p>
+          <button
+            onClick={() => this.setState({ error: null })}
+            className="rounded-full bg-rose-500 px-6 py-2.5 font-mono text-xs font-bold text-white transition hover:bg-rose-400"
+          >
+            TRY AGAIN
+          </button>
+          <Link to="/" className="font-mono text-[10px] text-zinc-400 underline hover:text-white">
+            BACK TO HOMEPAGE
+          </Link>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
+function RoutedBoundary({ children }: { children: React.ReactNode }) {
+  const location = useLocation();
+  return <ErrorBoundary key={location.pathname}>{children}</ErrorBoundary>;
+}
+
 export default function App() {
   return (
     <GameProvider>
-      <HashRouter>
+      <HashRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
         <div className="relative flex min-h-screen flex-col bg-[#09090b] text-zinc-100 antialiased selection:bg-rose-500 selection:text-white">
           <Navbar />
 
           <div className="relative z-10 flex-grow">
-            <Routes>
+            <RoutedBoundary>
+              <Routes>
               <Route path="/" element={<HomeView />} />
               <Route path="/browse" element={<BrowseView />} />
               <Route path="/game/:id" element={<GameDetailView />} />
@@ -52,6 +97,7 @@ export default function App() {
               <Route path="/login" element={<AuthView />} />
               <Route path="/register" element={<AuthView />} />
             </Routes>
+            </RoutedBoundary>
           </div>
 
           {/* Footer */}
