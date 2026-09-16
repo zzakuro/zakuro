@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import {
   Download, Heart, ThumbsUp, Star, HardDrive,
@@ -30,6 +30,8 @@ export const GameDetailView: React.FC = () => {
   const [heroBroken, setHeroBroken] = useState<boolean>(false);
   const [trailers, setTrailers] = useState<GameTrailer[]>([]);
   const [activeTrailer, setActiveTrailer] = useState<GameTrailer | null>(null);
+  // Debounces wheel navigation so a single scroll gesture flips one item, not a dozen.
+  const wheelLockRef = useRef(0);
 
   // Safe, hook-order-stable screenshot list (also used by the keyboard handler).
   const shots = useMemo(() => {
@@ -112,6 +114,31 @@ export const GameDetailView: React.FC = () => {
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [shots.length, activeTrailer, playableTrailers]);
+
+  // Wheel navigation — scroll down = next, up = previous. Throttled so one
+  // scroll tick flips exactly one shot/trailer, and the page doesn't scroll.
+  const handleShotWheel = (e: React.WheelEvent) => {
+    if (shots.length <= 1) return;
+    e.preventDefault();
+    const now = Date.now();
+    if (now - wheelLockRef.current < 250) return;
+    wheelLockRef.current = now;
+    const dir = e.deltaY > 0 ? 1 : -1;
+    setShotIdx((i) => (i + dir + shots.length) % shots.length);
+    setFeatBroken(false);
+  };
+
+  const handleTrailerWheel = (e: React.WheelEvent) => {
+    if (playableTrailers.length <= 1) return;
+    e.preventDefault();
+    const now = Date.now();
+    if (now - wheelLockRef.current < 250) return;
+    wheelLockRef.current = now;
+    const dir = e.deltaY > 0 ? 1 : -1;
+    const i = playableTrailers.findIndex((t) => t === activeTrailer || t.src === activeTrailer?.src);
+    const next = playableTrailers[(i + dir + playableTrailers.length) % playableTrailers.length];
+    if (next) setActiveTrailer(next);
+  };
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
@@ -351,7 +378,7 @@ export const GameDetailView: React.FC = () => {
           <section className="space-y-12 lg:col-span-2">
             {/* Screenshot gallery */}
             <div>
-              <div className="group relative aspect-video w-full overflow-hidden rounded-2xl bg-[#0d0d10] ring-1 ring-white/[0.08]">
+              <div className="group relative aspect-video w-full overflow-hidden rounded-2xl bg-[#0d0d10] ring-1 ring-white/[0.08]" onWheel={handleShotWheel}>
                 <div className="flex h-full w-full items-center justify-center">
                   {featureShot && !featBroken ? (
                     <img
@@ -844,7 +871,10 @@ export const GameDetailView: React.FC = () => {
       {/* Trailer lightbox */}
       <AnimatePresence>
         {activeTrailer && (
-          <div className="fixed inset-0 z-[70] flex items-center justify-center p-4">
+          <div
+            className="fixed inset-0 z-[70] flex items-center justify-center p-4"
+            onWheel={handleTrailerWheel}
+          >
             <motion.button
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
