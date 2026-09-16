@@ -364,10 +364,17 @@ export async function fetchIGDBDetails(title: string): Promise<Partial<GameMetad
     const game = games[0];
     const rating = game.rating ? Math.round(game.rating) : undefined;
     const storyline = game.storyline || "";
-    
+    let coverImage: string | undefined;
+    if (typeof game.cover?.url === "string") {
+      coverImage = game.cover.url
+        .replace("//images.igdb.com/", "https://images.igdb.com/")
+        .replace("t_thumb", "t_cover_big_2x");
+    }
+
     return {
       summary: game.summary,
       rating,
+      coverImage,
       igdbDetails: {
         storyline,
         videos: [],
@@ -463,6 +470,7 @@ export async function getGameMetadata(
       genres: steamData.genres || finalMetadata.genres,
       trailers: steamData.trailers || finalMetadata.trailers,
       steamDetails: steamData.steamDetails,
+      coverImage: steamData.coverImage || igdbData.coverImage || finalMetadata.coverImage,
       igdbDetails: igdbData.igdbDetails,
       _ratingReal: steamData.rating !== undefined || igdbData.rating !== undefined,
       linux: { native: linuxNative, ...(proton || {}) },

@@ -102,6 +102,7 @@ export interface GameMetadataExtended {
     storyline?: string;
     videos?: string[];
   };
+  coverImage?: string;
   genres?: string[]; // Steam genre tags (also merged into Game.genres)
   trailers?: GameTrailer[];
   linux?: LinuxSupportInfo;
