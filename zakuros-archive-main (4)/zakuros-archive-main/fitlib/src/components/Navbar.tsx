@@ -4,6 +4,7 @@ import { Search, User, LogOut, Home, Compass, HelpCircle, X, TrendingUp, CornerD
 import { useGame } from "../lib/gameContext";
 import { Game } from "../types";
 import { motion, AnimatePresence } from "motion/react";
+import ThemeSwitcher from "./ThemeSwitcher";
 
 /* ------------------------------------------------------------------ */
 /*  Search overlay — Cracked-Games style command palette for games.    */
@@ -299,6 +300,9 @@ export const Navbar: React.FC = () => {
               Ctrl&nbsp;K
             </kbd>
           </button>
+
+          {/* Theme switcher */}
+          <ThemeSwitcher />
 
           {/* User */}
           {user ? (

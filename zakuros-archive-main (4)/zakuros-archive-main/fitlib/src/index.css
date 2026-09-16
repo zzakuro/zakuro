@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Fraunces:opsz,wght@9..144,400;500;600;700&family=Archivo:wght@400;500;600;700;800&display=swap');
 @import "tailwindcss";
 
 @theme {
@@ -12,6 +12,70 @@
   --color-dark-surface-hover: #141419;
   --color-accent: #f43f5e;
   --color-accent-deep: #e11d48;
+}
+
+/* Ambient glow color (defaults to the rose bloom). */
+:root {
+  --accent-glow: rgba(244, 63, 94, 0.07);
+}
+
+/* ---------------------------------------------------------------- */
+/* Theme palettes — each remaps the rose accent ramp + display font. */
+/* Tailwind v4 compiles utilities to var(--color-rose-*) lookups, so */
+/* overriding the variables on <html data-theme> restyles the site.  */
+/* ---------------------------------------------------------------- */
+
+[data-theme="emerald"] {
+  --color-accent: #10b981;
+  --color-accent-deep: #047857;
+  --accent-glow: rgba(16, 185, 129, 0.08);
+  --color-rose-50: #ecfdf5;
+  --color-rose-100: #d1fae5;
+  --color-rose-200: #a7f3d0;
+  --color-rose-300: #6ee7b7;
+  --color-rose-400: #34d399;
+  --color-rose-500: #10b981;
+  --color-rose-600: #059669;
+  --color-rose-700: #047857;
+  --color-rose-800: #065f46;
+  --color-rose-900: #064e3b;
+  --color-rose-950: #022c22;
+}
+
+[data-theme="amber"] {
+  --color-accent: #f59e0b;
+  --color-accent-deep: #b45309;
+  --accent-glow: rgba(245, 158, 11, 0.08);
+  --color-rose-50: #fffbeb;
+  --color-rose-100: #fef3c7;
+  --color-rose-200: #fde68a;
+  --color-rose-300: #fcd34d;
+  --color-rose-400: #fbbf24;
+  --color-rose-500: #f59e0b;
+  --color-rose-600: #d97706;
+  --color-rose-700: #b45309;
+  --color-rose-800: #92400e;
+  --color-rose-900: #78350f;
+  --color-rose-950: #451a03;
+  --font-display: "Fraunces", "Iowan Old Style", Georgia, serif;
+}
+
+[data-theme="violet"] {
+  --color-accent: #8b5cf6;
+  --color-accent-deep: #6d28d9;
+  --accent-glow: rgba(139, 92, 246, 0.09);
+  --color-rose-50: #f5f3ff;
+  --color-rose-100: #ede9fe;
+  --color-rose-200: #ddd6fe;
+  --color-rose-300: #c4b5fd;
+  --color-rose-400: #a78bfa;
+  --color-rose-500: #8b5cf6;
+  --color-rose-600: #7c3aed;
+  --color-rose-700: #6d28d9;
+  --color-rose-800: #5b21b6;
+  --color-rose-900: #4c1d95;
+  --color-rose-950: #2e1065;
+  --font-display: "Archivo", "Space Grotesk", sans-serif;
 }
 
 html {
@@ -39,13 +103,13 @@ body::after {
   z-index: 0;
   background: radial-gradient(
     ellipse 700px 260px at 50% -120px,
-    rgba(244, 63, 94, 0.07),
+    var(--accent-glow),
     transparent 70%
   );
 }
 
 ::selection {
-  background: #f43f5e;
+  background: var(--color-rose-500);
   color: #fff;
 }
 
@@ -62,7 +126,7 @@ body::after {
   border-radius: 4px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #f43f5e;
+  background: var(--color-rose-500);
 }
 
 /* Hide scrollbars on horizontal rails while keeping scroll */
