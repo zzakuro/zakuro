@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { motion } from "motion/react";
 import { Link } from "react-router-dom";
+import { PageHero, Reveal } from "../components/PageHero";
 
 export const DonateView: React.FC = () => {
   const [copied, setCopied] = useState<string | null>(null);

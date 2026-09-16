@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { Layers, Database, Package, Disc3, RefreshCw } from "lucide-react";
+import { PageHero, Reveal } from "../components/PageHero";
 
 interface SourceEntry {
   name: string;
@@ -60,26 +61,27 @@ export const SourcesView: React.FC = () => {
   return (
     <div id="sources_view" className="mx-auto max-w-7xl space-y-16 px-4 py-12 sm:px-6 lg:px-8">
       {/* Hero */}
-      <section className="mx-auto max-w-3xl text-center">
-        <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-xl border border-rose-500/20 bg-rose-950/20 text-rose-400">
-          <Layers className="h-5 w-5" />
-        </div>
-        <span className="font-mono text-[11px] font-bold uppercase tracking-widest text-rose-400">
-          Every group we index
-        </span>
-        <h1 className="mt-4 font-display text-4xl font-black uppercase leading-tight tracking-tight text-white sm:text-5xl">
-          Our <span className="text-rose-400">Sources</span>
-        </h1>
-        <p className="mx-auto mt-4 max-w-xl text-sm leading-relaxed text-zinc-400">
-          These are the release groups and archives whose catalogs are indexed here. We host
-          metadata only — never game files — and we're not affiliated with any of them.
-        </p>
-      </section>
+      <PageHero
+        eyebrow="Every group we index"
+        title={
+          <>
+            Our <span className="text-gradient animate">Sources</span>
+          </>
+        }
+        lead="These are the release groups and archives whose catalogs are indexed here. We host metadata only — never game files — and we're not affiliated with any of them."
+      />
 
       {loading && (
-        <div className="flex items-center justify-center gap-2 py-16 font-mono text-xs text-zinc-500">
-          <RefreshCw className="h-4 w-4 animate-spin text-rose-400" />
-          Loading sources…
+        <div className="flex flex-col items-center gap-4 py-10">
+          <div className="flex items-center gap-2 font-mono text-xs text-zinc-500">
+            <RefreshCw className="h-4 w-4 animate-spin text-rose-400" />
+            Loading sources…
+          </div>
+          <div className="grid w-full max-w-4xl grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+            {Array.from({ length: 8 }).map((_, i) => (
+              <div key={i} className="skeleton h-14 w-full" />
+            ))}
+          </div>
         </div>
       )}
 
@@ -131,7 +133,7 @@ export const SourcesView: React.FC = () => {
               {list.map((src) => (
                 <div
                   key={src.name}
-                  className="flex items-center gap-2.5 rounded-xl border border-zinc-900 bg-zinc-950/40 p-4 transition duration-200 hover:border-rose-500/20"
+                  className="panel panel-hover flex items-center gap-2.5 p-4"
                 >
                   <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-500" />
                   <span className="truncate font-mono text-xs font-bold text-white">{src.name}</span>
@@ -142,7 +144,7 @@ export const SourcesView: React.FC = () => {
         );
       })}
 
-      <section className="mx-auto max-w-2xl rounded-2xl border border-white/5 bg-white/[0.02] p-6 text-center">
+      <section className="panel mx-auto max-w-2xl rounded-2xl p-6 text-center">
         <p className="text-xs leading-relaxed text-zinc-500">
           Know a group that should be indexed? Drop it in the community channels. Source mirrors are
           checked periodically and the index keeps the group-authorized link per release.

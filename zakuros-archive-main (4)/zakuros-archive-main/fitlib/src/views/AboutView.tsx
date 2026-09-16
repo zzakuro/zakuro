@@ -12,6 +12,7 @@ import {
   Layers,
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
+import { PageHero, Reveal } from "../components/PageHero";
 
 export const AboutView: React.FC = () => {
   const [activeFaq, setActiveFaq] = useState<number | null>(null);
@@ -86,50 +87,54 @@ export const AboutView: React.FC = () => {
     <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8 space-y-20">
 
       {/* Hero */}
-      <section className="text-center max-w-3xl mx-auto py-8">
-        <span className="rounded-full bg-rose-950/40 border border-rose-500/20 px-3.5 py-1 text-[11px] font-bold text-rose-400 uppercase tracking-widest font-mono">
-          Game release index — not a host
-        </span>
-        <h1 className="font-display font-black tracking-tight text-white mt-6 uppercase leading-tight text-4xl sm:text-5xl">
-          One place to find<br />
-          <span className="text-rose-400">every release</span>
-        </h1>
-        <p className="mt-4 text-zinc-400 text-sm leading-relaxed font-sans max-w-xl mx-auto">
-          Zakuro's Archive is a read-only index of PC game releases from reputable repack and direct-download groups. Search, filter, and find download sources — all in one place, with no ads and no file hosting.
-        </p>
-        <div className="mt-8 flex justify-center gap-3 flex-wrap">
-          <a
-            href="#faq-section"
-            className="rounded-full border border-zinc-800 bg-zinc-950 hover:bg-zinc-900 font-mono text-xs font-bold px-6 py-2.5 text-zinc-300 hover:text-white transition"
-          >
-            Read the FAQ
-          </a>
-          <a
-            href="https://discord.gg"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center gap-1.5 rounded-full bg-[#5865F2] hover:bg-[#4752C4] font-mono text-xs font-bold px-6 py-2.5 text-white transition active:scale-95 shadow-lg shadow-[#5865F2]/20"
-          >
-            <span>Join Discord</span>
-            <ArrowRight className="h-3.5 w-3.5" />
-          </a>
-        </div>
-      </section>
+      <PageHero
+        eyebrow="Game release index — not a host"
+        title={
+          <>
+            One place to find
+            <br />
+            <span className="text-gradient animate">every release</span>
+          </>
+        }
+        lead="Zakuro's Archive is a read-only index of PC game releases from reputable repack and direct-download groups. Search, filter, and find download sources — all in one place, with no ads and no file hosting."
+        actions={
+          <>
+            <a
+              href="#faq-section"
+              className="rounded-full border border-white/10 bg-white/[0.03] px-6 py-2.5 font-mono text-xs font-bold text-zinc-300 transition hover:border-rose-500/40 hover:text-white"
+            >
+              Read the FAQ
+            </a>
+            <a
+              href="https://discord.gg"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-1.5 rounded-full bg-[#5865F2] px-6 py-2.5 font-mono text-xs font-bold text-white shadow-lg shadow-[#5865F2]/20 transition hover:bg-[#4752C4] active:scale-95"
+            >
+              <span>Join Discord</span>
+              <ArrowRight className="h-3.5 w-3.5" />
+            </a>
+          </>
+        }
+      />
 
       {/* Stats */}
-      <section className="grid grid-cols-2 md:grid-cols-4 gap-4 border border-zinc-900 rounded-xl p-6 bg-zinc-950/20 font-mono">
-        {stats.map((stat, idx) => (
-          <div key={idx} className="flex flex-col items-center text-center p-3">
-            <div className="h-10 w-10 rounded-full bg-rose-950/20 flex items-center justify-center border border-rose-500/20 mb-3 text-rose-400">
-              <stat.icon className="h-5 w-5" />
+      <Reveal>
+        <section className="panel grid grid-cols-2 gap-4 p-6 font-mono md:grid-cols-4">
+          {stats.map((stat, idx) => (
+            <div key={idx} className="flex flex-col items-center text-center p-3">
+              <div className="h-10 w-10 rounded-full bg-rose-500/10 flex items-center justify-center border border-rose-500/20 mb-3 text-rose-400">
+                <stat.icon className="h-5 w-5" />
+              </div>
+              <p className="text-2xl font-black font-display text-white">{stat.value}</p>
+              <p className="text-[10px] text-zinc-500 mt-1 uppercase font-bold tracking-wider">{stat.label}</p>
             </div>
-            <p className="text-2xl font-black font-display text-white">{stat.value}</p>
-            <p className="text-[10px] text-zinc-500 mt-1 uppercase font-bold tracking-wider">{stat.label}</p>
-          </div>
-        ))}
-      </section>
+          ))}
+        </section>
+      </Reveal>
 
       {/* What Zakuro's Archive does */}
+      <Reveal>
       <section className="space-y-8">
         <div className="text-center">
           <span className="text-[10px] font-bold text-rose-400 uppercase tracking-widest font-mono">How it works</span>
@@ -137,8 +142,8 @@ export const AboutView: React.FC = () => {
         </div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {features.map((feat, idx) => (
-            <div key={idx} className="bg-zinc-950/40 border border-zinc-900 rounded-xl p-5 hover:border-rose-500/20 transition duration-300">
-              <div className="h-9 w-9 rounded-lg bg-zinc-900 flex items-center justify-center border border-zinc-800 text-rose-400 mb-4">
+            <div key={idx} className="panel panel-hover p-5">
+              <div className="h-9 w-9 rounded-lg bg-white/[0.04] flex items-center justify-center border border-white/10 text-rose-400 mb-4">
                 <feat.icon className="h-4 w-4" />
               </div>
               <h3 className="font-display font-bold text-white uppercase text-sm mb-2">{feat.title}</h3>
@@ -147,8 +152,10 @@ export const AboutView: React.FC = () => {
           ))}
         </div>
       </section>
+      </Reveal>
 
       {/* Indexed sources */}
+      <Reveal>
       <section className="space-y-6">
         <div className="text-center">
           <span className="text-[10px] font-bold text-rose-400 uppercase tracking-widest font-mono">Sourced from</span>
@@ -164,7 +171,7 @@ export const AboutView: React.FC = () => {
               href={src.url}
               target="_blank"
               rel="noopener noreferrer"
-              className="group flex flex-col gap-1.5 rounded-xl border border-zinc-900 bg-zinc-950/40 hover:border-rose-500/20 p-4 transition duration-200"
+              className="panel panel-hover group flex flex-col gap-1.5 p-4"
             >
               <div className="flex items-center justify-between">
                 <span className="font-mono font-bold text-white text-xs group-hover:text-rose-400 transition">{src.name}</span>
@@ -175,8 +182,10 @@ export const AboutView: React.FC = () => {
           ))}
         </div>
       </section>
+      </Reveal>
 
       {/* FAQ */}
+      <Reveal>
       <section id="faq-section" className="space-y-8 max-w-4xl mx-auto">
         <div className="text-center">
           <HelpCircle className="h-7 w-7 text-rose-400 mx-auto mb-2" />
@@ -190,7 +199,7 @@ export const AboutView: React.FC = () => {
             return (
               <div
                 key={idx}
-                className="rounded-xl border border-zinc-900 bg-zinc-950/45 overflow-hidden transition"
+                className="panel panel-hover overflow-hidden transition"
               >
                 <button
                   onClick={() => setActiveFaq(isOpen ? null : idx)}
@@ -225,9 +234,11 @@ export const AboutView: React.FC = () => {
           })}
         </div>
       </section>
+      </Reveal>
 
       {/* Footer CTA */}
-      <section className="rounded-2xl border border-rose-500/10 bg-rose-950/10 p-8 text-center max-w-4xl mx-auto flex flex-col items-center gap-4">
+      <Reveal>
+      <section className="panel rounded-2xl border-rose-500/15 p-8 text-center max-w-4xl mx-auto flex flex-col items-center gap-4">
         <CheckCircle className="h-9 w-9 text-rose-400" />
         <h3 className="font-display font-black text-white uppercase text-xl">Something missing from the index?</h3>
         <p className="text-zinc-400 text-xs max-w-xl font-sans">
@@ -243,6 +254,7 @@ export const AboutView: React.FC = () => {
           <ArrowRight className="h-3.5 w-3.5" />
         </a>
       </section>
+      </Reveal>
 
     </div>
   );
