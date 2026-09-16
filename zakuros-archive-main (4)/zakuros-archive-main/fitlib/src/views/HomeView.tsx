@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { useGame } from "../lib/gameContext";
 import { GameCard, PlaceholderCover } from "../components/GameCard";
+import { Reveal } from "../components/PageHero";
 import { Game } from "../types";
 
 /* ---------- helpers ---------- */
@@ -146,11 +147,23 @@ export const HomeView: React.FC = () => {
     return [...map.entries()].sort((a, b) => b[1] - a[1]).slice(0, 6);
   }, [games]);
 
+  // Marquee ticker band uses a wider genre sweep, doubled for the loop.
+  const marqueeGenres = useMemo(() => {
+    const map = new Map<string, number>();
+    games.forEach((g) => (g.genres || []).forEach((x) => map.set(x, (map.get(x) || 0) + 1)));
+    return [...map.entries()].sort((a, b) => b[1] - a[1]).slice(0, 24);
+  }, [games]);
+
   if (loading) {
     return (
-      <div className="flex h-[80vh] flex-col items-center justify-center gap-4">
-        <div className="h-12 w-12 animate-spin rounded-full border-2 border-zinc-800 border-t-rose-500" />
-        <p className="font-mono text-xs font-semibold tracking-widest text-zinc-500">LOADING ZAKURO'S ARCHIVE…</p>
+      <div className="mx-auto max-w-7xl space-y-10 px-4 py-14 sm:px-6 lg:px-8">
+        <div className="skeleton h-[60vh] w-full rounded-2xl" />
+        <div className="skeleton h-6 w-64" />
+        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
+          {Array.from({ length: 10 }).map((_, i) => (
+            <div key={i} className="skeleton aspect-[3/4]" />
+          ))}
+        </div>
       </div>
     );
   }
@@ -202,6 +215,10 @@ export const HomeView: React.FC = () => {
             </motion.div>
           </AnimatePresence>
 
+          {/* Ambient color wash */}
+          <div className="aurora-blob bottom-[-25%] left-[-12%] h-[42vh] w-[42vw] bg-rose-600/20" />
+          <div className="aurora-blob right-[-15%] top-[-35%] h-[55vh] w-[36vw] bg-rose-500/15" />
+
           <button
             onClick={() => setCarouselIndex((p) => (p - 1 + carouselGames.length) % carouselGames.length)}
             className="absolute left-4 top-1/2 z-30 hidden h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full border border-white/10 bg-black/40 text-zinc-300 backdrop-blur-md transition hover:border-rose-500/50 hover:text-rose-400 md:flex"
@@ -232,7 +249,7 @@ export const HomeView: React.FC = () => {
               initial={{ y: 22, opacity: 0 }}
               animate={{ y: 0, opacity: 1 }}
               transition={{ delay: 0.16 }}
-              className="max-w-3xl font-display text-4xl font-bold uppercase leading-[1.05] tracking-tight text-white md:text-6xl line-clamp-2"
+              className="max-w-3xl font-display text-4xl font-extrabold uppercase leading-[1.05] tracking-tight text-gradient text-gradient-animate md:text-6xl line-clamp-2"
             >
               {activeCarouselGame.title}
             </motion.h1>
