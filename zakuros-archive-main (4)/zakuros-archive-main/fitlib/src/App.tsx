@@ -8,6 +8,7 @@ import { HashRouter, Routes, Route, Link, useLocation } from "react-router-dom";
 import { GameProvider } from "./lib/gameContext";
 import { Navbar } from "./components/Navbar";
 import { Heart } from "lucide-react";
+import { motion } from "motion/react";
 
 // Route-level code splitting — the shell (Navbar, provider, router) stays
 // in the critical first-paint chunk; each view loads only when navigated to.
@@ -22,14 +23,13 @@ const SourcesView = lazy(() => import("./views/SourcesView").then((m) => ({ defa
 
 function RouteFallback() {
   return (
-    <div className="flex min-h-[60vh] items-center justify-center">
-      <div className="flex flex-col items-center gap-3">
-        <div className="flex h-12 w-12 items-center justify-center rounded-xl border border-rose-500/20 bg-rose-950/20">
-          <span className="h-5 w-5 animate-spin rounded-full border-2 border-rose-400/20 border-t-rose-400" />
-        </div>
-        <p className="font-mono text-[10px] font-bold uppercase tracking-widest text-zinc-500">
-          Reticulating splines…
-        </p>
+    <div className="mx-auto max-w-7xl space-y-8 px-4 py-14 sm:px-6 lg:px-8">
+      <div className="skeleton h-12 w-64 max-w-full" />
+      <div className="skeleton h-4 w-full max-w-xl" />
+      <div className="mt-10 grid grid-cols-2 gap-4 sm:grid-cols-3 xl:grid-cols-5">
+        {Array.from({ length: 10 }).map((_, i) => (
+          <div key={i} className="skeleton aspect-[3/4]" />
+        ))}
       </div>
     </div>
   );

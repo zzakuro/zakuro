@@ -193,3 +193,126 @@ button:not(:disabled):active {
     contain-intrinsic-size: auto 480px;
   }
 }
+
+/* ------------------------------------------------------------------ */
+/* Premium layer — shared surfaces, grain, gradients, loaders.         */
+/* ------------------------------------------------------------------ */
+
+/* Cinematic film grain over the whole app (non-interactive). */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  pointer-events: none;
+  opacity: 0.03;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.55'/%3E%3C/svg%3E");
+}
+
+/* Sleek shared card surface — used across every view. */
+.panel {
+  border-radius: 0.9rem;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  background-color: rgba(255, 255, 255, 0.02);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    0 10px 30px -22px rgba(0, 0, 0, 0.9);
+}
+.panel-hover {
+  transition: border-color 200ms ease, box-shadow 200ms ease, transform 200ms ease;
+}
+.panel-hover:hover {
+  border-color: rgba(244, 63, 94, 0.28);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.05),
+    0 16px 40px -24px rgba(0, 0, 0, 0.95),
+    0 0 0 1px rgba(244, 63, 94, 0.08);
+}
+
+/* Accent gradient text (theme-aware — follows the rose ramp). */
+.text-gradient {
+  background: linear-gradient(
+    95deg,
+    var(--color-rose-200),
+    var(--color-rose-400) 45%,
+    var(--color-rose-500) 70%,
+    var(--color-rose-300)
+  );
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+@keyframes text-glint {
+  from { background-position: 0% center; }
+  to { background-position: 200% center; }
+}
+.text-gradient-animate {
+  background-size: 200% auto;
+  animation: text-glint 7s linear infinite;
+}
+
+/* Shimmering skeleton loader. */
+@keyframes shimmer {
+  from { background-position: 200% 0; }
+  to { background-position: -200% 0; }
+}
+.skeleton {
+  position: relative;
+  overflow: hidden;
+  border-radius: 0.75rem;
+  background: linear-gradient(110deg, #101014 40%, #1a1a20 50%, #101014 60%);
+  background-size: 200% 100%;
+  animation: shimmer 1.7s linear infinite;
+}
+
+/* Keyboard focus ring (mouse/pointer users keep their Tailwind focus styles). */
+:focus-visible {
+  outline: 2px solid var(--color-rose-500);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+/* Genre ticker marquee. */
+@keyframes marquee {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+.animate-marquee {
+  animation: marquee 38s linear infinite;
+}
+.marquee-mask {
+  mask-image: linear-gradient(90deg, transparent, black 8%, black 92%, transparent);
+}
+.marquee-paused:hover .animate-marquee {
+  animation-play-state: paused;
+}
+
+/* Aurora blobs for hero backdrops. */
+@keyframes aurora-drift {
+  0% { transform: translate3d(0, 0, 0) scale(1); }
+  50% { transform: translate3d(6%, -8%, 0) scale(1.12); }
+  100% { transform: translate3d(0, 0, 0) scale(1); }
+}
+.aurora-blob {
+  position: absolute;
+  border-radius: 9999px;
+  filter: blur(90px);
+  pointer-events: none;
+  animation: aurora-drift 14s ease-in-out infinite;
+  will-change: transform;
+}
+.aurora-blob:nth-child(2) {
+  animation-delay: -5s;
+}
+.aurora-blob:nth-child(3) {
+  animation-delay: -9s;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-marquee,
+  .skeleton,
+  .aurora-blob,
+  .text-gradient-animate {
+    animation: none;
+  }
+}
