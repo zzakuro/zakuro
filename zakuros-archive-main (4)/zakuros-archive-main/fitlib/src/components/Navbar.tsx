@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { Search, User, LogOut, Home, Compass, HelpCircle, X, TrendingUp, CornerDownLeft, Heart } from "lucide-react";
+import { Search, User, LogOut, Compass, X, TrendingUp, CornerDownLeft, Heart, ChevronDown } from "lucide-react";
 import { useGame } from "../lib/gameContext";
 import { Game } from "../types";
 import { motion, AnimatePresence } from "motion/react";
@@ -23,14 +23,12 @@ const SearchOverlay: React.FC<{ open: boolean; onClose: () => void }> = ({ open,
     }
   }, [open]);
 
-  // Esc to close
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [onClose]);
 
-  // Lock body scroll while open
   useEffect(() => {
     if (!open) return;
     const prev = document.body.style.overflow;
@@ -91,7 +89,6 @@ const SearchOverlay: React.FC<{ open: boolean; onClose: () => void }> = ({ open,
             transition={{ duration: 0.18, ease: "easeOut" }}
             className="relative w-full max-w-2xl overflow-hidden rounded-2xl border border-white/10 bg-[#0d0d10] shadow-2xl shadow-black"
           >
-            {/* Input row */}
             <form onSubmit={submit} className="flex items-center gap-3 border-b border-white/10 px-5">
               <Search className="h-4 w-4 shrink-0 text-zinc-500" />
               <input
@@ -133,8 +130,8 @@ const SearchOverlay: React.FC<{ open: boolean; onClose: () => void }> = ({ open,
                             onClick={() => goToGame(g)}
                             className="group flex w-full items-center gap-3 rounded-xl px-3 py-2 text-left hover:bg-white/5 transition"
                           >
-                            <span className="h-12 w-9 shrink-0 overflow-hidden rounded-md bg-zinc-900 ring-1 ring-white/5">
-                              {g.coverImage ? (
+                            {g.coverImage ? (
+                              <span className="h-12 w-9 shrink-0 overflow-hidden rounded-md bg-zinc-900 ring-1 ring-white/5">
                                 <img
                                   src={g.coverImage}
                                   alt=""
@@ -143,8 +140,8 @@ const SearchOverlay: React.FC<{ open: boolean; onClose: () => void }> = ({ open,
                                   className="h-full w-full object-cover"
                                   onError={(e) => ((e.target as HTMLImageElement).style.opacity = "0")}
                                 />
-                              ) : null}
-                            </span>
+                              </span>
+                            ) : null}
                             <span className="min-w-0 flex-1">
                               <span className="block truncate text-sm font-medium text-white">{g.title}</span>
                               <span className="block truncate text-[11px] text-zinc-500">
@@ -218,18 +215,29 @@ const SearchOverlay: React.FC<{ open: boolean; onClose: () => void }> = ({ open,
 /*  Navbar                                                             */
 /* ------------------------------------------------------------------ */
 export const Navbar: React.FC = () => {
-  const { user, logoutUser } = useGame();
+  const { games, user, logoutUser } = useGame();
   const location = useLocation();
   const navigate = useNavigate();
+  const [genresOpen, setGenresOpen] = useState(false);
   const [showDropdown, setShowDropdown] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
 
   const navItems = [
-    { label: "Home", path: "/", icon: Home },
-    { label: "Browse", path: "/browse", icon: Compass },
-    { label: "Help", path: "/help", icon: HelpCircle },
+    { label: "Games", path: "/browse", icon: Compass },
+    { label: "Sources", path: "/sources", icon: null },
     { label: "Donate", path: "/donate", icon: Heart, highlighted: true },
   ];
+
+  const topGenres = useMemo(() => {
+    const map = new Map<string, number>();
+    games.forEach((g) => (g.genres || []).forEach((x) => map.set(x, (map.get(x) || 0) + 1)));
+    return [...map.entries()].sort((a, b) => b[1] - a[1]).slice(0, 14);
+  }, [games]);
+
+  const goBrowser = (genre: string) => {
+    setGenresOpen(false);
+    navigate(`/browse?q=${encodeURIComponent(genre)}`);
+  };
 
   // Global Ctrl/Cmd+K shortcut opens the search overlay
   useEffect(() => {
@@ -243,15 +251,20 @@ export const Navbar: React.FC = () => {
     return () => window.removeEventListener("keydown", onKey);
   }, []);
 
+  // Close the genres dropdown on any navigation
+  useEffect(() => {
+    setGenresOpen(false);
+  }, [location.pathname, location.search]);
+
   return (
-    <header className="sticky top-0 z-50 w-full border-b border-white/5 bg-[#0a0a0c]/85 backdrop-blur-xl">
-      <div className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
+    <header className="sticky top-0 z-50 w-full border-b border-white/5 bg-[#0a0a0c]/90 backdrop-blur-xl">
+      <div className="mx-auto flex h-14 max-w-7xl items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
         {/* Brand */}
         <Link to="/" className="flex items-center gap-2.5 transition hover:opacity-90">
           <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-rose-500 to-rose-700 text-sm font-black text-white shadow-lg shadow-rose-500/25">
             Z
           </span>
-          <span className="font-display text-sm font-bold tracking-widest text-white">
+          <span className="hidden font-display text-sm font-bold tracking-widest text-white sm:block">
             ZAKURO'S<span className="text-rose-400"> ARCHIVE</span>
           </span>
         </Link>
@@ -266,7 +279,7 @@ export const Navbar: React.FC = () => {
               <Link
                 key={item.path}
                 to={item.path}
-                className={`relative rounded-full px-4 py-1.5 text-sm transition ${
+                className={`relative rounded-full px-3.5 py-1.5 text-sm transition ${
                   item.highlighted
                     ? "font-bold text-rose-400 hover:text-rose-300"
                     : isActive
@@ -285,14 +298,68 @@ export const Navbar: React.FC = () => {
               </Link>
             );
           })}
+
+          {/* Genres dropdown */}
+          <div className="relative">
+            <button
+              onClick={() => setGenresOpen((v) => !v)}
+              className={`relative flex items-center gap-1 rounded-full px-3.5 py-1.5 text-sm transition ${
+                genresOpen ? "text-white" : "text-zinc-400 hover:text-white"
+              }`}
+            >
+              Genres
+              <ChevronDown
+                className={`h-3.5 w-3.5 transition-transform duration-200 ${genresOpen ? "rotate-180" : ""}`}
+              />
+              {genresOpen && (
+                <motion.span
+                  layoutId="nav-pill"
+                  className="absolute inset-0 -z-10 rounded-full bg-white/[0.06] ring-1 ring-white/10"
+                  transition={{ type: "spring", stiffness: 380, damping: 30 }}
+                />
+              )}
+            </button>
+
+            <AnimatePresence>
+              {genresOpen && (
+                <>
+                  <div className="fixed inset-0 z-10" onClick={() => setGenresOpen(false)} />
+                  <motion.div
+                    initial={{ opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: 8 }}
+                    className="absolute left-1/2 mt-2 z-20 w-72 -translate-x-1/2 rounded-2xl border border-white/10 bg-[#101013] p-2 shadow-2xl shadow-black"
+                  >
+                    <div className="grid grid-cols-2 gap-0.5">
+                      {topGenres.map(([genre, count]) => (
+                        <button
+                          key={genre}
+                          onClick={() => goBrowser(genre)}
+                          className="flex items-center justify-between gap-2 rounded-lg px-3 py-2 text-left text-xs text-zinc-300 transition hover:bg-white/[0.05] hover:text-white"
+                        >
+                          <span className="truncate">{genre}</span>
+                          <span className="font-mono text-[10px] text-zinc-600">{count.toLocaleString()}</span>
+                        </button>
+                      ))}
+                    </div>
+                    <button
+                      onClick={() => goBrowser("")}
+                      className="mt-1 w-full rounded-lg border border-white/5 px-3 py-2 text-center font-mono text-[10px] font-bold uppercase tracking-widest text-zinc-500 transition hover:text-rose-400"
+                    >
+                      Browse all genres
+                    </button>
+                  </motion.div>
+                </>
+              )}
+            </AnimatePresence>
+          </div>
         </nav>
 
         {/* Actions */}
         <div className="flex items-center gap-2.5">
-          {/* Search trigger */}
           <button
             onClick={() => setSearchOpen(true)}
-            className="group flex h-9 items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-3 text-xs text-zinc-500 transition hover:border-rose-500/40 hover:text-zinc-300 sm:px-4"
+            className="group flex h-8 items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-3 text-xs text-zinc-500 transition hover:border-rose-500/40 hover:text-zinc-300 sm:px-4"
           >
             <Search className="h-3.5 w-3.5" />
             <span className="hidden sm:inline">Search</span>
@@ -301,15 +368,13 @@ export const Navbar: React.FC = () => {
             </kbd>
           </button>
 
-          {/* Theme switcher */}
           <ThemeSwitcher />
 
-          {/* User */}
           {user ? (
             <div className="relative">
               <button
                 onClick={() => setShowDropdown((v) => !v)}
-                className="flex h-9 items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.03] px-3 text-xs font-semibold text-white transition hover:border-rose-500/40"
+                className="flex h-8 items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.03] px-3 text-xs font-semibold text-white transition hover:border-rose-500/40"
               >
                 <User className="h-3.5 w-3.5 text-rose-400" />
                 <span className="hidden sm:inline">{user.username}</span>
@@ -348,7 +413,7 @@ export const Navbar: React.FC = () => {
           ) : (
             <Link
               to="/login"
-              className="flex h-9 items-center gap-1.5 rounded-full border border-rose-500/30 bg-rose-500/10 px-3.5 text-xs font-semibold text-rose-400 transition hover:bg-rose-500/20"
+              className="flex h-8 items-center gap-1.5 rounded-full border border-rose-500/30 bg-rose-500/10 px-3.5 text-xs font-semibold text-rose-400 transition hover:bg-rose-500/20"
             >
               <User className="h-3.5 w-3.5" />
               <span className="hidden sm:inline">Sign In</span>
