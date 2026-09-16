@@ -1,17 +1,18 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import {
-  Download, Heart, ThumbsUp, Star, HardDrive, Calendar,
+  Download, Heart, ThumbsUp, Star, HardDrive,
   ShieldAlert, Monitor, Cpu, Server, Database, Share2,
   Sparkles, CheckCircle, ExternalLink, ArrowLeft, Gamepad2, Bookmark, X,
-  Loader2,
+  Loader2, Eye, CalendarClock, Library,
 } from "lucide-react";
 import { useGame } from "../lib/gameContext";
-import { Game, GameTrailer } from "../types";
+import { Game } from "../types";
 import { motion, AnimatePresence } from "motion/react";
 import { RatingPanel } from "../components/RatingPanel";
 import { GameComments } from "../components/GameComments";
 import { LinuxBadge } from "../components/LinuxBadge";
+import { GameCard, PlaceholderCover } from "../components/GameCard";
 
 export const GameDetailView: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -20,39 +21,26 @@ export const GameDetailView: React.FC = () => {
 
   const game = games.find((g) => g.id === id);
 
-  const [activeTab, setActiveTab] = useState<"overview" | "screenshots" | "trailers" | "community">("overview");
   const [reqOs, setReqOs] = useState<"windows" | "linux" | "mac">("windows");
   const [showDownloadMenu, setShowDownloadMenu] = useState<boolean>(false);
   const [enriching, setEnriching] = useState<boolean>(false);
-  const [trailers, setTrailers] = useState<GameTrailer[]>(game?.trailers || []);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [shotIdx, setShotIdx] = useState<number>(0);
+  const [featBroken, setFeatBroken] = useState<boolean>(false);
+  const [heroBroken, setHeroBroken] = useState<boolean>(false);
 
-  // Reset per-game UI state when navigating between game pages (otherwise a
-  // previous game's trailers/tab leak onto the next one).
+  // Reset per-game UI state when navigating between game pages.
   useEffect(() => {
-    setTrailers(game?.trailers || []);
+    setShotIdx(0);
+    setFeatBroken(false);
+    setHeroBroken(false);
     const keys = Object.keys(game?.systemRequirements ?? {});
     setReqOs((keys[0] as "windows" | "linux" | "mac") || "windows");
   }, [game?.id]);
 
-  // Pull live Steam metadata once on open so trailers (and refresh button data)
-  // are available even before the offline grind has persisted them to disk.
   useEffect(() => {
-    if (!game?.id) return;
-    const ac = new AbortController();
-    (async () => {
-      try {
-        const res = await fetch(`/api/games/${encodeURIComponent(game.id)}/metadata`, { signal: ac.signal });
-        if (!res.ok) return;
-        const meta = await res.json();
-        if (meta.trailers?.length) setTrailers(meta.trailers);
-      } catch {
-        // ignore network/abort failures — trailers just stay empty
-      }
-    })();
-    return () => ac.abort();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [game?.id]);
+    setFeatBroken(false);
+  }, [shotIdx]);
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
@@ -103,7 +91,6 @@ export const GameDetailView: React.FC = () => {
       const res = await fetch(`/api/games/${encodeURIComponent(game.id)}/metadata`);
       if (!res.ok) throw new Error(`Steam refresh failed (${res.status})`);
       const meta = await res.json();
-      if (meta.trailers?.length) setTrailers(meta.trailers);
       showToast(meta.title ? `Refreshed details for ${meta.title}.` : "Metadata refreshed.");
     } catch (e: any) {
       showToast(e.message ?? "Steam refresh failed. Try again later.");
@@ -111,6 +98,32 @@ export const GameDetailView: React.FC = () => {
       setEnriching(false);
     }
   };
+
+  /* ---------- derived data ---------- */
+  const title = game.title;
+  const summary = game.summary;
+  const rating = game.rating;
+  const releaseDate = game.releaseDate;
+  const developer = game.developer;
+  const publisher = game.publisher;
+  const year = (releaseDate || "").match(/(19|20)\d{2}/)?.[0] ?? releaseDate;
+
+  // Screenshot gallery (fall back to a single cover in a wide frame).
+  const screenshots =
+    game.screenshots && game.screenshots.length > 0
+      ? game.screenshots
+      : game.screenshot
+        ? [game.screenshot]
+        : game.coverImage
+          ? [game.coverImage]
+          : [];
+  const featureShot = screenshots[shotIdx % Math.max(screenshots.length, 1)] || "";
+
+  // Hero backdrop: Steam library hero art when known, else first screenshot.
+  const heroUrl = game.steamId
+    ? `https://cdn.akamai.steamstatic.com/steam/apps/${game.steamId}/library_hero.jpg`
+    : "";
+  const heroOk = heroUrl && !heroBroken;
 
   const systemRequirements = game.systemRequirements ?? {};
   const reqKeys = Object.keys(systemRequirements);
@@ -120,34 +133,41 @@ export const GameDetailView: React.FC = () => {
   const isLiked = user?.liked.includes(game.id) || false;
   const isBookmarked = bookmarks?.includes(game.id) || false;
 
-  const title = game.title;
-  const summary = game.summary;
-  const rating = game.rating;
-  const releaseDate = game.releaseDate;
-  const developer = game.developer;
-  const publisher = game.publisher;
-  const screenshots =
-    game.screenshots && game.screenshots.length > 0
-      ? game.screenshots
-      : game.screenshot
-        ? [game.screenshot]
-        : [];
+  // Feature rows for the stats card (kryo-style "features" block).
+  const isCoop = (game.genres || []).some((g) => /co-op|couch co-op/i.test(g));
+  const isMulti = (game.genres || []).some((g) => /multiplayer|online|mmo|battle royale|pvp/i.test(g));
+  const features = [
+    { label: "Single-player", ok: true },
+    ...(isCoop ? [{ label: "Co-op play supported", ok: true }] : []),
+    ...(isMulti ? [{ label: "Multiplayer / online", ok: true }] : []),
+    ...(game.linux && (game.linux.tier || game.linux.native)
+      ? [{ label: game.linux.native ? "Native Linux build" : "Linux playable (Proton)", ok: true }]
+      : []),
+    { label: "Verified release in archive", ok: true },
+  ];
 
-  const heroImage = screenshots[0] || game.coverImage || "";
-
-  const tabBtn = (tabId: "overview" | "screenshots" | "trailers" | "community", label: string) => (
-    <button
-      onClick={() => setActiveTab(tabId)}
-      className={`border-b-2 pb-3 font-mono uppercase transition ${
-        activeTab === tabId
-          ? "border-rose-500 font-bold text-rose-400"
-          : "border-transparent text-zinc-500 hover:text-zinc-300"
-      }`}
-    >
-      {label}
-    </button>
+  const repackers = Array.from(
+    new Set((game.downloadSources || []).map((s) => s.repacker || "Source").filter(Boolean))
   );
 
+  const related = useMemo(() => {
+    const shared = (g2: Game) => (game.genres || []).filter((x) => (g2.genres || []).includes(x)).length;
+    return [...games]
+      .filter((g2) => g2.id !== game.id && shared(g2) > 0)
+      .sort(
+        (a, b) =>
+          shared(b) - shared(a) ||
+          (b.popularityScore ?? 0) - (a.popularityScore ?? 0) ||
+          b.rating - a.rating
+      )
+      .slice(0, 8);
+  }, [games, game]);
+
+  const updatedLabel = game.stats?.updatedAt
+    ? new Date(game.stats.updatedAt).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" })
+    : "";
+
+  /* ---------- render ---------- */
   return (
     <div id="game_detail_view" className="relative pb-16">
       {/* Toast */}
@@ -165,21 +185,25 @@ export const GameDetailView: React.FC = () => {
         )}
       </AnimatePresence>
 
-      {/* A. Hero backdrop */}
-      <section className="relative h-[55vh] min-h-[360px] w-full overflow-hidden border-b border-white/5 bg-black">
-        <div className="absolute inset-0 z-10 bg-gradient-to-t from-[#09090b] via-[#09090b]/40 to-transparent" />
-        {heroImage && (
+      {/* A. Hero backdrop — clean image band (kryo-style) */}
+      <section className="relative h-[42vh] min-h-[300px] w-full overflow-hidden border-b border-white/5 bg-black">
+        {heroOk ? (
           <img
-            src={heroImage}
+            src={heroUrl}
             alt={title}
             referrerPolicy="no-referrer"
-            className="h-full w-full object-cover opacity-40 blur-[1px]"
-            onError={(e) => {
-              (e.target as HTMLImageElement).style.display = "none";
-            }}
+            className="h-full w-full object-cover opacity-45"
+            onError={() => setHeroBroken(true)}
           />
+        ) : (
+          <div className="absolute inset-0 bg-gradient-to-br from-zinc-900 via-black to-black">
+            <div className="absolute -left-24 top-1/3 h-72 w-72 rounded-full bg-rose-500/10 blur-[100px]" />
+          </div>
         )}
+        <div className="absolute inset-0 bg-gradient-to-t from-[#09090b] via-[#09090b]/30 to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-r from-[#09090b]/80 via-transparent to-transparent" />
 
+        {/* Back / Share */}
         <div className="absolute inset-x-0 top-6 z-20 mx-auto flex max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
           <button
             onClick={() => navigate(-1)}
@@ -196,173 +220,168 @@ export const GameDetailView: React.FC = () => {
             Share
           </button>
         </div>
+      </section>
 
-        <div className="absolute inset-x-0 bottom-0 z-20 mx-auto max-w-7xl px-4 pb-10 sm:px-6 lg:px-8">
-          <div className="mb-3 flex flex-wrap gap-1.5">
+      {/* B. Heading — overlapping the hero (title + tags + byline) */}
+      <main className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div className="relative z-10 -mt-20 pt-2">
+          <div className="mb-3 flex flex-wrap items-center gap-1.5">
             {(game.genres || []).map((g) => (
-              <span key={g} className="rounded bg-black/60 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-zinc-400 ring-1 ring-white/10">
+              <Link
+                key={g}
+                to={`/browse?genre=${encodeURIComponent(g)}`}
+                className="rounded-full border border-white/10 bg-black/60 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-zinc-300 backdrop-blur-sm transition hover:border-rose-500/40 hover:text-rose-400"
+              >
                 {g}
-              </span>
+              </Link>
             ))}
             {game.systemRequirements?.windows && (
-              <span className="rounded bg-rose-500/15 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-rose-400 ring-1 ring-rose-500/25">
+              <span className="rounded-full bg-rose-500/15 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-rose-400 ring-1 ring-rose-500/25">
                 PC
               </span>
             )}
             {game.linux && (game.linux.tier || game.linux.native) && (
-              <LinuxBadge linux={game.linux} className="!px-2 !py-0.5 !text-[9px]" />
+              <LinuxBadge linux={game.linux} className="!px-2.5 !py-1 !text-[10px]" />
             )}
           </div>
 
-          <h1 className="font-display text-4xl font-bold uppercase leading-tight tracking-tight text-white md:text-5xl">
+          <h1 className="font-display text-4xl font-bold tracking-tight text-white md:text-6xl">
             {title}
           </h1>
 
-          <p className="mt-2 flex items-center gap-1.5 text-xs font-medium text-zinc-400">
-            <span className="font-mono text-rose-400">⚡</span>
-            <span>
-              From <span className="text-zinc-200">{developer}</span>
-              {publisher && (
-                <span className="text-zinc-500"> · Published by {publisher}</span>
-              )}
-            </span>
+          <p className="mt-2 text-sm text-zinc-400">
+            <span className="text-zinc-200">{developer}</span>
+            {year && <span> · {year}</span>}
+            {publisher && publisher !== developer && (
+              <span className="text-zinc-500"> · Published by {publisher}</span>
+            )}
           </p>
-        </div>
-      </section>
 
-      {/* B. Content */}
-      <main className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div className="grid grid-cols-1 gap-10 lg:grid-cols-3">
-          {/* Left panel */}
-          <section className="lg:col-span-2">
-            <div className="mb-6 flex gap-5 border-b border-white/5 text-xs font-semibold">
-              {tabBtn("overview", "Overview")}
-              {tabBtn("screenshots", "Screenshots")}
-              {trailers.length > 0 && tabBtn("trailers", "Trailers")}
-              {tabBtn("community", "Community")}
+          <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1.5 text-[11px] text-zinc-400">
+            <span className="flex items-center gap-1.5 text-zinc-300">
+              <span className="flex h-5 w-5 items-center justify-center rounded-full bg-gradient-to-br from-rose-500 to-rose-700 text-[8px] font-black text-white">
+                ZA
+              </span>
+              Added by <b>Archive Indexer</b>
+            </span>
+            <span className="text-zinc-700">·</span>
+            <span className="flex items-center gap-1.5 text-emerald-400/90">
+              <CheckCircle className="h-3.5 w-3.5" /> Reviewed · verified release
+            </span>
+            {updatedLabel && (
+              <>
+                <span className="text-zinc-700">·</span>
+                <span className="flex items-center gap-1 text-zinc-400">
+                  <Eye className="h-3 w-3" /> {(game.stats?.views ?? 0).toLocaleString()} views
+                </span>
+                <span className="flex items-center gap-1 text-zinc-400">
+                  <Download className="h-3 w-3" /> {(game.stats?.downloads ?? 0).toLocaleString()} dl
+                </span>
+              </>
+            )}
+          </div>
+        </div>
+
+        <div className="mt-10 grid grid-cols-1 gap-10 lg:grid-cols-3">
+          {/* ---------- Left: gallery, about, requirements, mirrors, comments ---------- */}
+          <section className="space-y-12 lg:col-span-2">
+            {/* Screenshot gallery */}
+            <div>
+              <div className="relative aspect-video w-full overflow-hidden rounded-2xl bg-[#0d0d10] ring-1 ring-white/[0.08]">
+                {featureShot && !featBroken ? (
+                  <img
+                    src={featureShot}
+                    alt={`${title} screenshot ${shotIdx + 1}`}
+                    referrerPolicy="no-referrer"
+                    className="h-full w-full object-cover"
+                    onError={() => setFeatBroken(true)}
+                  />
+                ) : (
+                  <PlaceholderCover title={title} />
+                )}
+              </div>
+
+              {screenshots.length > 1 && (
+                <div className="no-scrollbar mt-3 flex gap-2.5 overflow-x-auto pb-1">
+                  {screenshots.map((s, i) => (
+                    <button
+                      key={i}
+                      onClick={() => setShotIdx(i)}
+                      aria-label={`Show screenshot ${i + 1}`}
+                      className={`h-16 w-28 shrink-0 overflow-hidden rounded-lg bg-zinc-900 ring-1 transition ${
+                        i === shotIdx
+                          ? "ring-2 ring-rose-500"
+                          : "ring-white/10 opacity-60 hover:opacity-100"
+                      }`}
+                    >
+                      <img src={s} alt="" loading="lazy" referrerPolicy="no-referrer" className="h-full w-full object-cover" />
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
 
-            {activeTab === "overview" && (
-              <div id="overview_tab" className="space-y-9">
-                <div>
-                  <h3 className="mb-3 font-display text-sm font-bold uppercase tracking-wider text-white">
-                    About this Game
-                  </h3>
-                  <p className="whitespace-pre-line text-sm leading-relaxed text-zinc-400">
-                    {summary || "No description available."}
-                  </p>
-                </div>
+            {/* About this game */}
+            <div id="about_game">
+              <h2 className="mb-3 font-display text-2xl font-bold tracking-tight text-white">
+                About this game
+              </h2>
+              <p className="whitespace-pre-line text-sm leading-relaxed text-zinc-400">
+                {summary || "No description available."}
+              </p>
+            </div>
 
-                <div>
-                  <h3 className="mb-4 font-display text-sm font-bold uppercase tracking-wider text-white">
-                    System Requirements
-                  </h3>
+            {/* System requirements */}
+            <div id="system_requirements">
+              <h2 className="mb-4 font-display text-2xl font-bold tracking-tight text-white">
+                System requirements
+              </h2>
 
-                  <div className="mb-4 flex gap-2">
-                    {reqKeys.map((osKey) => (
-                      <button
-                        key={osKey}
-                        onClick={() => setReqOs(osKey as any)}
-                        className={`rounded-full px-3.5 py-1 font-mono text-[11px] font-bold capitalize transition ${
-                          activeReq === osKey
-                            ? "bg-rose-500 text-white shadow-md shadow-rose-500/20"
-                            : "bg-white/[0.04] text-zinc-400 ring-1 ring-white/10 hover:text-white"
-                        }`}
-                      >
-                        {osKey}
-                      </button>
-                    ))}
-                  </div>
-
-                  <div className="rounded-2xl bg-[#0d0d10] p-5 ring-1 ring-white/[0.06]">
-                    {(systemRequirements as any)[activeReq] ? (
-                      <div className="grid grid-cols-1 gap-8 text-xs md:grid-cols-2">
-                        <ReqColumn
-                          title="Minimum OS specs"
-                          req={(systemRequirements as any)[activeReq]?.minimum}
-                        />
-                        <ReqColumn
-                          title="Recommended OS specs"
-                          req={
-                            (systemRequirements as any)[activeReq]?.recommended
-                              ? (systemRequirements as any)[activeReq]!.recommended!
-                              : null
-                          }
-                        />
-                      </div>
-                    ) : (
-                      <p className="py-4 text-center text-xs text-zinc-500">
-                        Unspecified requirements for this system.
-                      </p>
-                    )}
-                  </div>
-                </div>
+              <div className="mb-4 flex gap-2">
+                {reqKeys.map((osKey) => (
+                  <button
+                    key={osKey}
+                    onClick={() => setReqOs(osKey as any)}
+                    className={`rounded-full px-3.5 py-1 font-mono text-[11px] font-bold capitalize transition ${
+                      activeReq === osKey
+                        ? "bg-rose-500 text-white shadow-md shadow-rose-500/20"
+                        : "bg-white/[0.04] text-zinc-400 ring-1 ring-white/10 hover:text-white"
+                    }`}
+                  >
+                    {osKey}
+                  </button>
+                ))}
               </div>
-            )}
 
-            {activeTab === "screenshots" && (
-              <div id="screenshots_tab">
-                <h3 className="mb-4 font-display text-sm font-bold uppercase tracking-wider text-white">
-                  Screenshots Gallery
-                </h3>
-                {screenshots.length > 0 ? (
-                  <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                    {screenshots.map((screen, idx) => (
-                      <div key={idx} className="group relative aspect-video overflow-hidden rounded-xl bg-zinc-900 ring-1 ring-white/[0.06]">
-                        <img
-                          src={screen}
-                          alt={`Screenshot ${idx + 1}`}
-                          referrerPolicy="no-referrer"
-                          loading="lazy"
-                          className="h-full w-full object-cover transition duration-300 group-hover:scale-[1.02]"
-                          onError={(e) => {
-                            (e.target as HTMLImageElement).style.display = "none";
-                          }}
-                        />
-                      </div>
-                    ))}
+              <div className="rounded-2xl bg-[#0d0d10] p-5 ring-1 ring-white/[0.06]">
+                {(systemRequirements as any)[activeReq] ? (
+                  <div className="grid grid-cols-1 gap-8 text-xs md:grid-cols-2">
+                    <ReqColumn
+                      title="Minimum OS specs"
+                      req={(systemRequirements as any)[activeReq]?.minimum}
+                    />
+                    <ReqColumn
+                      title="Recommended OS specs"
+                      req={
+                        (systemRequirements as any)[activeReq]?.recommended
+                          ? (systemRequirements as any)[activeReq]!.recommended!
+                          : null
+                      }
+                    />
                   </div>
                 ) : (
-                  <p className="py-8 text-center text-xs text-zinc-500">
-                    No screenshots available for this game.
+                  <p className="py-4 text-center text-xs text-zinc-500">
+                    Unspecified requirements for this system.
                   </p>
                 )}
               </div>
-            )}
+            </div>
 
-            {activeTab === "trailers" && (
-              <div id="trailers_tab">
-                <h3 className="mb-4 font-display text-sm font-bold uppercase tracking-wider text-white">
-                  Trailers
-                </h3>
-                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                  {trailers.map((t, idx) => (
-                    <div key={idx} className="group relative aspect-video overflow-hidden rounded-xl bg-zinc-900 ring-1 ring-white/[0.06]">
-                      <video
-                        src={t.src}
-                        poster={t.thumb}
-                        controls
-                        preload="none"
-                        className="h-full w-full object-cover"
-                      />
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {activeTab === "community" && <GameComments gameId={game.id} />}
-          </section>
-
-          {/* Right sidebar */}
-          <aside id="game_sidebar" className="space-y-5">
-            <div className="rounded-2xl bg-[#0d0d10] p-5 ring-1 ring-white/[0.06]">
-              <span className="mb-4 inline-flex items-center gap-1.5 rounded-md bg-white/[0.04] px-2.5 py-1 font-mono text-[9px] font-bold uppercase tracking-widest text-zinc-400 ring-1 ring-white/[0.06]">
-                <span className="flex items-center gap-1">
-                  <Calendar className="h-3 w-3 text-rose-400" />
-                  Updated {releaseDate}
-                </span>
-              </span>
+            {/* Download mirrors */}
+            <div id="download_mirrors">
+              <h2 className="mb-4 font-display text-2xl font-bold tracking-tight text-white">
+                Download {title}
+              </h2>
 
               <button
                 id="main_download_trigger_btn"
@@ -370,69 +389,247 @@ export const GameDetailView: React.FC = () => {
                   setShowDownloadMenu(true);
                   showToast("Opening Secure Download Mirrors Portal...");
                 }}
-                className="flex h-11 w-full cursor-pointer items-center justify-center gap-2.5 rounded-xl bg-rose-500 font-display text-xs font-bold uppercase tracking-wider text-white shadow-lg shadow-rose-500/20 transition hover:bg-rose-400 active:scale-[0.98]"
+                className="flex h-12 w-full cursor-pointer items-center justify-center gap-2.5 rounded-xl bg-rose-500 font-display text-sm font-bold uppercase tracking-wider text-white shadow-lg shadow-rose-500/25 transition hover:bg-rose-400 active:scale-[0.99]"
               >
                 <Download className="h-4 w-4" />
-                Choose Download Mirror
+                Download · {game.fileSize || "—"}
               </button>
 
-              <div className="mt-4 grid grid-cols-4 gap-2 text-[10px] font-bold uppercase text-zinc-500">
-                <ActionBtn
-                  active={isWishlisted}
-                  activeCls="text-rose-400 border-rose-500/30 bg-rose-500/10 border"
-                  onClick={() => {
-                    if (!user) {
-                      showToast("Please Sign in to add items to your Wishlist.");
-                    } else {
-                      toggleWishlist(game.id);
-                      showToast(isWishlisted ? "Removed from Wishlist!" : "Added to Wishlist!");
-                    }
-                  }}
-                  label="Wishlist"
-                >
-                  <Heart className={`h-4 w-4 ${isWishlisted ? "fill-current" : ""}`} />
-                </ActionBtn>
-                <ActionBtn
-                  active={isLiked}
-                  activeCls="text-rose-400 border-rose-500/30 bg-rose-500/10 border"
-                  onClick={() => {
-                    if (!user) {
-                      showToast("Please Sign in to upvote game.");
-                    } else {
-                      toggleLike(game.id);
-                      showToast(isLiked ? "Revoked Like!" : "Uploader upvoted!");
-                    }
-                  }}
-                  label={`Upvote (${rating})`}
-                >
-                  <ThumbsUp className={`h-4 w-4 ${isLiked ? "fill-current" : ""}`} />
-                </ActionBtn>
-                <ActionBtn
-                  active={isBookmarked}
-                  activeCls="text-emerald-400 border-emerald-500/30 bg-emerald-500/10 border"
-                  onClick={() => {
-                    toggleBookmark(game.id);
-                    showToast(isBookmarked ? "Removed from Bookmarks!" : "Added to Bookmarks!");
-                  }}
-                  label="Bookmark"
-                >
-                  <Bookmark className={`h-4 w-4 ${isBookmarked ? "fill-current" : ""}`} />
-                </ActionBtn>
-                <ActionBtn
-                  active={false}
-                  activeCls=""
-                  onClick={() => {
-                    const steamUrl = game.steamId
-                      ? `https://store.steampowered.com/app/${game.steamId}`
-                      : `https://store.steampowered.com/search/?term=${encodeURIComponent(game.title)}`;
-                    window.open(steamUrl, "_blank", "noopener,noreferrer");
-                    showToast(`Opening Steam page for ${game.title}...`);
-                  }}
-                  label="Steam"
-                >
-                  <ExternalLink className="h-4 w-4 text-rose-400" />
-                </ActionBtn>
+              {(game.downloadSources || []).length > 0 && (
+                <div className="mt-4 overflow-hidden rounded-2xl bg-[#0d0d10] ring-1 ring-white/[0.06]">
+                  {[...new Map((game.downloadSources || []).map((s) => [`${s.repacker}-${s.name}`, s])).values()]
+                    .slice(0, 6)
+                    .map((src, idx) => {
+                      const isMagnet = src.type === "torrent" || (src.url || "").startsWith("magnet:");
+                      return (
+                        <button
+                          key={idx}
+                          onClick={() => handleMirrorClick({ ...src, isMagnet })}
+                          className="group flex w-full cursor-pointer items-center gap-3 border-b border-white/[0.05] px-4 py-3 text-left transition last:border-0 hover:bg-white/[0.03]"
+                        >
+                          <div
+                            className={`shrink-0 rounded-lg p-2 ring-1 ${
+                              isMagnet
+                                ? "bg-violet-500/10 text-violet-400 ring-violet-500/20"
+                                : "bg-emerald-500/10 text-emerald-400 ring-emerald-500/20"
+                            }`}
+                          >
+                            {isMagnet ? <Database className="h-4 w-4" /> : <Server className="h-4 w-4" />}
+                          </div>
+                          <span className="min-w-0 flex-1">
+                            <span className="block truncate text-xs font-medium text-zinc-200">
+                              {src.name}
+                              {src.fileSize ? (
+                                <span className="ml-2 rounded bg-white/[0.05] px-1.5 py-0.5 font-mono text-[9px] font-bold text-zinc-300 ring-1 ring-white/10">
+                                  {src.fileSize}
+                                </span>
+                              ) : null}
+                            </span>
+                            <span className="mt-0.5 block truncate font-mono text-[10px] text-zinc-600">
+                              {src.repacker || "Source"} · {(src.url || "").slice(0, 44)}…
+                            </span>
+                          </span>
+                          <span className="shrink-0 text-zinc-600 transition group-hover:text-rose-400">→</span>
+                        </button>
+                      );
+                    })}
+                  {(game.downloadSources || []).length > 6 && (
+                    <button
+                      onClick={() => setShowDownloadMenu(true)}
+                      className="w-full px-4 py-3 text-center font-mono text-[11px] font-bold uppercase tracking-widest text-zinc-500 transition hover:text-rose-400"
+                    >
+                      + {(game.downloadSources || []).length - 6} more mirrors
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Comments */}
+            <div id="comments">
+              <div className="mb-4 flex items-end justify-between">
+                <h2 className="font-display text-2xl font-bold tracking-tight text-white">Comments</h2>
+                <span className="font-mono text-[11px] text-zinc-600">Community · {game.stats?.views?.toLocaleString() || 0} views</span>
               </div>
+              <GameComments gameId={game.id} />
+            </div>
+          </section>
+
+          {/* ---------- Right: stats + download card ---------- */}
+          <aside id="game_sidebar" className="space-y-5 lg:sticky lg:top-20 lg:self-start">
+            {/* Stats card (kryo-style facts) */}
+            <div className="rounded-2xl bg-[#0d0d10] p-5 ring-1 ring-white/[0.06]">
+              <div className="flex items-center justify-between border-b border-white/5 pb-4">
+                <span className="font-display text-xs font-bold uppercase tracking-widest text-zinc-400">
+                  Rating
+                </span>
+                <span className="flex items-center gap-1.5 font-display text-lg font-bold text-rose-400">
+                  <Star className="h-4 w-4 fill-rose-400" />
+                  {rating > 0 ? `${rating}% positive` : "Unrated"}
+                </span>
+              </div>
+
+              <div className="divide-y divide-white/[0.05] text-xs">
+                <InfoRow label="Developer" value={<span className="font-semibold text-white">{developer}</span>} />
+                <InfoRow label="Release" value={<span className="font-semibold text-white">{year || "—"}</span>} />
+                <InfoRow label="Install size" value={<span className="font-mono font-semibold text-white">{game.fileSize || "—"}</span>} />
+                <InfoRow
+                  label="Updated"
+                  value={<span className="flex items-center gap-1 font-mono font-semibold text-white"><CalendarClock className="h-3 w-3 text-rose-400" />{updatedLabel || "—"}</span>}
+                />
+              </div>
+
+              <div className="mt-4 border-t border-white/5 pt-4">
+                <span className="mb-2 block font-mono text-[10px] font-bold uppercase tracking-widest text-zinc-500">
+                  Features
+                </span>
+                <ul className="space-y-1.5">
+                  {features.map((f) => (
+                    <li key={f.label} className="flex items-center gap-2 text-[11px] text-zinc-300">
+                      <CheckCircle className={`h-3.5 w-3.5 ${f.ok ? "text-emerald-400" : "text-zinc-600"}`} />
+                      {f.label}
+                    </li>
+                  ))}
+                  {game.classic && (
+                    <li className="flex items-center gap-2 text-[11px] text-zinc-300">
+                      <CheckCircle className="h-3.5 w-3.5 text-emerald-400" />
+                      Classic / Retro title
+                    </li>
+                  )}
+                </ul>
+              </div>
+            </div>
+
+            {/* Download card */}
+            <div className="rounded-2xl bg-[#0d0d10] p-5 ring-1 ring-white/[0.06]">
+              <div className="mb-3 flex items-center justify-between">
+                <h2 className="flex items-center gap-2 font-display text-sm font-bold uppercase tracking-widest text-white">
+                  <Library className="h-3.5 w-3.5 text-rose-400" />
+                  Add to Library
+                </h2>
+              </div>
+
+              <button
+                onClick={() => {
+                  toggleBookmark(game.id);
+                  showToast(isBookmarked ? "Removed from library." : "Added to your library!");
+                }}
+                className={`flex h-10 w-full cursor-pointer items-center justify-center gap-2 rounded-xl font-display text-xs font-bold uppercase tracking-wider transition active:scale-[0.98] ${
+                  isBookmarked
+                    ? "bg-emerald-500/15 text-emerald-300 ring-1 ring-emerald-500/40"
+                    : "bg-white/[0.05] text-white ring-1 ring-white/10 hover:bg-white/[0.08]"
+                }`}
+              >
+                <Bookmark className={`h-4 w-4 ${isBookmarked ? "fill-current" : ""}`} />
+                {isBookmarked ? "In Library" : "Add to Library"}
+              </button>
+
+              <div className="mt-4 divide-y divide-white/[0.05] text-xs">
+                <InfoRow
+                  label="Source"
+                  value={<span className="font-mono font-semibold text-white">{repackers.length ? repackers.join(" + ") : "Steam"}</span>}
+                />
+                <InfoRow label="Version" value={<span className="font-mono font-semibold text-white">latest</span>} />
+                <InfoRow label="Download" value={<span className="font-mono font-semibold text-white">{game.fileSize || "—"}</span>} />
+                <InfoRow label="Install" value={<span className="font-mono font-semibold text-white">{game.fileSize || "—"}</span>} />
+                <div className="grid grid-cols-2 gap-2 px-3 py-3">
+                  <div className="rounded-lg bg-white/[0.03] px-3 py-2 ring-1 ring-white/[0.06]">
+                    <p className="font-mono text-[9px] font-bold uppercase text-zinc-500">Views</p>
+                    <p className="mt-0.5 font-display text-sm font-bold text-white">{(game.stats?.views ?? 0).toLocaleString()}</p>
+                  </div>
+                  <div className="rounded-lg bg-white/[0.03] px-3 py-2 ring-1 ring-white/[0.06]">
+                    <p className="font-mono text-[9px] font-bold uppercase text-zinc-500">Downloads</p>
+                    <p className="mt-0.5 font-display text-sm font-bold text-white">{(game.stats?.downloads ?? 0).toLocaleString()}</p>
+                  </div>
+                </div>
+              </div>
+
+              <button
+                onClick={() => {
+                  setShowDownloadMenu(true);
+                  showToast("Opening Secure Download Mirrors Portal...");
+                }}
+                className="mt-4 flex h-11 w-full cursor-pointer items-center justify-center gap-2.5 rounded-xl bg-rose-500 font-display text-xs font-bold uppercase tracking-wider text-white shadow-lg shadow-rose-500/20 transition hover:bg-rose-400 active:scale-[0.98]"
+              >
+                <Download className="h-4 w-4" />
+                Download · {game.fileSize || "—"}
+              </button>
+
+              <div className="mt-3 flex items-center justify-between">
+                <Link
+                  to="/help"
+                  className="font-mono text-[10px] font-bold text-zinc-600 transition hover:text-rose-400"
+                >
+                  build out of date? report an update
+                </Link>
+                <button
+                  onClick={handleEnrich}
+                  disabled={enriching}
+                  className="flex items-center gap-1 font-mono text-[10px] font-bold text-zinc-500 transition hover:text-rose-300 disabled:opacity-40"
+                >
+                  {enriching ? <Loader2 className="h-3 w-3 animate-spin" /> : <Sparkles className="h-3 w-3 text-rose-400" />}
+                  Refresh
+                </button>
+              </div>
+            </div>
+
+            {/* Community actions */}
+            <div className="grid grid-cols-4 gap-2 text-[10px] font-bold uppercase text-zinc-500">
+              <ActionBtn
+                active={isWishlisted}
+                activeCls="text-rose-400 border-rose-500/30 bg-rose-500/10 border"
+                onClick={() => {
+                  if (!user) {
+                    showToast("Please Sign in to add items to your Wishlist.");
+                  } else {
+                    toggleWishlist(game.id);
+                    showToast(isWishlisted ? "Removed from Wishlist!" : "Added to Wishlist!");
+                  }
+                }}
+                label="Wishlist"
+              >
+                <Heart className={`h-4 w-4 ${isWishlisted ? "fill-current" : ""}`} />
+              </ActionBtn>
+              <ActionBtn
+                active={isLiked}
+                activeCls="text-rose-400 border-rose-500/30 bg-rose-500/10 border"
+                onClick={() => {
+                  if (!user) {
+                    showToast("Please Sign in to upvote game.");
+                  } else {
+                    toggleLike(game.id);
+                    showToast(isLiked ? "Revoked Like!" : "Uploader upvoted!");
+                  }
+                }}
+                label={`Upvote (${rating})`}
+              >
+                <ThumbsUp className={`h-4 w-4 ${isLiked ? "fill-current" : ""}`} />
+              </ActionBtn>
+              <ActionBtn
+                active={isBookmarked}
+                activeCls="text-emerald-400 border-emerald-500/30 bg-emerald-500/10 border"
+                onClick={() => {
+                  toggleBookmark(game.id);
+                  showToast(isBookmarked ? "Removed from Bookmarks!" : "Added to Bookmarks!");
+                }}
+                label="Bookmark"
+              >
+                <Bookmark className={`h-4 w-4 ${isBookmarked ? "fill-current" : ""}`} />
+              </ActionBtn>
+              <ActionBtn
+                active={false}
+                activeCls=""
+                onClick={() => {
+                  const steamUrl = game.steamId
+                    ? `https://store.steampowered.com/app/${game.steamId}`
+                    : `https://store.steampowered.com/search/?term=${encodeURIComponent(game.title)}`;
+                  window.open(steamUrl, "_blank", "noopener,noreferrer");
+                  showToast(`Opening Steam page for ${game.title}...`);
+                }}
+                label="Steam"
+              >
+                <ExternalLink className="h-4 w-4 text-rose-400" />
+              </ActionBtn>
             </div>
 
             <div className="flex gap-1.5 rounded-2xl border border-amber-500/20 bg-amber-500/[0.06] p-4 text-[11px] leading-relaxed text-amber-500/90">
@@ -441,68 +638,40 @@ export const GameDetailView: React.FC = () => {
                 <strong className="mb-1 block font-display text-[10px] font-bold uppercase tracking-wider">
                   Watch out for ads!
                 </strong>
-                Make sure you are using an adblocker (e.g. uBlock Origin). Check the guide tab for safety tips.
+                Make sure you are using an adblocker (e.g. uBlock Origin). Check the help tab for safety tips.
               </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-3 text-xs">
-              <StatCard label="Downloads" value={(game.stats?.downloads ?? 0).toLocaleString()} />
-              <StatCard label="Views" value={(game.stats?.views ?? 0).toLocaleString()} />
             </div>
 
             <RatingPanel gameId={game.id} />
-
-            <div className="divide-y divide-white/[0.05] rounded-2xl bg-[#0d0d10] p-1 text-xs ring-1 ring-white/[0.06]">
-              <InfoRow
-                label="Rating Score"
-                value={
-                  rating > 0 ? (
-                    <span className="flex items-center gap-1 font-display font-bold text-rose-400">
-                      <Star className="h-3.5 w-3.5 fill-rose-400" /> {rating}%
-                    </span>
-                  ) : (
-                    <span className="font-mono font-bold text-zinc-400">Unrated</span>
-                  )
-                }
-              />
-              <InfoRow
-                label="Archive Size"
-                value={<span className="font-mono font-bold text-white">{game.fileSize}</span>}
-              />
-              {releaseDate && (
-                <InfoRow
-                  label="Released Year"
-                  value={<span className="font-mono font-bold text-white">{releaseDate.match(/(19|20)\d{2}/)?.[0] ?? releaseDate}</span>}
-                />
-              )}
-              {game.linux && (game.linux.tier || game.linux.native) && (
-                <div className="flex items-center justify-between px-3 py-3">
-                  <span className="font-mono font-semibold text-zinc-500">Linux Support</span>
-                  <LinuxBadge linux={game.linux} className="!px-2 !py-1 !text-[9px]" />
-                </div>
-              )}
-              <div className="flex items-center justify-between">
-                <span className="font-mono font-semibold text-zinc-500">Uploader Role</span>
-                <span className="rounded bg-rose-500/10 px-2 py-0.5 font-mono text-[9px] font-bold uppercase tracking-widest text-rose-400 ring-1 ring-rose-500/20">
-                  Verified
-                </span>
-              </div>
-
-              <button
-                onClick={handleEnrich}
-                disabled={enriching}
-                className="flex w-full cursor-pointer items-center justify-center gap-1.5 rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2 font-mono text-[10px] font-bold text-zinc-300 transition hover:border-rose-500/30 hover:text-rose-300 disabled:opacity-40"
-              >
-                {enriching ? (
-                  <Loader2 className="h-3 w-3 animate-spin" />
-                ) : (
-                  <Sparkles className="h-3 w-3 text-rose-400" />
-                )}
-                {enriching ? "Syncing with Steam…" : "Refresh from Steam"}
-              </button>
-            </div>
           </aside>
         </div>
+
+        {/* C. More like this */}
+        {related.length > 0 && (
+          <section className="mt-16">
+            <div className="mb-5 flex items-end justify-between gap-4">
+              <div>
+                <p className="mb-1.5 font-mono text-[10px] font-bold uppercase tracking-[0.2em] text-rose-400">
+                  ✦ Related
+                </p>
+                <h2 className="font-display text-2xl font-bold tracking-tight text-white sm:text-3xl">
+                  More like this
+                </h2>
+              </div>
+              <Link
+                to={`/browse?genre=${encodeURIComponent(game.genres?.[0] || "")}`}
+                className="flex shrink-0 items-center gap-1 rounded-full border border-white/10 px-3.5 py-1.5 text-[11px] font-bold text-zinc-400 transition hover:border-rose-500/40 hover:text-white"
+              >
+                Browse {game.genres?.[0] || "similar"} <span aria-hidden>→</span>
+              </Link>
+            </div>
+            <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 xl:grid-cols-4">
+              {related.map((g) => (
+                <GameCard key={g.id} game={g} />
+              ))}
+            </div>
+          </section>
+        )}
       </main>
 
       {/* Download modal */}
@@ -521,7 +690,7 @@ export const GameDetailView: React.FC = () => {
               initial={{ opacity: 0, scale: 0.95, y: 15 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 15 }}
-              className="relative w-full max-w-xl overflow-hidden rounded-2xl border border-white/10 bg-[#0d0d10] p-6 shadow-2xl z-10"
+              className="relative z-10 w-full max-w-xl overflow-hidden rounded-2xl border border-white/10 bg-[#0d0d10] p-6 shadow-2xl"
             >
               <button
                 onClick={() => setShowDownloadMenu(false)}
@@ -587,7 +756,7 @@ export const GameDetailView: React.FC = () => {
                                 </div>
 
                                 <div className="min-w-0 flex-1">
-                                  <div className="flex items-center gap-1.5 flex-wrap">
+                                  <div className="flex flex-wrap items-center gap-1.5">
                                     <span
                                       className={`rounded px-1.5 py-0.5 font-mono text-[9px] font-bold uppercase tracking-wider ring-1 ${
                                         isMagnet
@@ -695,15 +864,8 @@ const ActionBtn: React.FC<{
   </button>
 );
 
-const StatCard: React.FC<{ label: string; value: string }> = ({ label, value }) => (
-  <div className="rounded-2xl bg-[#0d0d10] p-4 ring-1 ring-white/[0.06]">
-    <span className="font-mono text-[9px] font-bold uppercase text-zinc-500">{label}</span>
-    <p className="mt-1 font-display text-xl font-bold text-white">{value}</p>
-  </div>
-);
-
 const InfoRow: React.FC<{ label: string; value: React.ReactNode }> = ({ label, value }) => (
-  <div className="flex items-center justify-between px-3 py-3">
+  <div className="flex items-center justify-between px-0 py-3">
     <span className="font-mono font-semibold text-zinc-500">{label}</span>
     {value}
   </div>
