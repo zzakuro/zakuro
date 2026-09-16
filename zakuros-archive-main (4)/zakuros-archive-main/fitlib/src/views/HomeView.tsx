@@ -463,6 +463,7 @@ export const HomeView: React.FC = () => {
               </Link>
             ))}
           </div>
+          </section>
         </Reveal>
 
         {/* 5. Featured Collections */}
