@@ -19,6 +19,41 @@ const BADGE_STYLES: Record<CardBadge, string> = {
   VR: "bg-violet-500/90 text-violet-50",
 };
 
+function hashHue(s: string): number {
+  let h = 0;
+  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0;
+  return h % 360;
+}
+
+function coverInitials(s: string): string {
+  const words = s.split(/\s+/).filter(Boolean).slice(0, 2);
+  const fromWords = words.map((w) => Array.from(w)[0] || "").join("");
+  return (fromWords || Array.from(s).slice(0, 2).join("")).toUpperCase();
+}
+
+const PlaceholderCover: React.FC<{ title: string }> = ({ title }) => {
+  const hue = hashHue(title || "?");
+  const hue2 = (hue + 40) % 360;
+  return (
+    <div
+      className="relative flex h-full w-full flex-col justify-between overflow-hidden p-4"
+      style={{
+        background: `linear-gradient(160deg, hsl(${hue} 55% 26%), hsl(${hue2} 60% 12%) 60%, #0d0d10)`,
+      }}
+    >
+      <span className="font-display text-lg font-black tracking-wide text-white/90 drop-shadow">
+        {coverInitials(title)}
+      </span>
+      <div>
+        <div className="mb-2 h-0.5 w-8 rounded bg-rose-400/90" />
+        <span className="font-display text-sm font-bold leading-snug text-zinc-100 line-clamp-4">
+          {title}
+        </span>
+      </div>
+    </div>
+  );
+};
+
 export const GameCard: React.FC<GameCardProps> = ({ game, badge }) => {
   const [imgFailed, setImgFailed] = useState(false);
 
@@ -39,12 +74,7 @@ export const GameCard: React.FC<GameCardProps> = ({ game, badge }) => {
       {/* Cover */}
       <div className="relative aspect-[3/4] w-full overflow-hidden bg-zinc-900">
         {showPlaceholder ? (
-          <div className="flex h-full w-full flex-col items-start justify-end bg-gradient-to-br from-zinc-800/70 via-zinc-900 to-[#0d0d10] p-4">
-            <div className="mb-2 h-0.5 w-8 rounded bg-rose-500" />
-            <span className="font-display text-sm font-bold leading-snug text-zinc-100 line-clamp-4">
-              {game.title}
-            </span>
-          </div>
+          <PlaceholderCover title={game.title} />
         ) : (
           <img
             src={game.coverImage}
