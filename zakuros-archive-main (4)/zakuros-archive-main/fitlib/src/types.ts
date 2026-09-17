@@ -57,8 +57,12 @@ export interface Game {
   fileSize: string;
   magnetLink: string;
   coverImage: string;
- screenshot: string;
+  screenshot: string;
   screenshots?: string[];
+  // Compact counts present on the list/card projection (which omits the full
+  // screenshots[]/downloadSources[] arrays to keep the catalog payload small).
+  screenshotCount?: number;
+  sourceCount?: number;
   summary: string;
   systemRequirements: GameRequirements;
   stats: GameStats;

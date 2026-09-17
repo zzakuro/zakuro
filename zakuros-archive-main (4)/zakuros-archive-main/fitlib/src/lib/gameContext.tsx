@@ -307,28 +307,39 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     fetchGamesFromBackend();
   }, []);
 
-  // Light poll: while the backend metadata grind enriches the catalog on disk,
-  // quietly refresh the served list every few minutes so new fields (linux,
-  // screenshots, summaries) appear without a manual page reload.
+  // Light poll: ask the backend for a tiny catalog version string and only
+  // re-download the (large) catalog when it actually changed. This replaces
+  // the old behaviour of re-fetching the entire catalog every few minutes.
   useEffect(() => {
-    const signature = (list: Game[]) =>
-      `${list.length}:${list.slice(0, 600).filter((g) => g.linux && (g.linux.tier || g.linux.native)).length}`;
-    let lastSig = signature(games);
+    let lastVersion: string | null = null;
+    let stopped = false;
     const id = setInterval(async () => {
       try {
-        const res = await fetch("/api/games");
+        const res = await fetch("/api/catalog/version");
         if (!res.ok) return;
-        const data = await res.json();
+        const { version } = await res.json();
+        if (typeof version !== "string") return;
+        if (lastVersion === null) {
+          lastVersion = version;
+          return;
+        }
+        if (version === lastVersion) return;
+        lastVersion = version;
+        const g = await fetch("/api/games");
+        if (!g.ok) return;
+        const data = await g.json();
+        if (stopped) return;
         const next: Game[] = Array.isArray(data) ? data : (data.games ?? []);
-        const sig = signature(next);
-        setGames((prev) => (signature(prev) === sig ? prev : next));
-        if (lastSig && lastSig !== sig) setError(null);
-        lastSig = sig;
+        setGames(next);
+        setError(null);
       } catch {
         // backend offline; keep current data
       }
     }, 180000);
-    return () => clearInterval(id);
+    return () => {
+      stopped = true;
+      clearInterval(id);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

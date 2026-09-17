@@ -85,6 +85,7 @@ function loadGames(): Game[] {
 }
 
 let catalogDirty = false;
+let catalogRevision = 0;
 let catalogSaveTimer: NodeJS.Timeout | null = null;
 let catalogSaving: Promise<void> | null = null;
 
@@ -120,6 +121,7 @@ async function flushCatalogAsync(): Promise<void> {
 // event loop and OneDrive never see a half-written ~45MB file.
 function scheduleCatalogSave(): void {
   catalogDirty = true;
+  catalogRevision++;
   if (catalogSaveTimer) clearTimeout(catalogSaveTimer);
   catalogSaveTimer = setTimeout(() => {
     catalogSaveTimer = null;
@@ -231,6 +233,39 @@ function applyQuery(
   const offset = Math.max(0, query.offset ?? 0);
   const limit = query.limit && query.limit > 0 ? query.limit : total;
   return { games: result.slice(offset, offset + limit), total };
+}
+
+// ── Card projection ───────────────────────────────────────────────────────────
+// The list/search surfaces only need a compact subset of each Game. Shipping
+// full screenshots[], downloadSources[], systemRequirements{}, trailers[] and
+// magnetLink for all 111k titles inflates the catalog-wide payload to ~46MB gz.
+// Those detail-only fields are served per-game by /api/games/:id instead, so
+// this projection keeps the list response small (counts replace the arrays).
+const SUMMARY_CARD_CAP = 220;
+
+function toCardGame(g: Game) {
+  return {
+    id: g.id,
+    title: g.title,
+    developer: g.developer,
+    publisher: g.publisher,
+    genres: g.genres,
+    releaseDate: g.releaseDate,
+    rating: g.rating,
+    fileSize: g.fileSize,
+    coverImage: g.coverImage,
+    screenshot: g.screenshot,
+    steamId: g.steamId,
+    igdbId: g.igdbId,
+    reviewCount: g.reviewCount,
+    popularityScore: g.popularityScore,
+    linux: g.linux,
+    classic: g.classic,
+    stats: g.stats,
+    summary: typeof g.summary === "string" ? g.summary.slice(0, SUMMARY_CARD_CAP) : g.summary,
+    screenshotCount: g.screenshots ? g.screenshots.length : 0,
+    sourceCount: g.downloadSources ? g.downloadSources.length : 0,
+  };
 }
 
 // ── Remote source sync state ──────────────────────────────────────────────────
@@ -397,11 +432,24 @@ async function startServer() {
         minRating,
         classic: req.query.classic === "1" || req.query.classic === "true",
       });
-      res.json({ total, offset: offset ?? 0, limit: limit ?? total, games });
+      // `full=1` opts out of the card projection (e.g. debugging / tooling).
+      const full = req.query.full === "1" || req.query.full === "true";
+      res.json({
+        total,
+        offset: offset ?? 0,
+        limit: limit ?? total,
+        games: full ? games : games.map(toCardGame),
+      });
     } catch (e: any) {
       console.error("[Backend Games Load Error]:", e.message);
       res.status(500).json({ error: "Failed to load game collection." });
     }
+  });
+
+  // A2. Lightweight catalog version — lets clients detect changes without
+  // re-downloading the entire catalog. Bumps whenever the catalog is mutated.
+  app.get("/api/catalog/version", (_req, res) => {
+    res.json({ version: `${gamesCatalog.length}:${catalogRevision}` });
   });
 
   // B. Get specific Game

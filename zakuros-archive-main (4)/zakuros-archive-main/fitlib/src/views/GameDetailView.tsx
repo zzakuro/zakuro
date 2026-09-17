@@ -19,7 +19,12 @@ export const GameDetailView: React.FC = () => {
   const { games, user, toggleWishlist, toggleLike, bookmarks, toggleBookmark } = useGame();
   const navigate = useNavigate();
 
-  const game = games.find((g) => g.id === id);
+  const stub = games.find((g) => g.id === id);
+  // The catalog list payload is a compact "card" projection (no screenshots/
+  // downloads/systemRequirements/trailers). Seed from it for an instant paint,
+  // then hydrate the full record from /api/games/:id.
+  const [fullGame, setFullGame] = useState<Game | null>(null);
+  const game = fullGame && fullGame.id === id ? fullGame : stub;
 
   const [reqOs, setReqOs] = useState<"windows" | "linux" | "mac">("windows");
   const [showDownloadMenu, setShowDownloadMenu] = useState<boolean>(false);
@@ -57,6 +62,30 @@ export const GameDetailView: React.FC = () => {
     const keys = Object.keys(game?.systemRequirements ?? {});
     setReqOs((keys[0] as "windows" | "linux" | "mac") || "windows");
   }, [game?.id]);
+
+  // Seed trailers from the hydrated record (the card stub carries none).
+  useEffect(() => {
+    if (game?.trailers?.length) setTrailers(game.trailers);
+  }, [game?.trailers]);
+
+  // Hydrate the full detail record (screenshots, download mirrors, system
+  // requirements, magnet) that the slim list payload intentionally omits.
+  useEffect(() => {
+    if (!id) return;
+    setFullGame(null);
+    const ac = new AbortController();
+    (async () => {
+      try {
+        const res = await fetch(`/api/games/${encodeURIComponent(id)}`, { signal: ac.signal });
+        if (!res.ok) return;
+        const data = (await res.json()) as Game;
+        if (!ac.signal.aborted) setFullGame(data);
+      } catch {
+        // network/abort — fall back to the card stub
+      }
+    })();
+    return () => ac.abort();
+  }, [id]);
 
   // Pull live Steam metadata once on open so trailers appear even before
   // the offline grind has persisted them to disk.
@@ -144,6 +173,24 @@ export const GameDetailView: React.FC = () => {
     setToastMessage(msg);
     setTimeout(() => setToastMessage(null), 3000);
   };
+
+  // NOTE: every hook must run on every render. Keep this above the `!game`
+  // early return or React throws "Rendered more hooks than during the previous
+  // render" once hydration turns an initially-undefined game into a defined one
+  // (e.g. NSFW titles that are filtered out of the list stub).
+  const related = useMemo(() => {
+    if (!game) return [] as Game[];
+    const shared = (g2: Game) => (game.genres || []).filter((x) => (g2.genres || []).includes(x)).length;
+    return [...games]
+      .filter((g2) => g2.id !== game.id && shared(g2) > 0)
+      .sort(
+        (a, b) =>
+          shared(b) - shared(a) ||
+          (b.popularityScore ?? 0) - (a.popularityScore ?? 0) ||
+          b.rating - a.rating
+      )
+      .slice(0, 8);
+  }, [games, game]);
 
   if (!game) {
     return (
@@ -240,19 +287,6 @@ export const GameDetailView: React.FC = () => {
   const repackers = Array.from(
     new Set((game.downloadSources || []).map((s) => s.repacker || "Source").filter(Boolean))
   );
-
-  const related = useMemo(() => {
-    const shared = (g2: Game) => (game.genres || []).filter((x) => (g2.genres || []).includes(x)).length;
-    return [...games]
-      .filter((g2) => g2.id !== game.id && shared(g2) > 0)
-      .sort(
-        (a, b) =>
-          shared(b) - shared(a) ||
-          (b.popularityScore ?? 0) - (a.popularityScore ?? 0) ||
-          b.rating - a.rating
-      )
-      .slice(0, 8);
-  }, [games, game]);
 
   const updatedLabel = game.stats?.updatedAt
     ? new Date(game.stats.updatedAt).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" })

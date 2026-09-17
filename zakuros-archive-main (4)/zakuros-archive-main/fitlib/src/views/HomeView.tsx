@@ -72,7 +72,9 @@ export const HomeView: React.FC = () => {
         ? `steam:${g.steamId}`
         : `title:${g.title.toLowerCase().replace(/[^a-z0-9]+/g, "").trim()}`;
     const score = (g: Game) =>
-      (g.rating || 0) + (g.downloadSources?.length || 0) * 0.01 + (g.screenshots?.length || 0) * 0.001;
+      (g.rating || 0) +
+      (g.sourceCount ?? g.downloadSources?.length ?? 0) * 0.01 +
+      (g.screenshotCount ?? g.screenshots?.length ?? 0) * 0.001;
     for (const g of list) {
       const k = key(g);
       const prev = seen.get(k);
