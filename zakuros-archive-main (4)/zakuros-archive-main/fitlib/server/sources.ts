@@ -729,6 +729,30 @@ export function stabilizeCatalog(games: Game[]): { games: Game[]; merged: number
   return { games: out, merged, regen };
 }
 
+// Filler detection for un-enriched foreign-language imports (chiefly the
+// Rutracker/Rutor "all categories" feeds): a game with no Steam metadata and a
+// non-Latin title (or a bilingual title carrying Cyrillic) is repack-runoff
+// with nothing to show. Kept out-of-catalog on every write so a source sync
+// can't re-introduce it. Games that acquire metadata (steamId/cover) are kept.
+export function isForeignFiller(g: Game): boolean {
+  if (g.classic || g.steamId || g.coverImage) return false;
+  const t = g.title || "";
+  if (!t) return false;
+  if (/[\u0400-\u04ff]/.test(t)) return true;
+  return !/[A-Za-z]/.test(t) && /[^\x00-\x7f]/.test(t);
+}
+
+export function pruneForeignFiller(games: Game[]): number {
+  let removed = 0;
+  for (let i = games.length - 1; i >= 0; i--) {
+    if (isForeignFiller(games[i])) {
+      games.splice(i, 1);
+      removed++;
+    }
+  }
+  return removed;
+}
+
 // ── Steam enrichment for newly added PC titles ───────────────────────────────
 
 const STEAM_SEARCH_URL = (term: string) =>

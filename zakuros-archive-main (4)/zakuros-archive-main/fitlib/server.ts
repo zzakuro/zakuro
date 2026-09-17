@@ -4,7 +4,7 @@ import fs from "fs";
 import compression from "compression";
 import { createServer as createViteServer } from "vite";
 import { getGameMetadata, checkBackendRateLimit, parseSteamPcRequirements } from "./server/metadataService";
-import { setRealScreenshots, summaryIsPlaceholder, devIsPlaceholder, shouldUpgradeSummary, steamTitleMismatch, stabilizeCatalog } from "./server/sources";
+import { setRealScreenshots, summaryIsPlaceholder, devIsPlaceholder, shouldUpgradeSummary, steamTitleMismatch, stabilizeCatalog, pruneForeignFiller } from "./server/sources";
 import {
   communityRouter,
 } from "./server/community";
@@ -95,6 +95,8 @@ let catalogSaving: Promise<void> | null = null;
 // the sync-time stabilize pass already collapsed. Mutating in place keeps the
 // long-lived gamesCatalog reference valid for every request handler.
 function stabilizeInPlace(): void {
+  const pruned = pruneForeignFiller(gamesCatalog);
+  if (pruned > 0) console.log(`[DB] prune-on-persist dropped ${pruned} foreign filler rows.`);
   const { games: stabilized, merged } = stabilizeCatalog(gamesCatalog);
   if (merged <= 0) return;
   console.log(`[DB] stabilize-on-persist merged ${merged} duplicate rows.`);

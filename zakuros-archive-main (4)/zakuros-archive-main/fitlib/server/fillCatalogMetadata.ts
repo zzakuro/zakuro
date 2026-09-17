@@ -39,6 +39,7 @@ import {
   devIsPlaceholder,
   shouldUpgradeSummary,
   stabilizeCatalog,
+  pruneForeignFiller,
 } from "./sources";
 
 const STATE_PATH = path.join(process.cwd(), "data", "steam_grind_state.json");
@@ -79,8 +80,10 @@ function saveState(state: GrindState): void {
 }
 
 function saveCatalog(games: Game[]): void {
-  // Enrichment can re-introduce same-appid/edition dupes; collapse them in
-  // place before writing so the long-lived `games` array stays authoritative.
+  // Drop re-imported foreign filler, then collapse same-appid/edition dupes,
+  // in place before writing so the long-lived `games` array stays authoritative.
+  const pruned = pruneForeignFiller(games);
+  if (pruned > 0) console.log(`[Grind] prune-on-save dropped ${pruned} foreign filler rows.`);
   const { games: stabilized, merged } = stabilizeCatalog(games);
   if (merged > 0) {
     console.log(`[Grind] stabilize-on-save merged ${merged} duplicate rows.`);
