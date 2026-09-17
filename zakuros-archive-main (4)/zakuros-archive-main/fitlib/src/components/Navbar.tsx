@@ -285,7 +285,7 @@ export const Navbar: React.FC = () => {
       />
 
       {/* Floating glass pill nav — the site chrome in one seated capsule */}
-      <div className="flex w-full items-center px-0">
+      <div className="mx-auto flex w-full max-w-[1200px] items-center gap-3 px-3 sm:px-5">
         <div
           className={`flex h-12 w-full items-center justify-between gap-2 rounded-full border bg-[#0a0a0c]/85 px-2.5 backdrop-blur-2xl transition-all duration-300 sm:gap-3 sm:px-3 ${
             scrolled

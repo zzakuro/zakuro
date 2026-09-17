@@ -277,7 +277,7 @@ export const GameDetailView: React.FC = () => {
       </AnimatePresence>
 
       {/* A. Hero backdrop — clean image band (kryo-style) */}
-      <section className="relative h-[42vh] min-h-[300px] w-full overflow-hidden border-b border-white/5 bg-black">
+      <section className="relative -mt-12 h-[42vh] min-h-[300px] w-full overflow-hidden border-b border-white/5 bg-black">
         {heroOk ? (
           <img
             src={heroUrl}
@@ -294,8 +294,8 @@ export const GameDetailView: React.FC = () => {
         <div className="absolute inset-0 bg-gradient-to-t from-[#09090b] via-[#09090b]/30 to-transparent" />
         <div className="absolute inset-0 bg-gradient-to-r from-[#09090b]/80 via-transparent to-transparent" />
 
-        {/* Back / Share */}
-        <div className="absolute inset-x-0 top-6 z-20 mx-auto flex max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
+        {/* Back / Share — cleared below the floating pill nav */}
+        <div className="absolute inset-x-0 top-20 z-20 mx-auto flex max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
           <button
             onClick={() => navigate(-1)}
             className="flex items-center gap-1.5 rounded-full border border-white/10 bg-black/60 px-3.5 py-1.5 font-mono text-xs font-bold uppercase text-zinc-300 backdrop-blur-sm transition hover:text-white"
