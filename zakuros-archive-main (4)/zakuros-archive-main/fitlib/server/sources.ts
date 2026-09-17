@@ -198,15 +198,35 @@ export function canonicalTitle(raw: string): string {
   return s;
 }
 
+// Raw source titles arrive with leading encoding garbage ("???? Banner of the
+// Maid"), dangling scene/repacker tags ("1000xRESIST-TiNYiSO", "1.8192-
+// (TENOKE", "DRIVE Rally (1.3.24.0)") and stray punctuation that makes them
+// unmatchable against Steam/IGDB. Scrub those first; unlike canonicalTitle
+// this keeps editions/versions in the middle of the name intact.
+export function repairTitle(raw: string): string {
+  let t = (raw || "").replace(/[\u{FFFD}\u200B-\u200D\uFEFF]/gu, " ").trim();
+  t = t.replace(/^[^\p{L}\p{N}]+/u, "");
+  for (let i = 0; i < 2; i++) {
+    t = t
+      .replace(/[\s._-]*\((?:TENOKE|TiNYiSO|RUNE|SKIDROW|CODEX|GOG|DODI|FitGirl|ElAmigos|GoldBerg|Empress|P2P|Repack|Scene|KaOs|Xatab|Steam-?Rip|OnlineFix)[^)]*\)?\s*$/i, "")
+      .replace(/[\s._-]+(?:TENOKE|TiNYiSO|RUNE|SKIDROW|CODEX|DODI|ElAmigos|GoldBerg|Empress|P2P|GOG|Steam-?Rip|OnlineFix|KaOs|Xatab)\s*$/i, "")
+      .replace(/\s*[-–—]\s*(?:GOG|TENOKE|TiNYiSO|RUNE|SKIDROW|CODEX|DODI|Repack|Build|Steam|v\.?\s*[\d.]+)\s*$/i, "")
+      .replace(/\s*\((?:v?\d[\d.]*[a-z]?|Build\s*[\d.]+|License[^)]*|Scene\s*\w+|ENG\/GER|RUS\/ENG|Multi\d*|\d+[.,]?\d*\s*(?:gb|mb))\)\s*$/i, "")
+      .replace(/\s+(?:Build|Scene\s+\w+|License\s+\w+)\s*$/i, "")
+      .replace(/[\s._:–—,()|+\-]+$/u, "");
+  }
+  return t.replace(/\s{2,}/g, " ").trim();
+}
+
 export function cleanTitle(raw: string): string {
-  return canonicalTitle(stripPatterns(raw))
+  return canonicalTitle(stripPatterns(repairTitle(raw)))
     .replace(/\s{2,}/g, " ")
     .trim()
     .replace(/^[\s:–—,.()|]+|[\s:–—,.()|]+$/g, "");
 }
 
 export function normalizeForMatch(title: string): string {
-  const tokens = canonicalTitle(stripPatterns(title))
+  const tokens = canonicalTitle(stripPatterns(repairTitle(title)))
     .toLowerCase()
     .normalize("NFKD")
     .replace(/[\u0300-\u036f]/g, "")
