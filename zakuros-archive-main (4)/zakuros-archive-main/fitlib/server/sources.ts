@@ -205,7 +205,8 @@ export function canonicalTitle(raw: string): string {
 // this keeps editions/versions in the middle of the name intact.
 export function repairTitle(raw: string): string {
   let t = (raw || "").replace(/[\u{FFFD}\u200B-\u200D\uFEFF]/gu, " ").trim();
-  t = t.replace(/^[^\p{L}\p{N}]+/u, "");
+  // leading garbage only — keep meaningful prefixes like "#BLUD", ".hack", "!Ω"
+  t = t.replace(/^[\s?؟|•·_\-–—]+/u, "");
   for (let i = 0; i < 2; i++) {
     t = t
       .replace(/[\s._-]*\((?:TENOKE|TiNYiSO|RUNE|SKIDROW|CODEX|GOG|DODI|FitGirl|ElAmigos|GoldBerg|Empress|P2P|Repack|Scene|KaOs|Xatab|Steam-?Rip|OnlineFix)[^)]*\)?\s*$/i, "")
