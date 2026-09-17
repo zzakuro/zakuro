@@ -4,7 +4,7 @@ import fs from "fs";
 import compression from "compression";
 import { createServer as createViteServer } from "vite";
 import { getGameMetadata, checkBackendRateLimit, parseSteamPcRequirements } from "./server/metadataService";
-import { setRealScreenshots, summaryIsPlaceholder, devIsPlaceholder, shouldUpgradeSummary, steamTitleMismatch } from "./server/sources";
+import { setRealScreenshots, summaryIsPlaceholder, devIsPlaceholder, shouldUpgradeSummary, steamTitleMismatch, stabilizeCatalog } from "./server/sources";
 import {
   communityRouter,
 } from "./server/community";
@@ -89,12 +89,26 @@ let catalogRevision = 0;
 let catalogSaveTimer: NodeJS.Timeout | null = null;
 let catalogSaving: Promise<void> | null = null;
 
+// Fold genuine duplicate rows back together before every write. Enrichment
+// (live detail fetches here, the grind in fillCatalogMetadata) assigns Steam
+// metadata incrementally, which can re-introduce same-appid/edition dupes that
+// the sync-time stabilize pass already collapsed. Mutating in place keeps the
+// long-lived gamesCatalog reference valid for every request handler.
+function stabilizeInPlace(): void {
+  const { games: stabilized, merged } = stabilizeCatalog(gamesCatalog);
+  if (merged <= 0) return;
+  console.log(`[DB] stabilize-on-persist merged ${merged} duplicate rows.`);
+  gamesCatalog.length = 0;
+  for (const g of stabilized) gamesCatalog.push(g);
+}
+
 function persistCatalogSync(): void {
   if (grindActive()) {
     console.log("[DB] Grind active — skipping catalog persist on exit.");
     return;
   }
   try {
+    stabilizeInPlace();
     writeGames(gamesCatalog);
   } catch (e: any) {
     console.error("[DB] Failed to persist catalog:", e.message);
@@ -108,6 +122,7 @@ async function flushCatalogAsync(): Promise<void> {
     return;
   }
   try {
+    stabilizeInPlace();
     writeGames(gamesCatalog);
     console.log("[DB] Catalog persisted (async, atomic).");
   } catch (e: any) {

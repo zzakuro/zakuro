@@ -38,6 +38,7 @@ import {
   summaryIsPlaceholder,
   devIsPlaceholder,
   shouldUpgradeSummary,
+  stabilizeCatalog,
 } from "./sources";
 
 const STATE_PATH = path.join(process.cwd(), "data", "steam_grind_state.json");
@@ -78,6 +79,14 @@ function saveState(state: GrindState): void {
 }
 
 function saveCatalog(games: Game[]): void {
+  // Enrichment can re-introduce same-appid/edition dupes; collapse them in
+  // place before writing so the long-lived `games` array stays authoritative.
+  const { games: stabilized, merged } = stabilizeCatalog(games);
+  if (merged > 0) {
+    console.log(`[Grind] stabilize-on-save merged ${merged} duplicate rows.`);
+    games.length = 0;
+    for (const g of stabilized) games.push(g);
+  }
   writeGames(games);
 }
 
