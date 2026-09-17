@@ -232,7 +232,7 @@ export function cleanTitle(raw: string): string {
   return canonicalTitle(stripPatterns(repairTitle(raw)))
     .replace(/\s{2,}/g, " ")
     .trim()
-    .replace(/^[\s:–—,.()|]+|[\s:–—,.()|]+$/g, "");
+    .replace(/^[\s:–—,.()|/]+|[\s:–—,.()|/]+$/g, "");
 }
 
 export function normalizeForMatch(title: string): string {
