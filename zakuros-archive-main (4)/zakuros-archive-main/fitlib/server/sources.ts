@@ -203,20 +203,29 @@ export function canonicalTitle(raw: string): string {
 // (TENOKE", "DRIVE Rally (1.3.24.0)") and stray punctuation that makes them
 // unmatchable against Steam/IGDB. Scrub those first; unlike canonicalTitle
 // this keeps editions/versions in the middle of the name intact.
+const TITLE_SCENE_TAG =
+  "TENOKE|TiNYiSO|RUNE|SKIDROW|CODEX|DODI|FitGirl|ElAmigos|GoldBerg|Empress|P2P|Repack|" +
+  "Scene|KaOs|Xatab|Steam-?Rip|OnlineFix|GOG|Steam|License|Multilang|Multi\\d*|ENG|RUS|GER|Build|Portable";
+
 export function repairTitle(raw: string): string {
   let t = (raw || "").replace(/[\u{FFFD}\u200B-\u200D\uFEFF]/gu, " ").trim();
   // leading garbage only — keep meaningful prefixes like "#BLUD", ".hack", "!Ω"
   t = t.replace(/^[\s?؟|•·_\-–—]+/u, "");
-  for (let i = 0; i < 2; i++) {
+  const parenTag = new RegExp(
+    `[\\s._-]*\\((?:[^)]*\\b(?:${TITLE_SCENE_TAG})\\b[^)]*|v?\\d[\\d.]*[a-z]?|\\d+[.,]?\\d*\\s*(?:gb|mb))[^)]*\\)?\\s*$`,
+    "i"
+  );
+  const trailTag = new RegExp(`[\\s._:–—,()|/+-]+(?:${TITLE_SCENE_TAG})[\\s._:–—,()|/+-]*$`, "i");
+  for (let i = 0; i < 4; i++) {
     t = t
-      .replace(/[\s._-]*\((?:TENOKE|TiNYiSO|RUNE|SKIDROW|CODEX|GOG|DODI|FitGirl|ElAmigos|GoldBerg|Empress|P2P|Repack|Scene|KaOs|Xatab|Steam-?Rip|OnlineFix)[^)]*\)?\s*$/i, "")
-      .replace(/[\s._-]+(?:TENOKE|TiNYiSO|RUNE|SKIDROW|CODEX|DODI|ElAmigos|GoldBerg|Empress|P2P|GOG|Steam-?Rip|OnlineFix|KaOs|Xatab)\s*$/i, "")
-      .replace(/\s*[-–—]\s*(?:GOG|TENOKE|TiNYiSO|RUNE|SKIDROW|CODEX|DODI|Repack|Build|Steam|v\.?\s*[\d.]+)\s*$/i, "")
-      .replace(/\s*\((?:v?\d[\d.]*[a-z]?|Build\s*[\d.]+|License[^)]*|Scene\s*\w+|ENG\/GER|RUS\/ENG|Multi\d*|\d+[.,]?\d*\s*(?:gb|mb))\)\s*$/i, "")
-      .replace(/\s+(?:Build|Scene\s+\w+|License\s+\w+)\s*$/i, "")
-      .replace(/[\s._:–—,()|+\-]+$/u, "");
+      .replace(parenTag, "")
+      .replace(trailTag, "")
+      .replace(/\s*[-–—]\s*v?\.?\s*[\d.]+[a-z]*\s*$/i, "")
+      .replace(/[\s._:–—,()|/+\-]+$/u, "")
+      .replace(/\s{2,}/g, " ")
+      .trim();
   }
-  return t.replace(/\s{2,}/g, " ").trim();
+  return t;
 }
 
 export function cleanTitle(raw: string): string {
