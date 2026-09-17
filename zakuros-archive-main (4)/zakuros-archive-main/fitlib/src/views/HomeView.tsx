@@ -188,7 +188,7 @@ export const HomeView: React.FC = () => {
         <section
           onMouseEnter={() => setPaused(true)}
           onMouseLeave={() => setPaused(false)}
-          className="relative -mt-12 h-[78vh] min-h-[520px] w-full overflow-hidden border-b border-white/5 bg-black"
+          className="relative -mt-8 h-[78vh] min-h-[520px] w-full overflow-hidden border-b border-white/5 bg-black"
         >
           <AnimatePresence mode="wait">
             <motion.div
