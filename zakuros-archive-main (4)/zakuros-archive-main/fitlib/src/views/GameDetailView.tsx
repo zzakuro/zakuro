@@ -277,7 +277,7 @@ export const GameDetailView: React.FC = () => {
       </AnimatePresence>
 
       {/* A. Hero backdrop — clean image band (kryo-style) */}
-      <section className="relative -mt-12 h-[42vh] min-h-[300px] w-full overflow-hidden border-b border-white/5 bg-black">
+      <section className="relative -mt-17 h-[42vh] min-h-[300px] w-full overflow-hidden border-b border-white/5 bg-black">
         {heroOk ? (
           <img
             src={heroUrl}
