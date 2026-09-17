@@ -613,6 +613,42 @@ function foldInto(winner: Game, other: Game): void {
   }
 }
 
+// A Steam appid is the canonical identity of a game, but enrichment sometimes
+// assigns the same appid to two unrelated titles (bad fuzzy match, shared
+// "Collector's Edition" batches, etc). Before folding a same-appid group, make
+// sure the titles actually read like the same game so we never delete a real
+// entry. Release tags/version numbers are stripped first.
+export function roughTitleKey(title: string): string {
+  return (title || "")
+    .toLowerCase()
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9\s]/g, " ")
+    .replace(
+      /\b(repack|repacks|fitgirl|dodi|xatab|codex|elamigos|steamrip|onlinefix|gog|tenoke|rune|scene|build|updated|multi\d*|multilang|v\d[\d.]*|goty|deluxe|edition|definitive|complete|ultimate|remastered|remake|collector|collectors)\b/g,
+      " "
+    )
+    .replace(/\b\d+(\.\d+)*\w*\b/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+export const STEAM_MERGE_SIMILARITY = 0.5;
+
+export function titlesLookLikeSameGame(a: string, b: string): boolean {
+  const ra = roughTitleKey(a);
+  const rb = roughTitleKey(b);
+  if (!ra || !rb) return false;
+  if (ra === rb) return true;
+  if (ra.length > 3 && rb.length > 3 && (ra.includes(rb) || rb.includes(ra))) return true;
+  const A = new Set(ra.split(" ").filter((t) => t.length > 1));
+  const B = new Set(rb.split(" ").filter((t) => t.length > 1));
+  if (!A.size || !B.size) return false;
+  let inter = 0;
+  for (const t of A) if (B.has(t)) inter++;
+  return inter / (A.size + B.size - inter) >= STEAM_MERGE_SIMILARITY;
+}
+
 export function stabilizeCatalog(games: Game[]): { games: Game[]; merged: number; regen: number } {
   let merged = 0;
   const doomed = new Set<Game>();
@@ -646,7 +682,9 @@ export function stabilizeCatalog(games: Game[]): { games: Game[]; merged: number
   }
   for (const [, group] of byKey) processGroup(group);
 
-  // 2) cross-title duplicates that share one Steam appid (edition/locale/punct variants)
+  // 2) cross-title duplicates that share one Steam appid (edition/locale/punct
+  //    variants). Cluster by title similarity first: a mis-assigned appid can be
+  //    shared by genuinely different games, and those must stay separate.
   const bySteam = new Map<number, Game[]>();
   for (const g of games) {
     if (g.classic || typeof g.steamId !== "number") continue;
@@ -656,7 +694,14 @@ export function stabilizeCatalog(games: Game[]): { games: Game[]; merged: number
   }
   for (const [, group] of bySteam) {
     const live = group.filter((g) => !doomed.has(g));
-    processGroup(live);
+    if (live.length < 2) continue;
+    const clusters: Game[][] = [];
+    for (const g of live) {
+      const hit = clusters.find((c) => titlesLookLikeSameGame(c[0].title || "", g.title || ""));
+      if (hit) hit.push(g);
+      else clusters.push([g]);
+    }
+    for (const c of clusters) processGroup(c);
   }
 
   const out = games.filter((g) => !doomed.has(g));
