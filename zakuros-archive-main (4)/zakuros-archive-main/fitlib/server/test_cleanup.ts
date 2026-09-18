@@ -15,6 +15,7 @@ import {
 } from "./sources";
 import { igdbBestMatch, cleanForSearch, normalizeSearchTitle } from "./igdbMatch";
 import { normalizeClassicFlag } from "./normalize";
+import { clearAppid, simScore } from "./fixAppidIssues";
 import { Game } from "../src/types";
 
 let passed = 0;
@@ -173,6 +174,42 @@ console.log("\n--- normalizeClassicFlag ---");
   eq(res.classic, 1, "selfHeal strips the one mis-tagged classic");
   eq(games[0].classic, false, "PC title is no longer classic");
   eq(games[1].classic, true, "ROM title stays classic");
+}
+
+console.log("\n--- appid resolver helpers ---");
+eq(simScore("Alien: Isolation", "Alien Isolation"), 1, "simScore matches near-identical titles");
+ok(simScore("Alien: Isolation", "Aliens: Colonial Marines") < 0.5, "simScore rejects unrelated titles");
+{
+  const g = mk({
+    title: "Aliens: Colonial Marines",
+    steamId: 49540,
+    coverImage: "https://cdn.cloudflare.steamstatic.com/steam/apps/214490/library_600x900.jpg",
+    screenshot: "https://cdn.cloudflare.steamstatic.com/steam/apps/214490/header.jpg",
+    screenshots: [
+      "https://cdn.cloudflare.steamstatic.com/steam/apps/214490/ss_1.jpg",
+      "https://images.igdb.com/igdb/image/upload/t_1080p/abc.jpg",
+    ],
+  });
+  clearAppid(g, 214490);
+  eq(g.steamId, undefined, "clearAppid drops the wrong appid");
+  eq(g.coverImage, "", "clearAppid clears matching Steam cover");
+  eq(g.screenshot, "", "clearAppid clears matching Steam screenshot");
+  eq(
+    JSON.stringify(g.screenshots),
+    JSON.stringify(["https://images.igdb.com/igdb/image/upload/t_1080p/abc.jpg"]),
+    "clearAppid keeps non-Steam screenshots"
+  );
+}
+{
+  const g = mk({
+    title: "X",
+    steamId: 1,
+    coverImage: "https://images.igdb.com/x.jpg",
+    screenshot: "https://images.igdb.com/y.jpg",
+  });
+  clearAppid(g, 999);
+  eq(g.coverImage, "https://images.igdb.com/x.jpg", "clearAppid keeps unrelated cover art");
+  eq(g.screenshot, "https://images.igdb.com/y.jpg", "clearAppid keeps unrelated screenshot");
 }
 
 console.log("\n--- placeholders ---");

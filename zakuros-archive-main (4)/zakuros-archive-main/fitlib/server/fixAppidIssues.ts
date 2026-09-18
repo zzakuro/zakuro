@@ -71,7 +71,7 @@ async function liveAppName(appid: number): Promise<string | null> {
   return name;
 }
 
-function simScore(a: string, b: string): number {
+export function simScore(a: string, b: string): number {
   const ra = roughTitleKey(a);
   const rb = roughTitleKey(b);
   if (!ra || !rb) return 0;
@@ -89,7 +89,7 @@ const APPID_ART = (appid: number) => new RegExp(`steam/apps/${appid}(/|\\.|$|\\?
 
 // Clear a wrong appid plus any Steam art that clearly came from it. Text fields
 // (summary/dev/rating) are left for self-heal / IGDB to re-fill.
-function clearAppid(g: Game, appid: number): void {
+export function clearAppid(g: Game, appid: number): void {
   g.steamId = undefined;
   const re = APPID_ART(appid);
   if (g.coverImage && re.test(g.coverImage)) g.coverImage = "";
@@ -245,7 +245,10 @@ async function main() {
   console.log(`[AppidFix] wrote ${games.length.toLocaleString()} games · backup: ${backupDir}`);
 }
 
-main().catch((e) => {
-  console.error(e);
-  process.exit(1);
-});
+// Only run when invoked directly (keeps the helpers importable by tests).
+if (process.argv[1] && /fixAppidIssues/.test(process.argv[1])) {
+  main().catch((e) => {
+    console.error(e);
+    process.exit(1);
+  });
+}
