@@ -37,6 +37,12 @@ export const PageHero: React.FC<{
     <div className="aurora-blob aurora-blob-soft right-[-24%] top-[5%] h-[60vh] w-[40vw] bg-violet-500/[0.06]" />
     <div className="aurora-blob aurora-blob-soft bottom-[-45%] left-[28%] h-[55vh] w-[45vw] bg-rose-500/[0.05]" />
 
+    {/* Orbiting pulse-ring — a slow conic glowline that wraps the hero. */}
+    <div aria-hidden className="ring-animated ring-glow pointer-events-none absolute left-1/2 top-10 -z-10 h-[52vh] max-h-[430px] w-[min(88vw,720px)] -translate-x-1/2 rounded-full" />
+
+    {/* Faint dot-grid dust behind the headline for depth. */}
+    <div aria-hidden className="pointer-events-none absolute inset-0 -z-10 [background-image:radial-gradient(rgba(255,255,255,0.045)_1px,transparent_1px)] [background-size:22px_22px] [mask-image:radial-gradient(ellipse_60%_55%_at_50%_35%,black,transparent)]" />
+
     <Reveal className="relative">
       <span className="mb-5 inline-flex items-center gap-2 rounded-full border border-rose-500/25 bg-rose-500/10 px-3.5 py-1.5 font-mono text-[10px] font-bold uppercase tracking-[0.2em] text-rose-400">
         {eyebrow}
