@@ -21,7 +21,8 @@ const isEmbedTrailer = (src?: string) => !!src && EMBED_SRC.test(src);
 
 export const GameDetailView: React.FC = () => {
   const { id } = useParams<{ id: string }>();
-  const { games, user, toggleWishlist, toggleLike, bookmarks, toggleBookmark } = useGame();
+  const { games, user, toggleWishlist, toggleLike, bookmarks, toggleBookmark, serverBrowse, getRelated } =
+    useGame();
   const navigate = useNavigate();
 
   const stub = games.find((g) => g.id === id);
@@ -185,7 +186,26 @@ export const GameDetailView: React.FC = () => {
   // early return or React throws "Rendered more hooks than during the previous
   // render" once hydration turns an initially-undefined game into a defined one
   // (e.g. NSFW titles that are filtered out of the list stub).
+  // Server-browse: related games come from the server (the in-memory list only
+  // holds a featured slice).
+  const [serverRelated, setServerRelated] = useState<Game[]>([]);
+  const gameId = game?.id;
+  useEffect(() => {
+    if (!serverBrowse || !gameId) {
+      setServerRelated([]);
+      return;
+    }
+    let alive = true;
+    getRelated(gameId, 8)
+      .then((r) => alive && setServerRelated(r))
+      .catch(() => alive && setServerRelated([]));
+    return () => {
+      alive = false;
+    };
+  }, [serverBrowse, gameId, getRelated]);
+
   const related = useMemo(() => {
+    if (serverBrowse) return serverRelated;
     if (!game) return [] as Game[];
     const shared = (g2: Game) => (game.genres || []).filter((x) => (g2.genres || []).includes(x)).length;
     return [...games]
@@ -197,7 +217,7 @@ export const GameDetailView: React.FC = () => {
           b.rating - a.rating
       )
       .slice(0, 8);
-  }, [games, game]);
+  }, [games, game, serverBrowse, serverRelated]);
 
   if (!game) {
     return (
