@@ -991,7 +991,7 @@ export const GameDetailView: React.FC = () => {
               {isEmbedTrailer(activeTrailer.src) ? (
                 <iframe
                   key={activeTrailer.src}
-                  src={`${activeTrailer.src}${activeTrailer.src.includes("?") ? "&" : "?"}autoplay=1&rel=0`}
+                  src={`${activeTrailer.src!}${activeTrailer.src!.includes("?") ? "&" : "?"}autoplay=1&rel=0`}
                   title={activeTrailer.name || "Trailer"}
                   allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                   allowFullScreen
