@@ -41,6 +41,24 @@ export const BrowseView: React.FC = () => {
   const [page, setPage] = useState<number>(1);
   const ITEMS_PER_PAGE = 60;
 
+  // Sort state syncs with the URL so deep links (`/browse?sort=popular`) — e.g.
+  // Home's "Top Rated" / "Trending" actions — actually sort the results. Both
+  // the canonical server keys and the legacy display labels are accepted.
+  const SORT_KEY_TO_LABEL: Record<string, string> = {
+    popular: "Most Popular",
+    newest: "Newest",
+    rating: "Highest Rated",
+    az: "A–Z",
+    filesize: "File Size",
+  };
+  const SORT_LABEL_TO_KEY: Record<string, string> = Object.fromEntries(
+    Object.entries(SORT_KEY_TO_LABEL).map(([k, v]) => [v, k])
+  );
+  const sortLabels = Object.values(SORT_KEY_TO_LABEL);
+  const resolveSort = (v: string | null): string =>
+    SORT_KEY_TO_LABEL[v ?? ""] ?? (sortLabels.includes(v ?? "") ? (v ?? "") : "Most Popular");
+  const sortParam = searchParams.get("sort");
+
   const queryParam = searchParams.get("q") || "";
   const genreParam = searchParams.get("genre") || "";
   useEffect(() => {
@@ -66,6 +84,13 @@ export const BrowseView: React.FC = () => {
     const t = setTimeout(() => setDebouncedQuery(searchQuery), 250);
     return () => clearTimeout(t);
   }, [searchQuery]);
+
+  // URL sort param → local sort state (deep links). Runs on mount and whenever
+  // the URL sort changes; the select writes the canonical key back to the URL.
+  useEffect(() => {
+    const resolved = resolveSort(sortParam);
+    setSortBy((prev) => (prev === resolved ? prev : resolved));
+  }, [sortParam]);
 
   // Server-browse: pull the filter taxonomies once (whole-catalog facets).
   useEffect(() => {
@@ -345,7 +370,15 @@ export const BrowseView: React.FC = () => {
           <div className="relative">
             <select
               value={sortBy}
-              onChange={(e) => setSortBy(e.target.value)}
+              onChange={(e) => {
+                const v = e.target.value;
+                setSortBy(v);
+                setSearchParams((prev) => {
+                  const next = new URLSearchParams(prev);
+                  next.set("sort", SORT_LABEL_TO_KEY[v] ?? v);
+                  return next;
+                });
+              }}
               className="appearance-none rounded-full border border-white/10 bg-[#0d0d10] py-2 pl-4 pr-10 text-xs font-semibold text-zinc-300 outline-none transition focus:border-rose-500/50"
             >
               <option value="Most Popular">Sort: Most Popular</option>

@@ -307,7 +307,6 @@ export const HomeView: React.FC = () => {
                   src={heroSrc}
                   alt={activeCarouselGame.title}
                   referrerPolicy="no-referrer"
-                  fetchPriority="high"
                   decoding="async"
                   initial={{ scale: 1.06 }}
                   animate={{ scale: 1 }}
@@ -547,7 +546,7 @@ export const HomeView: React.FC = () => {
             <SectionHeader
               eyebrow="✦ Trending Games"
               title="Trending Now"
-              action={{ label: "Browse top", to: "/browse?sort=Most%20Popular" }}
+              action={{ label: "Browse top", to: "/browse?sort=popular" }}
             />
             <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
               {popularGames.map((g) => (
@@ -563,7 +562,7 @@ export const HomeView: React.FC = () => {
           <SectionHeader
             eyebrow="✦ Critically Acclaimed"
             title="Top Rated"
-            action={{ label: "Highest rated", to: "/browse?sort=Highest%20Rated" }}
+            action={{ label: "Highest rated", to: "/browse?sort=rating" }}
           />
           <div className="overflow-hidden rounded-2xl bg-[#0d0d10] ring-1 ring-white/[0.06]">
             {topRated.map((g, index) => (

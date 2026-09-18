@@ -17,10 +17,13 @@ const SearchOverlay: React.FC<{ open: boolean; onClose: () => void }> = ({ open,
   const [query, setQuery] = useState("");
   const [serverResults, setServerResults] = useState<Game[]>([]);
   const inputRef = useRef<HTMLInputElement>(null);
+  const [activeIdx, setActiveIdx] = useState(0);
+  const itemRefs = useRef<(HTMLElement | null)[]>([]);
 
   useEffect(() => {
     if (open) {
       setQuery("");
+      setActiveIdx(0);
       const t = setTimeout(() => inputRef.current?.focus(), 60);
       return () => clearTimeout(t);
     }
@@ -94,6 +97,40 @@ const SearchOverlay: React.FC<{ open: boolean; onClose: () => void }> = ({ open,
     navigate(`/game/${g.id}`);
   };
 
+  // Reset the highlight whenever the query (and thus the result list) changes.
+  useEffect(() => {
+    setActiveIdx(0);
+  }, [query, results, open]);
+
+  // Keep the highlighted row in view while arrowing through the results.
+  useEffect(() => {
+    const el = itemRefs.current[activeIdx];
+    if (el && "scrollIntoView" in el) el.scrollIntoView({ block: "nearest" });
+  }, [activeIdx, results]);
+
+  // Command-palette navigation: ↑/↓ move the highlight, Enter opens it. A
+  // plain submit (no highlighted result) still lands on the Browse search.
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "ArrowDown") {
+        e.preventDefault();
+        setActiveIdx((i) => Math.min(i + 1, Math.max(results.length - 1, 0)));
+      } else if (e.key === "ArrowUp") {
+        e.preventDefault();
+        setActiveIdx((i) => Math.max(i - 1, 0));
+      } else if (e.key === "Enter") {
+        const g = results[activeIdx];
+        if (query.trim() && results.length > 0 && g) {
+          e.preventDefault();
+          goToGame(g);
+        }
+      }
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [open, query, results, activeIdx, goToGame]);
+
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
     setSearchQuery(query);
@@ -156,11 +193,17 @@ const SearchOverlay: React.FC<{ open: boolean; onClose: () => void }> = ({ open,
                       <span className="text-[10px] font-mono text-zinc-600">{results.length} shown</span>
                     </div>
                     <ul className="space-y-0.5">
-                      {results.map((g) => (
+                      {results.map((g, i) => (
                         <li key={g.id}>
                           <button
+                            ref={(el) => {
+                              itemRefs.current[i] = el;
+                            }}
                             onClick={() => goToGame(g)}
-                            className="group flex w-full items-center gap-3 rounded-xl px-3 py-2 text-left hover:bg-white/5 transition"
+                            onMouseMove={() => setActiveIdx(i)}
+                            className={`group flex w-full items-center gap-3 rounded-xl px-3 py-2 text-left transition ${
+                              activeIdx === i ? "bg-white/5" : "hover:bg-white/5"
+                            }`}
                           >
                             {g.coverImage ? (
                               <span className="h-12 w-9 shrink-0 overflow-hidden rounded-md bg-zinc-900 ring-1 ring-white/5">
@@ -182,7 +225,7 @@ const SearchOverlay: React.FC<{ open: boolean; onClose: () => void }> = ({ open,
                               </span>
                             </span>
                             <span className="flex items-center gap-1 rounded-md border border-white/10 bg-black/30 px-2 py-1 text-[10px] font-bold text-zinc-400">
-                              <span className="text-rose-400">{g.rating}%</span>
+                              <span className="text-rose-400">{g.rating > 0 ? `${g.rating}%` : "—"}</span>
                               <span className="hidden sm:inline text-zinc-600">rating</span>
                             </span>
                           </button>
@@ -357,7 +400,8 @@ export const Navbar: React.FC = () => {
             {navItems.map((item) => {
               const isActive =
                 location.pathname === item.path ||
-                (item.path !== "/" && location.pathname.startsWith(item.path));
+                (item.path !== "/" && location.pathname.startsWith(item.path)) ||
+                (item.path === "/browse" && location.pathname.startsWith("/game"));
               return (
                 <Link
                   key={item.path}
