@@ -161,6 +161,23 @@ interface CatalogQuery {
   year?: string;
   minRating?: number;
   classic?: boolean;
+  coverless?: boolean;
+  // undefined = include NSFW (back-compat); false = hide NSFW.
+  nsfw?: boolean;
+}
+
+// Genres that mark a title as adult. Mirrors the client's NSFW_GENRES so the
+// server can offer a pre-filtered catalog slice without the client downloading
+// everything just to hide a small subset.
+const NSFW_GENRES = new Set(["nsfw", "porn", "hentai", "adult", "eroge", "erotic"]);
+function isNsfwGame(g: Game): boolean {
+  return (g.genres || []).some((x) => NSFW_GENRES.has(x.toLowerCase().trim()));
+}
+
+function parseSizeMb(s: string): number {
+  const v = parseFloat(s || "");
+  if (Number.isNaN(v)) return -Infinity;
+  return /tb/i.test(s) ? v * 1024 : v;
 }
 
 function applyQuery(
@@ -169,9 +186,19 @@ function applyQuery(
 ): { games: Game[]; total: number } {
   let result = games;
 
+  // Adult filter — callers opt out with nsfw=false
+  if (query.nsfw === false) {
+    result = result.filter((g) => !isNsfwGame(g));
+  }
+
   // Classic / retro filter (classic=true keeps only tagged titles)
   if (query.classic === true) {
     result = result.filter((g) => g.classic === true);
+  }
+
+  // Coverless-only filter
+  if (query.coverless === true) {
+    result = result.filter((g) => !g.coverImage);
   }
 
   // Server-side text search across title / developer / genres
@@ -241,6 +268,9 @@ function applyQuery(
       break;
     case "az":
       result = [...result].sort((a, b) => a.title.localeCompare(b.title));
+      break;
+    case "filesize":
+      result = [...result].sort((a, b) => parseSizeMb(b.fileSize) - parseSizeMb(a.fileSize));
       break;
   }
 
@@ -438,6 +468,11 @@ async function startServer() {
       const limit = numParam(req.query.limit as string | undefined);
       const offset = numParam(req.query.offset as string | undefined);
       const minRating = numParam(req.query.minRating as string | undefined);
+      // `nsfw` is opt-out: omitting it keeps the historical "include" behaviour.
+      const nsfw =
+        req.query.nsfw === undefined
+          ? undefined
+          : req.query.nsfw === "1" || req.query.nsfw === "true";
       const { games, total } = applyQuery(gamesCatalog, {
         q: req.query.q as string | undefined,
         limit,
@@ -448,6 +483,8 @@ async function startServer() {
         year: req.query.year as string | undefined,
         minRating,
         classic: req.query.classic === "1" || req.query.classic === "true",
+        coverless: req.query.coverless === "1" || req.query.coverless === "true",
+        nsfw,
       });
       // `full=1` opts out of the card projection (e.g. debugging / tooling).
       const full = req.query.full === "1" || req.query.full === "true";
@@ -460,6 +497,56 @@ async function startServer() {
     } catch (e: any) {
       console.error("[Backend Games Load Error]:", e.message);
       res.status(500).json({ error: "Failed to load game collection." });
+    }
+  });
+
+  // A1b. Facets — the dropdown/filter taxonomies (genres + counts, developers,
+  // years) plus catalog totals. Computed once per catalog revision and cached,
+  // so a client in server-browse mode never has to hold the full catalog just
+  // to populate its filter sidebar.
+  const DEV_FACET_CAP = 2000;
+  let facetsCache: { key: string; body: unknown } | null = null;
+  app.get("/api/games/facets", (req, res) => {
+    try {
+      const nsfw =
+        req.query.nsfw === undefined
+          ? true
+          : req.query.nsfw === "1" || req.query.nsfw === "true";
+      const key = `${catalogRevision}:${nsfw}`;
+      if (facetsCache && facetsCache.key === key) return res.json(facetsCache.body);
+
+      const genreMap = new Map<string, number>();
+      const devMap = new Map<string, number>();
+      const years = new Set<string>();
+      let nsfwCount = 0;
+      for (const g of gamesCatalog) {
+        if (isNsfwGame(g)) nsfwCount++;
+      }
+      const pool = nsfw ? gamesCatalog : gamesCatalog.filter((g) => !isNsfwGame(g));
+      for (const g of pool) {
+        for (const genre of g.genres || []) genreMap.set(genre, (genreMap.get(genre) || 0) + 1);
+        if (g.developer) devMap.set(g.developer, (devMap.get(g.developer) || 0) + 1);
+        const y = (g.releaseDate || "").match(/(19|20)\d{2}/)?.[0];
+        if (y) years.add(y);
+      }
+      const body = {
+        total: pool.length,
+        nsfwCount,
+        revision: catalogRevision,
+        genres: [...genreMap.entries()]
+          .map(([name, count]) => ({ name, count }))
+          .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name)),
+        developers: [...devMap.entries()]
+          .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+          .slice(0, DEV_FACET_CAP)
+          .map(([name, count]) => ({ name, count })),
+        years: [...years].sort((a, b) => Number(b) - Number(a)),
+      };
+      facetsCache = { key, body };
+      res.json(body);
+    } catch (e: any) {
+      console.error("[Facets Error]:", e.message);
+      res.status(500).json({ error: "Failed to compute catalog facets." });
     }
   });
 
@@ -497,6 +584,34 @@ async function startServer() {
     if (!game) return res.status(404).json({ error: `Game with ID '${req.params.id}' not found.` });
     const summary = typeof game.summary === "string" ? game.summary.slice(0, SUMMARY_CARD_CAP) : "";
     res.json({ id: game.id, summary });
+  });
+
+  // A4. Related games — same-genre neighbours ranked by shared genres and
+  // popularity. Lets the detail page avoid loading the whole catalog.
+  app.get("/api/games/:id/related", (req, res) => {
+    try {
+      const game = gamesCatalog.find((g) => g.id === req.params.id);
+      if (!game) return res.status(404).json({ error: `Game with ID '${req.params.id}' not found.` });
+      const nsfw = req.query.nsfw === "1" || req.query.nsfw === "true";
+      const requested = Number(req.query.limit);
+      const limit = Number.isFinite(requested) && requested > 0 ? Math.min(60, requested) : 12;
+      const genres = new Set((game.genres || []).map((x) => x.toLowerCase().trim()));
+      const ranked = gamesCatalog
+        .filter((g) => g.id !== game.id && (nsfw || !isNsfwGame(g)))
+        .map((g) => {
+          let shared = 0;
+          for (const x of g.genres || []) if (genres.has(x.toLowerCase().trim())) shared++;
+          return { g, shared };
+        })
+        .filter((s) => s.shared > 0)
+        .sort((a, b) => b.shared - a.shared || (b.g.popularityScore ?? 0) - (a.g.popularityScore ?? 0))
+        .slice(0, limit)
+        .map((s) => toCardGame(s.g));
+      res.json({ id: game.id, games: ranked });
+    } catch (e: any) {
+      console.error("[Related Error]:", e.message);
+      res.status(500).json({ error: "Failed to compute related games." });
+    }
   });
 
   // B. Get specific Game
