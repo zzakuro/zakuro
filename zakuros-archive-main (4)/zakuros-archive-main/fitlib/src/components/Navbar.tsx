@@ -6,13 +6,16 @@ import { Game } from "../types";
 import { motion, AnimatePresence } from "motion/react";
 import ThemeSwitcher from "./ThemeSwitcher";
 
+const NSFW_GENRES = ["nsfw", "porn", "hentai", "adult", "eroge", "erotic"];
+
 /* ------------------------------------------------------------------ */
 /*  Search overlay — Cracked-Games style command palette for games.    */
 /* ------------------------------------------------------------------ */
 const SearchOverlay: React.FC<{ open: boolean; onClose: () => void }> = ({ open, onClose }) => {
-  const { games, setSearchQuery } = useGame();
+  const { games, setSearchQuery, serverBrowse, searchGames, totalGames, showNSFW } = useGame();
   const navigate = useNavigate();
   const [query, setQuery] = useState("");
+  const [serverResults, setServerResults] = useState<Game[]>([]);
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -38,6 +41,27 @@ const SearchOverlay: React.FC<{ open: boolean; onClose: () => void }> = ({ open,
     };
   }, [open]);
 
+  // Server-browse: debounce the query and hit the search API instead of the
+  // (partial) in-memory slice.
+  useEffect(() => {
+    if (!serverBrowse) return;
+    const q = query.trim();
+    if (!q) {
+      setServerResults([]);
+      return;
+    }
+    let alive = true;
+    const t = setTimeout(() => {
+      searchGames({ q, limit: 8, nsfw: true })
+        .then((r) => alive && setServerResults(r.games))
+        .catch(() => alive && setServerResults([]));
+    }, 200);
+    return () => {
+      alive = false;
+      clearTimeout(t);
+    };
+  }, [query, serverBrowse, searchGames]);
+
   const trending = useMemo(
     () => [...games].sort((a, b) => (b.popularityScore ?? 0) - (a.popularityScore ?? 0)).slice(0, 6),
     [games]
@@ -46,6 +70,14 @@ const SearchOverlay: React.FC<{ open: boolean; onClose: () => void }> = ({ open,
   const results = useMemo(() => {
     const q = query.trim().toLowerCase();
     if (!q) return [];
+    if (serverBrowse) {
+      const pool = showNSFW
+        ? serverResults
+        : serverResults.filter(
+            (g) => !(g.genres || []).some((x) => NSFW_GENRES.includes(x.toLowerCase().trim()))
+          );
+      return pool.slice(0, 8);
+    }
     return games
       .filter(
         (g) =>
@@ -54,7 +86,7 @@ const SearchOverlay: React.FC<{ open: boolean; onClose: () => void }> = ({ open,
           g.genres.some((x) => x.toLowerCase().includes(q))
       )
       .slice(0, 8);
-  }, [query, games]);
+  }, [query, games, serverBrowse, serverResults, showNSFW]);
 
   const goToGame = (g: Game) => {
     setSearchQuery("");
@@ -199,7 +231,7 @@ const SearchOverlay: React.FC<{ open: boolean; onClose: () => void }> = ({ open,
                     className="mx-3 flex w-[calc(100%-24px)] items-center justify-center gap-2 rounded-xl border border-white/5 bg-black/30 px-4 py-2.5 text-xs font-bold text-zinc-300 hover:text-white transition font-mono"
                   >
                     <Search className="h-3.5 w-3.5 text-rose-400" />
-                    Full library — {games.length.toLocaleString()} games
+                    Full library — {(serverBrowse ? totalGames : games.length).toLocaleString()} games
                   </button>
                 </div>
               )}
@@ -215,7 +247,9 @@ const SearchOverlay: React.FC<{ open: boolean; onClose: () => void }> = ({ open,
 /*  Navbar                                                             */
 /* ------------------------------------------------------------------ */
 export const Navbar: React.FC = () => {
-  const { games, user, logoutUser, nsfwCount, showNSFW, setShowNSFW } = useGame();
+  const { games, user, logoutUser, nsfwCount, showNSFW, setShowNSFW, serverBrowse, getFacets } =
+    useGame();
+  const [facetGenres, setFacetGenres] = useState<[string, number][] | null>(null);
   const location = useLocation();
   const navigate = useNavigate();
   const [genresOpen, setGenresOpen] = useState(false);
@@ -230,11 +264,26 @@ export const Navbar: React.FC = () => {
     { label: "Donate", path: "/donate", highlighted: true },
   ];
 
+  // Server-browse: the genre dropdown needs whole-catalog counts, not the slice.
+  useEffect(() => {
+    if (!serverBrowse) return;
+    let alive = true;
+    getFacets()
+      .then((f) => {
+        if (alive) setFacetGenres(f.genres.slice(0, 14).map((g) => [g.name, g.count] as [string, number]));
+      })
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, [serverBrowse, getFacets]);
+
   const topGenres = useMemo(() => {
+    if (serverBrowse && facetGenres) return facetGenres;
     const map = new Map<string, number>();
     games.forEach((g) => (g.genres || []).forEach((x) => map.set(x, (map.get(x) || 0) + 1)));
     return [...map.entries()].sort((a, b) => b[1] - a[1]).slice(0, 14);
-  }, [games]);
+  }, [games, serverBrowse, facetGenres]);
 
   const goBrowser = (genre: string) => {
     setGenresOpen(false);
