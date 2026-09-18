@@ -1,21 +1,14 @@
 import express from "express";
-import { loadStore, saveStore } from "./store";
-import { GameComment, GameRating } from "../src/types";
+import { createCommunityStore } from "./communityStore";
+import { GameComment } from "../src/types";
 
 // ── Community layer: comments + ratings (game experiences) ───────────────────
-// Persisted to data/comments.json and data/ratings.json. Identity is minimal:
-// a comment/rating belongs to an authorKey ("u:<username>" or "v:<visitorId>")
-// so logged-out guests can still participate, mirroring UnionCrax guest sessions.
+// Persistence is delegated to the CommunityStore interface (JSON files by
+// default). Identity is minimal: a comment/rating belongs to an authorKey
+// ("u:<username>" or "v:<visitorId>") so logged-out guests can still
+// participate, mirroring UnionCrax guest sessions.
 
-const commentsStore = loadStore<GameComment[]>("comments", []);
-const ratingsStore = loadStore<GameRating[]>("ratings", []);
-
-function persistComments() {
-  saveStore("comments", commentsStore);
-}
-function persistRatings() {
-  saveStore("ratings", ratingsStore);
-}
+const store = createCommunityStore();
 
 function sanitizeAuthorKey(key: string): string {
   const clean = (key || "").toString().slice(0, 128);
@@ -29,7 +22,7 @@ function sanitizeAuthor(author: string, key: string): string {
 }
 
 function ratingSummary(gameId: string) {
-  const ratings = ratingsStore.filter((r) => r.gameId === gameId);
+  const ratings = store.listRatings(gameId);
   const distribution: Record<number, number> = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
   let sum = 0;
   const platforms: Record<string, number> = {};
@@ -54,8 +47,8 @@ export function communityRouter() {
 
   router.get("/games/:id/comments", (req, res) => {
     const { id } = req.params;
-    const comments = commentsStore
-      .filter((c) => c.gameId === id)
+    const comments = store
+      .listComments(id)
       .sort((a, b) => Number(b.pinned ? 1 : 0) - Number(a.pinned ? 1 : 0) || b.createdAt.localeCompare(a.createdAt));
     res.json(comments);
   });
@@ -78,39 +71,39 @@ export function communityRouter() {
       parentId: parentId ? parentId.toString() : undefined,
       createdAt: new Date().toISOString(),
     };
-    commentsStore.push(comment);
-    persistComments();
+    store.addComment(comment);
+    store.saveComments();
     res.status(201).json(comment);
   });
 
   router.delete("/games/:id/comments/:commentId", (req, res) => {
-    const idx = commentsStore.findIndex((c) => c.id === req.params.commentId);
-    if (idx === -1) return res.status(404).json({ error: "Comment not found." });
+    const comment = store.getComment(req.params.commentId);
+    if (!comment) return res.status(404).json({ error: "Comment not found." });
     const authorKey = (req.query.authorKey as string) ?? req.body?.authorKey;
-    if (commentsStore[idx].authorKey !== sanitizeAuthorKey(authorKey)) {
+    if (comment.authorKey !== sanitizeAuthorKey(authorKey)) {
       return res.status(403).json({ error: "You can only delete your own comments." });
     }
-    commentsStore.splice(idx, 1);
-    persistComments();
+    store.removeComment(comment);
+    store.saveComments();
     res.json({ success: true });
   });
 
   router.post("/games/:id/comments/:commentId/like", (req, res) => {
-    const comment = commentsStore.find((c) => c.id === req.params.commentId);
+    const comment = store.getComment(req.params.commentId);
     if (!comment) return res.status(404).json({ error: "Comment not found." });
     const key = sanitizeAuthorKey(req.body?.authorKey);
     const i = comment.likes.indexOf(key);
     if (i >= 0) comment.likes.splice(i, 1);
     else comment.likes.push(key);
-    persistComments();
+    store.saveComments();
     res.json({ likes: comment.likes.length, liked: i < 0 });
   });
 
   router.post("/games/:id/comments/:commentId/report", (req, res) => {
-    const comment = commentsStore.find((c) => c.id === req.params.commentId);
+    const comment = store.getComment(req.params.commentId);
     if (!comment) return res.status(404).json({ error: "Comment not found." });
     comment.reported = true;
-    persistComments();
+    store.saveComments();
     res.json({ success: true });
   });
 
@@ -118,9 +111,7 @@ export function communityRouter() {
 
   router.get("/games/:id/ratings", (req, res) => {
     const mine = req.query.authorKey
-      ? ratingsStore.find(
-          (r) => r.gameId === req.params.id && r.authorKey === sanitizeAuthorKey(req.query.authorKey as string)
-        )
+      ? store.findRating(req.params.id, sanitizeAuthorKey(req.query.authorKey as string))
       : undefined;
     res.json({ ...ratingSummary(req.params.id), mine: mine ? { value: mine.value, platform: mine.platform } : null });
   });
@@ -133,7 +124,7 @@ export function communityRouter() {
     }
     const authorKey = sanitizeAuthorKey(req.body?.authorKey);
     const platform = (req.body?.platform || "").toString().slice(0, 32) || undefined;
-    const existing = ratingsStore.find((r) => r.gameId === id && r.authorKey === authorKey);
+    const existing = store.findRating(id, authorKey);
     const now = new Date().toISOString();
 
     if (existing) {
@@ -141,7 +132,7 @@ export function communityRouter() {
       existing.platform = platform;
       existing.updatedAt = now;
     } else {
-      ratingsStore.push({
+      store.addRating({
         id: `r_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
         gameId: id,
         authorKey,
@@ -150,7 +141,7 @@ export function communityRouter() {
         createdAt: now,
       });
     }
-    persistRatings();
+    store.saveRatings();
     res.json(ratingSummary(id));
   });
 

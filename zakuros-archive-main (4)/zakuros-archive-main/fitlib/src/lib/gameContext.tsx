@@ -145,7 +145,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // Community helpers — comment/rating payloads carry the author identity
   const jsonFetch = async (url: string, init?: RequestInit) => {
-    const res = await fetch(url, {
+    const res = await fetch(url.startsWith("/api/") ? API(url) : url, {
       ...init,
       headers: {
         "Content-Type": "application/json",
@@ -230,7 +230,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     Object.entries(params).forEach(([k, v]) => {
       if (v !== undefined && v !== null && v !== "") qs.set(k, String(v));
     });
-    const res = await fetch(`/api/games?${qs.toString()}`);
+    const res = await fetch(`${API_BASE}/api/games?${qs.toString()}`);
     if (!res.ok) throw new Error(`Search failed (${res.status})`);
     const data = await res.json();
     return { games: data.games ?? [], total: data.total ?? 0 };
@@ -283,9 +283,9 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const fetchGamesFromBackend = async () => {
     setLoading(true);
 
-    // 1. Try the backend API
+    // 1. Try the catalog endpoint (backend API by default, or a remote URL)
     try {
-      const res = await fetch("/api/games");
+      const res = await fetch(CATALOG_URL);
       if (res.ok) {
         const data = await res.json();
         const games: Game[] = Array.isArray(data) ? data : (data.games ?? []);
@@ -331,11 +331,13 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // re-download the (large) catalog when it actually changed. This replaces
   // the old behaviour of re-fetching the entire catalog every few minutes.
   useEffect(() => {
+    // No version endpoint (e.g. a static catalog) — nothing to poll.
+    if (!CATALOG_VERSION_URL) return;
     let lastVersion: string | null = null;
     let stopped = false;
     const id = setInterval(async () => {
       try {
-        const res = await fetch("/api/catalog/version");
+        const res = await fetch(CATALOG_VERSION_URL);
         if (!res.ok) return;
         const { version } = await res.json();
         if (typeof version !== "string") return;
@@ -345,7 +347,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
         if (version === lastVersion) return;
         lastVersion = version;
-        const g = await fetch("/api/games");
+        const g = await fetch(CATALOG_URL);
         if (!g.ok) return;
         const data = await g.json();
         if (stopped) return;
