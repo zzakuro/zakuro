@@ -24,7 +24,13 @@
   `--resolve` (re-search cleared titles for the right appid), `--limit N` (cap live calls).
   Refuses to write while `data/.grind-active` exists and backs up the catalog first.
   After the grind: `npm run fix:appids -- --online --apply --resolve`, then re-run the checker.
-- Post-grind chain: cover watcher → `ZakuroIgdbCoverFill` (IGDB metadata fill) → catalog checker.
+- `npm run fill:vndb` → `server/fillVndbMetadata.ts` adult/doujin metadata from **VNDB**
+  (anonymous API, no key). Targets no-steamId + no-cover games from EroTorrent or tagged NSFW,
+  writes cover/description/developer/release date (adds "Visual Novel"), tracks progress in
+  `data/vndb_fill_progress.json`. Strict matcher in `server/vndbMatch.ts` (~30% of adult targets
+  are VNDB visual novels; 3D sex-sims are not in VNDB). `--dry` / `--limit N`.
+- Post-grind chain: cover watcher → `ZakuroIgdbCoverFill` cmd, which now runs
+  **VNDB fill → IGDB fill → catalog checker** in that order.
 - IGDB fill (`Temp/opencode/igdb-cover-fill.ts`) now also fills `trailers` from IGDB `videos`
   (mapped to YouTube embeds) when a game has none; Steam-sourced mp4 trailers still win.
 
