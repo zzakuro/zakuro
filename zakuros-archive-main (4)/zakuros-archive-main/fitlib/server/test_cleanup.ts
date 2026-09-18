@@ -214,6 +214,33 @@ ok(simScore("Alien: Isolation", "Aliens: Colonial Marines") < 0.5, "simScore rej
   eq(g.screenshot, "https://images.igdb.com/y.jpg", "clearAppid keeps unrelated screenshot");
 }
 
+console.log("\n--- titleMatchScore ---");
+eq(titleMatchScore("Alien Isolation", "Alien Isolation"), 1, "titleMatchScore exact match");
+ok(titleMatchScore("Aeons End", "Aeon's End") >= 0.75, "titleMatchScore tolerates punctuation");
+ok(titleMatchScore("Super Mario Bros", "Grand Theft Auto V") < 0.3, "titleMatchScore rejects unrelated");
+
+console.log("\n--- vndbMatch ---");
+eq(stripVndbBbcode("[b]Hello[/b] [url=/v1]link[/url] world[spoiler]x[/spoiler]"), "Hello link worldx", "stripVndbBbcode removes tags");
+eq(stripVndbBbcode("A\r\n\r\n\r\nB"), "A\n\nB", "stripVndbBbcode normalizes newlines");
+eq(stripVndbBbcode(""), "", "stripVndbBbcode handles empty");
+eq(vndbReleaseDate("2009-12-10"), "2009-12-10", "vndbReleaseDate exact");
+eq(vndbReleaseDate("2009-12"), "2009-12", "vndbReleaseDate month precision");
+eq(vndbReleaseDate("2009"), "2009", "vndbReleaseDate year only");
+eq(vndbReleaseDate("tba"), "", "vndbReleaseDate rejects tba");
+eq(
+  JSON.stringify(vndbCandidateTitles({ title: "A", alttitle: "B", titles: [{ title: "C" }] })),
+  JSON.stringify(["A", "B", "C"]),
+  "vndbCandidateTitles collects all names"
+);
+{
+  const results = [
+    { id: "v1", title: "Some Other Game" },
+    { id: "v2", title: "9-nine- Kokonotsu Kokonoka Kokonoiro", titles: [{ title: "9-nine-:Episode 1", lang: "en" }] },
+  ];
+  eq(vndbBestMatch("9-nine-:Episode 1", results)?.id, "v2", "vndbBestMatch matches a localized title");
+  eq(vndbBestMatch("Totally Unrelated Query", results), null, "vndbBestMatch rejects unrelated hit");
+}
+
 console.log("\n--- placeholders ---");
 eq(summaryIsPlaceholder("Available via: FitGirl"), true, "repack placeholder detected");
 eq(summaryIsPlaceholder("Retro / classic title - emulated console release."), true, "retro placeholder detected");

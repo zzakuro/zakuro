@@ -101,6 +101,7 @@ const coverage = {
   cover: pct(count((g) => !!g.coverImage)),
   steamId: pct(count((g) => g.steamId != null)),
   igdbId: pct(count((g) => g.igdbId != null)),
+  vndbId: pct(count((g) => g.vndbId != null)),
   summary: pct(count((g) => !!g.summary)),
   realSummary: pct(count((g) => !!g.summary && !summaryIsPlaceholder(g.summary))),
   genres: pct(count((g) => !!g.genres?.length)),
@@ -147,7 +148,7 @@ fs.writeFileSync(path.join(SNAPSHOT_DIR, "latest.json"), JSON.stringify(snapshot
 // ── Report ───────────────────────────────────────────────────────────────────
 console.log(`[Check] ${total.toLocaleString()} games`);
 console.log(
-  `[Check] coverage: cover ${coverage.cover}% · steamId ${coverage.steamId}% · igdbId ${coverage.igdbId}% · ` +
+  `[Check] coverage: cover ${coverage.cover}% · steamId ${coverage.steamId}% · igdbId ${coverage.igdbId}% · vndbId ${coverage.vndbId}% · ` +
     `real summary ${coverage.realSummary}% · genres ${coverage.genres}% · dev ${coverage.realDeveloper}% · ` +
     `date ${coverage.releaseDate}% · shots ${coverage.screenshots}% · rating ${coverage.rating}%`
 );
