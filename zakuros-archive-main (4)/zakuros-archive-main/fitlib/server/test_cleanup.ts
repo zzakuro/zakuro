@@ -16,6 +16,8 @@ import {
 import { igdbBestMatch, cleanForSearch, normalizeSearchTitle } from "./igdbMatch";
 import { normalizeClassicFlag } from "./normalize";
 import { clearAppid, simScore } from "./fixAppidIssues";
+import { stripVndbBbcode, vndbBestMatch, vndbCandidateTitles, vndbReleaseDate } from "./vndbMatch";
+import { titleMatchScore } from "./igdbMatch";
 import { Game } from "../src/types";
 
 let passed = 0;
