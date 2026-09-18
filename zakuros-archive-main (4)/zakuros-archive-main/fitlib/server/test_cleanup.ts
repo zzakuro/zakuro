@@ -154,6 +154,27 @@ console.log("\n--- selfHealCatalog ---");
   eq(games.length, 1, "selfHeal collapses to a single row");
 }
 
+console.log("\n--- normalizeClassicFlag ---");
+{
+  const pc = mk({ title: "Alien: Isolation", classic: true, steamId: 214490, genres: ["Classic", "Retro", "PS3", "Action"] });
+  eq(normalizeClassicFlag(pc), true, "classic stripped when a Steam id is present");
+  eq(pc.classic, false, "mis-tagged classic flag cleared");
+  eq(JSON.stringify(pc.genres), JSON.stringify(["PS3", "Action"]), "Classic/Retro genres removed");
+
+  const rom = mk({ title: "Super Mario Bros", classic: true, genres: ["Classic", "Retro", "NES"] });
+  eq(normalizeClassicFlag(rom), false, "genuine ROM classic untouched");
+  eq(rom.classic, true, "ROM classic flag intact");
+
+  const games = [
+    mk({ title: "Batman: Arkham City", classic: true, steamId: 200260, genres: ["Classic", "Retro", "PS3"] }),
+    mk({ title: "Pokemon Red", classic: true, genres: ["Classic", "Retro", "GB"] }),
+  ];
+  const res = selfHealCatalog(games);
+  eq(res.classic, 1, "selfHeal strips the one mis-tagged classic");
+  eq(games[0].classic, false, "PC title is no longer classic");
+  eq(games[1].classic, true, "ROM title stays classic");
+}
+
 console.log("\n--- placeholders ---");
 eq(summaryIsPlaceholder("Available via: FitGirl"), true, "repack placeholder detected");
 eq(summaryIsPlaceholder("Retro / classic title - emulated console release."), true, "retro placeholder detected");
