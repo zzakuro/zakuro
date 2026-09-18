@@ -59,7 +59,7 @@ export const DonateView: React.FC = () => {
   };
 
   const useOfFunds = [
-    { icon: Server, label: "Server & bandwidth", detail: "Hosting and the API serving 20,000+ entries 24/7." },
+    { icon: Server, label: "Server & bandwidth", detail: "Hosting and the API serving 80,000+ entries 24/7." },
     { icon: Database, label: "Metadata enrichment", detail: "Steam & ProtonDB API quota so descriptions, badges, and covers stay fresh." },
     { icon: Wifi, label: "Mirror checks", detail: "Automated availability pings so dead links are flagged and pruned quickly." },
     { icon: ShieldCheck, label: "Zero ads, forever", detail: "The index stays free and ad-free for everyone. Donations replace ad revenue, not supplement it." },

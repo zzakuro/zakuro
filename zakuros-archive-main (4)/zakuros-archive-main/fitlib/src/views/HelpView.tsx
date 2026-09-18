@@ -49,7 +49,7 @@ export const HelpView: React.FC = () => {
       title: "Searching the catalog",
       id: "search",
       intro:
-        "Searching is the fastest way through 20,000+ releases — and there's a hidden power-user trick built into the top bar.",
+        "Searching is the fastest way through 80,000+ releases — and there's a hidden power-user trick built into the top bar.",
       steps: [
         {
           title: "Jump straight in (Ctrl+K)",
@@ -306,7 +306,7 @@ export const HelpView: React.FC = () => {
             Step 0 — Prepare, before you extract
           </h3>
           <ul className="text-zinc-400 text-xs leading-relaxed font-sans space-y-2">
-            <li><span className="text-rose-400 font-bold">Exclude the folder in your antivirus first.</span> Cracked installers trip generic AV heuristics — Windows Defender silently deletes the launcher or a DLL mid-extraction Colors. Pick one folder for all your games (e.g. <code className="font-mono text-rose-300">D:\Games\Zakuro</code>) and add it to exclusions. You don't need to disable the AV.</li>
+            <li><span className="text-rose-400 font-bold">Exclude the folder in your antivirus first.</span> Cracked installers trip generic AV heuristics — Windows Defender silently deletes the launcher or a DLL mid-extraction. Pick one folder for all your games (e.g. <code className="font-mono text-rose-300">D:\Games\Zakuro</code>) and add it to exclusions. You don't need to disable the AV.</li>
             <li><span className="text-rose-400 font-bold">Guide for specific AVs:</span> Windows Security → Virus & threat protection → Manage settings → Exclusions → Add exclusion → folder. Avast/AVG: Settings → Exceptions. Kaspersky: Threats and Exclusions. Bitdefender: Exceptions. Malwarebytes: Allow List.</li>
             <li><span className="text-rose-400 font-bold">Warning:</span> if the game won't launch after extracting, your AV deleted the launcher. Restore it from quarantine, add the folder exclusion, then re-extract.</li>
           </ul>

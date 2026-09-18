@@ -13,16 +13,20 @@ import {
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { PageHero, Reveal } from "../components/PageHero";
+import { useGame } from "../lib/gameContext";
 
 export const AboutView: React.FC = () => {
   const [activeFaq, setActiveFaq] = useState<number | null>(null);
+  const { totalGames } = useGame();
+
+  const indexedReleases = totalGames > 0 ? `${totalGames.toLocaleString()}+` : "80,000+";
 
   const scrollToFaq = () => {
     document.getElementById("faq-section")?.scrollIntoView({ behavior: "smooth", block: "start" });
   };
 
   const stats = [
-    { label: "Indexed Releases", value: "5,000+", icon: Database },
+    { label: "Indexed Releases", value: indexedReleases, icon: Database },
     { label: "Indexed Sources", value: "8", icon: Layers },
     { label: "File Hosting", value: "None", icon: Shield },
     { label: "Cost", value: "Free", icon: Globe },
