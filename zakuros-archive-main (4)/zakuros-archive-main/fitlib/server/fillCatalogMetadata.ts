@@ -38,8 +38,7 @@ import {
   summaryIsPlaceholder,
   devIsPlaceholder,
   shouldUpgradeSummary,
-  stabilizeCatalog,
-  pruneForeignFiller,
+  selfHealCatalog,
 } from "./sources";
 
 const STATE_PATH = path.join(process.cwd(), "data", "steam_grind_state.json");
@@ -80,16 +79,14 @@ function saveState(state: GrindState): void {
 }
 
 function saveCatalog(games: Game[]): void {
-  // Drop re-imported foreign filler, then collapse same-appid/edition dupes,
-  // in place before writing so the long-lived `games` array stays authoritative.
-  const pruned = pruneForeignFiller(games);
-  if (pruned > 0) console.log(`[Grind] prune-on-save dropped ${pruned} foreign filler rows.`);
-  const { games: stabilized, merged } = stabilizeCatalog(games);
-  if (merged > 0) {
-    console.log(`[Grind] stabilize-on-save merged ${merged} duplicate rows.`);
-    games.length = 0;
-    for (const g of stabilized) games.push(g);
-  }
+  // Drop re-imported foreign filler, fold bilingual dupes, collapse
+  // same-appid/edition dupes and re-align mismatched covers, in place before
+  // writing so the long-lived `games` array stays authoritative.
+  const { filler, bilingual, merged, covers } = selfHealCatalog(games);
+  if (filler > 0) console.log(`[Grind] prune-on-save dropped ${filler} foreign filler rows.`);
+  if (bilingual > 0) console.log(`[Grind] bilingual-merge-on-save folded ${bilingual} duplicate rows.`);
+  if (merged > 0) console.log(`[Grind] stabilize-on-save merged ${merged} duplicate rows.`);
+  if (covers > 0) console.log(`[Grind] cover-realign-on-save fixed ${covers} mismatched covers.`);
   writeGames(games);
 }
 

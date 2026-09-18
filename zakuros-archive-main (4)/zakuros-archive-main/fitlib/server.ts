@@ -4,7 +4,7 @@ import fs from "fs";
 import compression from "compression";
 import { createServer as createViteServer } from "vite";
 import { getGameMetadata, checkBackendRateLimit, parseSteamPcRequirements } from "./server/metadataService";
-import { setRealScreenshots, summaryIsPlaceholder, devIsPlaceholder, shouldUpgradeSummary, steamTitleMismatch, stabilizeCatalog, pruneForeignFiller } from "./server/sources";
+import { setRealScreenshots, summaryIsPlaceholder, devIsPlaceholder, shouldUpgradeSummary, steamTitleMismatch, selfHealCatalog } from "./server/sources";
 import {
   communityRouter,
 } from "./server/community";
@@ -95,13 +95,11 @@ let catalogSaving: Promise<void> | null = null;
 // the sync-time stabilize pass already collapsed. Mutating in place keeps the
 // long-lived gamesCatalog reference valid for every request handler.
 function stabilizeInPlace(): void {
-  const pruned = pruneForeignFiller(gamesCatalog);
-  if (pruned > 0) console.log(`[DB] prune-on-persist dropped ${pruned} foreign filler rows.`);
-  const { games: stabilized, merged } = stabilizeCatalog(gamesCatalog);
-  if (merged <= 0) return;
-  console.log(`[DB] stabilize-on-persist merged ${merged} duplicate rows.`);
-  gamesCatalog.length = 0;
-  for (const g of stabilized) gamesCatalog.push(g);
+  const { filler, bilingual, merged, covers } = selfHealCatalog(gamesCatalog);
+  if (filler > 0) console.log(`[DB] prune-on-persist dropped ${filler} foreign filler rows.`);
+  if (bilingual > 0) console.log(`[DB] bilingual-merge-on-persist folded ${bilingual} duplicate rows.`);
+  if (merged > 0) console.log(`[DB] stabilize-on-persist merged ${merged} duplicate rows.`);
+  if (covers > 0) console.log(`[DB] cover-realign-on-persist fixed ${covers} mismatched covers.`);
 }
 
 function persistCatalogSync(): void {
