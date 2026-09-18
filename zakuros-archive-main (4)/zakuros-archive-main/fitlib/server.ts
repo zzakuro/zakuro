@@ -253,9 +253,11 @@ function applyQuery(
 // ── Card projection ───────────────────────────────────────────────────────────
 // The list/search surfaces only need a compact subset of each Game. Shipping
 // full screenshots[], downloadSources[], systemRequirements{}, trailers[] and
-// magnetLink for all 111k titles inflates the catalog-wide payload to ~46MB gz.
-// Those detail-only fields are served per-game by /api/games/:id instead, so
-// this projection keeps the list response small (counts replace the arrays).
+// magnetLink for all 82k titles inflates the catalog-wide payload to ~46MB gz.
+// Those detail-only fields are served per-game by /api/games/:id instead.
+// Descriptions are the single largest remaining field (~35% of the payload) and
+// are only ever shown for a few cards at a time, so the list ships `hasSummary`
+// and the client hydrates the text lazily via /api/games/:id/summary.
 const SUMMARY_CARD_CAP = 220;
 
 function toCardGame(g: Game) {
@@ -277,7 +279,7 @@ function toCardGame(g: Game) {
     linux: g.linux,
     classic: g.classic,
     stats: g.stats,
-    summary: typeof g.summary === "string" ? g.summary.slice(0, SUMMARY_CARD_CAP) : g.summary,
+    hasSummary: !!g.summary,
     screenshotCount: g.screenshots ? g.screenshots.length : 0,
     sourceCount: g.downloadSources ? g.downloadSources.length : 0,
   };
@@ -465,6 +467,14 @@ async function startServer() {
   // re-downloading the entire catalog. Bumps whenever the catalog is mutated.
   app.get("/api/catalog/version", (_req, res) => {
     res.json({ version: `${gamesCatalog.length}:${catalogRevision}` });
+  });
+
+  // A3. Lazy description for card hovers — the list payload omits summaries.
+  app.get("/api/games/:id/summary", (req, res) => {
+    const game = gamesCatalog.find((g) => g.id === req.params.id);
+    if (!game) return res.status(404).json({ error: `Game with ID '${req.params.id}' not found.` });
+    const summary = typeof game.summary === "string" ? game.summary.slice(0, SUMMARY_CARD_CAP) : "";
+    res.json({ id: game.id, summary });
   });
 
   // B. Get specific Game

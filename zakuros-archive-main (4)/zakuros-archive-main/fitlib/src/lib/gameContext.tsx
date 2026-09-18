@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from "react";
+import React, { createContext, useContext, useState, useEffect, useCallback, useMemo, useRef } from "react";
 import {
   Game,
   UserSession,
@@ -77,6 +77,7 @@ interface GameContextType {
   authorKey: string;
   authorName: string;
   searchGames: (params: CatalogSearchParams) => Promise<{ games: Game[]; total: number }>;
+  getGameSummary: (gameId: string) => Promise<string>;
   getComments: (gameId: string) => Promise<GameComment[]>;
   addComment: (
     gameId: string,
@@ -224,6 +225,34 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [authorKey, authorName]
   );
+
+  // Detail-only fields (notably summary) are omitted from the list payload to
+  // keep the catalog small; hydrate them lazily per game and cache in memory.
+  const summaryCache = useRef<Map<string, string>>(new Map());
+  const summaryInflight = useRef<Map<string, Promise<string>>>(new Map());
+  const getGameSummary = useCallback((gameId: string): Promise<string> => {
+    const cached = summaryCache.current.get(gameId);
+    if (cached !== undefined) return Promise.resolve(cached);
+    const inflight = summaryInflight.current.get(gameId);
+    if (inflight) return inflight;
+    const p = (async () => {
+      try {
+        const data = (await jsonFetch(API(`/api/games/${encodeURIComponent(gameId)}/summary`))) as {
+          summary?: string;
+        };
+        const summary = typeof data?.summary === "string" ? data.summary : "";
+        summaryCache.current.set(gameId, summary);
+        return summary;
+      } catch {
+        summaryCache.current.set(gameId, "");
+        return "";
+      } finally {
+        summaryInflight.current.delete(gameId);
+      }
+    })();
+    summaryInflight.current.set(gameId, p);
+    return p;
+  }, []);
 
   const searchGames = useCallback(async (params: CatalogSearchParams) => {
     const qs = new URLSearchParams();
@@ -505,6 +534,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
         authorKey,
         authorName,
         searchGames,
+        getGameSummary,
         getComments,
         addComment,
         deleteComment,
