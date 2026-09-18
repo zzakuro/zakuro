@@ -469,6 +469,28 @@ async function startServer() {
     res.json({ version: `${gamesCatalog.length}:${catalogRevision}` });
   });
 
+  // A2b. Catalog health — the last invariant-checker snapshot (field coverage,
+  // placeholder counts, warnings). Read-only; powers the Sources health panel.
+  const HEALTH_SNAPSHOT_PATH = path.join(process.cwd(), "data", "snapshots", "latest.json");
+  let healthCache: { mtime: number; body: string } | null = null;
+  app.get("/api/catalog/health", (_req, res) => {
+    try {
+      if (!fs.existsSync(HEALTH_SNAPSHOT_PATH)) {
+        return res
+          .status(404)
+          .json({ error: "No catalog snapshot yet — run `npm run check:catalog`." });
+      }
+      const { mtimeMs } = fs.statSync(HEALTH_SNAPSHOT_PATH);
+      if (!healthCache || healthCache.mtime !== mtimeMs) {
+        healthCache = { mtime: mtimeMs, body: fs.readFileSync(HEALTH_SNAPSHOT_PATH, "utf8") };
+      }
+      res.type("application/json").send(healthCache.body);
+    } catch (e: any) {
+      console.error("[Health] Failed to read snapshot:", e.message);
+      res.status(500).json({ error: "Failed to read catalog health." });
+    }
+  });
+
   // A3. Lazy description for card hovers — the list payload omits summaries.
   app.get("/api/games/:id/summary", (req, res) => {
     const game = gamesCatalog.find((g) => g.id === req.params.id);

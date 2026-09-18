@@ -1,11 +1,31 @@
 import React, { useEffect, useState } from "react";
-import { Layers, Database, Package, Disc3, RefreshCw } from "lucide-react";
+import { Layers, Database, Package, Disc3, RefreshCw, Activity } from "lucide-react";
 import { PageHero, Reveal } from "../components/PageHero";
 
 interface SourceEntry {
   name: string;
   category: string;
 }
+
+interface HealthSnapshot {
+  generatedAt: string;
+  total: number;
+  classic?: number;
+  coverage: Record<string, number>;
+  placeholders?: { summaries?: number; developers?: number; screenshots?: number };
+}
+
+// Field coverage the checker reports, in the order most meaningful to readers.
+const COVERAGE_ROWS: [string, string][] = [
+  ["cover", "Cover art"],
+  ["realSummary", "Real description"],
+  ["genres", "Genres"],
+  ["realDeveloper", "Developer"],
+  ["releaseDate", "Release date"],
+  ["screenshots", "Screenshots"],
+  ["steamId", "Steam reference"],
+  ["rating", "Rating"],
+];
 
 const CATEGORY_META: Record<string, { label: string; blurb: string; icon: React.ElementType }> = {
   repacker: {
@@ -29,6 +49,7 @@ export const SourcesView: React.FC = () => {
   const [sources, setSources] = useState<SourceEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [health, setHealth] = useState<HealthSnapshot | null>(null);
 
   const load = async () => {
     setLoading(true);
@@ -48,6 +69,25 @@ export const SourcesView: React.FC = () => {
 
   useEffect(() => {
     load();
+  }, []);
+
+  // Best-effort: the health snapshot is optional (it only exists once the
+  // catalog checker has run), so failures are silent.
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      try {
+        const res = await fetch("/api/catalog/health");
+        if (!res.ok) return;
+        const data = (await res.json()) as HealthSnapshot;
+        if (alive && data?.coverage) setHealth(data);
+      } catch {
+        // ignore — the panel simply stays hidden
+      }
+    })();
+    return () => {
+      alive = false;
+    };
   }, []);
 
   const grouped = sources.reduce<Record<string, SourceEntry[]>>((acc, s) => {
@@ -143,6 +183,55 @@ export const SourcesView: React.FC = () => {
           </section>
         );
       })}
+
+      {health && (
+        <section className="space-y-6">
+          <div className="flex items-center gap-3 border-b border-white/5 pb-4">
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-white/10 bg-white/[0.03] text-rose-400">
+              <Activity className="h-4 w-4" />
+            </span>
+            <div>
+              <h2 className="font-display text-lg font-bold uppercase tracking-wide text-white">
+                Catalog health
+              </h2>
+              <p className="text-xs text-zinc-500">
+                Metadata coverage across {health.total.toLocaleString()} indexed releases
+                {health.classic ? `, including ${health.classic.toLocaleString()} classic titles` : ""}.
+              </p>
+            </div>
+            <span className="ml-auto font-mono text-[10px] text-zinc-600">
+              updated {new Date(health.generatedAt).toLocaleDateString()}
+            </span>
+          </div>
+
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            {COVERAGE_ROWS.map(([key, label]) => {
+              const v = Math.max(0, Math.min(100, Math.round(health.coverage[key] ?? 0)));
+              return (
+                <div key={key} className="panel rounded-xl p-4">
+                  <div className="flex items-center justify-between">
+                    <span className="font-mono text-[11px] font-bold uppercase tracking-wider text-zinc-400">
+                      {label}
+                    </span>
+                    <span className="font-mono text-xs font-bold text-white">{v}%</span>
+                  </div>
+                  <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-white/[0.06]">
+                    <div
+                      className="h-full rounded-full bg-gradient-to-r from-rose-500 to-rose-400"
+                      style={{ width: `${v}%` }}
+                    />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          <p className="font-mono text-[10px] leading-relaxed text-zinc-600">
+            Coverage is filled continuously by the background metadata grind; gaps shrink as
+            descriptions, art and developer data are backfilled from Steam and IGDB.
+          </p>
+        </section>
+      )}
 
       <section className="panel mx-auto max-w-2xl rounded-2xl p-6 text-center">
         <p className="text-xs leading-relaxed text-zinc-500">

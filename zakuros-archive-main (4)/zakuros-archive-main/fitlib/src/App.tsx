@@ -89,6 +89,24 @@ function RoutedBoundary({ children }: { children: React.ReactNode }) {
   );
 }
 
+function NotFound() {
+  return (
+    <div className="mx-auto flex max-w-xl flex-col items-center justify-center gap-4 px-4 py-24 text-center">
+      <p className="font-mono text-xs font-bold uppercase tracking-widest text-rose-400">404</p>
+      <h2 className="font-display text-3xl font-bold uppercase text-white">Page not found</h2>
+      <p className="max-w-sm text-sm text-zinc-500">
+        That page doesn't exist — it may have been renamed, or the link was mistyped.
+      </p>
+      <Link
+        to="/"
+        className="rounded-full bg-rose-500 px-6 py-2.5 font-mono text-xs font-bold text-white transition hover:bg-rose-400"
+      >
+        BACK TO HOMEPAGE
+      </Link>
+    </div>
+  );
+}
+
 export default function App() {
   return (
     <GameProvider>
@@ -116,6 +134,7 @@ export default function App() {
               <Route path="/donate" element={<DonateView />} />
               <Route path="/login" element={<AuthView />} />
               <Route path="/register" element={<AuthView />} />
+              <Route path="*" element={<NotFound />} />
             </Routes>
             </RoutedBoundary>
           </div>
