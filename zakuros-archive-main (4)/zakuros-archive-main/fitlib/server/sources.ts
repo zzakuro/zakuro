@@ -2,6 +2,7 @@ import fs from "fs";
 import path from "path";
 import { Game, DownloadSource, LinuxSupportInfo } from "../src/types";
 import { fetchSteamDetails, fetchProtonSummary } from "./metadataService";
+import { normalizeClassicFlag } from "./normalize";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -57,6 +58,7 @@ interface MergedKey {
   uploadDate: string;
   uploadDateParsed: number;
   isClassic: boolean;
+  hasSteamId: boolean;
   platforms: Set<string>;
 }
 
@@ -601,7 +603,8 @@ function foldInto(winner: Game, other: Game): void {
   if (!winner.rating && other.rating) winner.rating = other.rating;
   if (!winner.magnetLink && other.magnetLink) winner.magnetLink = other.magnetLink;
   if (!winner.fileSize && other.fileSize) winner.fileSize = other.fileSize;
-  if (other.classic && !winner.classic) winner.classic = true;
+  // Never carry "classic" onto a game that has a Steam id (native PC release).
+  if (other.classic && !winner.classic && typeof winner.steamId !== "number") winner.classic = true;
 
   if (other.downloadSources?.length) {
     const urls = new Set((winner.downloadSources || []).map((s) => s.url));
@@ -886,6 +889,7 @@ export function selfHealCatalog(games: Game[]): {
   bilingual: number;
   merged: number;
   covers: number;
+  classic: number;
 } {
   const filler = pruneForeignFiller(games);
   const bilingual = mergeBilingualDuplicates(games);
@@ -895,7 +899,9 @@ export function selfHealCatalog(games: Game[]): {
     for (const g of stabilized) games.push(g);
   }
   const covers = alignCoverAppids(games);
-  return { filler, bilingual, merged, covers };
+  let classic = 0;
+  for (const g of games) if (normalizeClassicFlag(g)) classic++;
+  return { filler, bilingual, merged, covers, classic };
 }
 
 // ── Steam enrichment for newly added PC titles ───────────────────────────────
@@ -1482,6 +1488,7 @@ export async function syncSources(params: {
       uploadDate: game.releaseDate || "",
       uploadDateParsed: parseDateToMs(game.releaseDate || ""),
       isClassic: !!game.classic,
+      hasSteamId: typeof game.steamId === "number",
       platforms: new Set(),
     });
   }
@@ -1512,7 +1519,9 @@ export async function syncSources(params: {
               merged.cleanTitle = entry.cleanTitle;
             }
           }
-          if (source.category === "classic") merged.isClassic = true;
+          // A console-dump source must not re-tag a title that already has a
+          // native PC (Steam) release as classic.
+          if (source.category === "classic" && !merged.hasSteamId) merged.isClassic = true;
           if (entry.platform) merged.platforms.add(entry.platform);
         } else {
           const merged = {
@@ -1521,6 +1530,7 @@ export async function syncSources(params: {
             uploadDate: entry.uploadDate,
             uploadDateParsed: entry.uploadDateParsed,
             isClassic: source.category === "classic",
+            hasSteamId: false,
             platforms: new Set<string>(entry.platform ? [entry.platform] : []),
           };
           index.set(entry.normalizedTitle, merged);
