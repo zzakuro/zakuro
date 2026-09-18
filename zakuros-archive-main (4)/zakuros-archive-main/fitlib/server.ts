@@ -415,6 +415,9 @@ async function startServer() {
   // this when /api/games is unreachable).
   app.get("/games.json", (_req, res) => {
     try {
+      // Short cache: the catalog only changes when the grind/enrichment writes,
+      // so a 60s browser cache is safe and saves re-downloading the fallback.
+      res.set("Cache-Control", "public, max-age=60");
       res.type("application/json").send(JSON.stringify(gamesCatalog));
     } catch (e: any) {
       res.status(500).json({ error: "Failed to serialize catalog fallback." });
@@ -517,6 +520,9 @@ async function startServer() {
         req.query.nsfw === undefined
           ? true
           : req.query.nsfw === "1" || req.query.nsfw === "true";
+      // Facets are recomputed only when the catalog revision changes, so a
+      // 60s browser cache is safe and spares repeated clients the scan.
+      res.set("Cache-Control", "public, max-age=60");
       const key = `${catalogRevision}:${nsfw}`;
       if (facetsCache && facetsCache.key === key) return res.json(facetsCache.body);
 
@@ -624,6 +630,7 @@ async function startServer() {
         .sort((a, b) => b.shared - a.shared || (b.g.popularityScore ?? 0) - (a.g.popularityScore ?? 0))
         .slice(0, limit)
         .map((s) => toCardGame(s.g));
+      res.set("Cache-Control", "public, max-age=60");
       res.json({ id: game.id, games: ranked });
     } catch (e: any) {
       console.error("[Related Error]:", e.message);
