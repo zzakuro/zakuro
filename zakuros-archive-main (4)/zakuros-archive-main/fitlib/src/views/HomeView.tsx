@@ -61,8 +61,44 @@ const Rail: React.FC<{ children: React.ReactNode }> = ({ children }) => (
 
 /* ---------- view ---------- */
 export const HomeView: React.FC = () => {
-  const { games, loading, error, getGameSummary } = useGame();
+  const { games, loading, error, getGameSummary, serverBrowse, getFacets, searchGames, showNSFW } =
+    useGame();
   const navigate = useNavigate();
+  // Server-browse: rails + catalog pulse come from the server query API instead
+  // of the (partial) in-memory featured slice.
+  const [facets, setFacets] = useState<Awaited<ReturnType<typeof getFacets>> | null>(null);
+  const [srv, setSrv] = useState<{
+    carousel: Game[];
+    popular: Game[];
+    newReleases: Game[];
+    latest: Game[];
+  }>({ carousel: [], popular: [], newReleases: [], latest: [] });
+
+  useEffect(() => {
+    if (!serverBrowse) return;
+    let alive = true;
+    Promise.all([
+      searchGames({ sort: "rating", limit: 8, nsfw: true }),
+      searchGames({ sort: "popular", limit: 8, nsfw: true }),
+      searchGames({ sort: "newest", limit: 12, nsfw: true }),
+      searchGames({ sort: "updated", limit: 12, nsfw: true }),
+      getFacets().catch(() => null),
+    ])
+      .then(([rated, popular, newest, updated, f]) => {
+        if (!alive) return;
+        if (f) setFacets(f);
+        setSrv({
+          carousel: hideNsfw(rated.games, showNSFW).slice(0, 5),
+          popular: hideNsfw(popular.games, showNSFW),
+          newReleases: hideNsfw(newest.games, showNSFW),
+          latest: hideNsfw(updated.games, showNSFW),
+        });
+      })
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, [serverBrowse, searchGames, getFacets, showNSFW]);
   const [carouselIndex, setCarouselIndex] = useState(0);
   const [paused, setPaused] = useState(false);
   const [heroImgFailed, setHeroImgFailed] = useState(false);
@@ -98,8 +134,10 @@ export const HomeView: React.FC = () => {
 
   const carouselGames = useMemo(
     () =>
-      uniqueShowcase([...games].filter((g) => g.rating > 0).sort((a, b) => b.rating - a.rating)).slice(0, 5),
-    [games]
+      serverBrowse
+        ? uniqueShowcase(srv.carousel).slice(0, 5)
+        : uniqueShowcase([...games].filter((g) => g.rating > 0).sort((a, b) => b.rating - a.rating)).slice(0, 5),
+    [games, serverBrowse, srv]
   );
   const activeCarouselGame = carouselGames[carouselIndex];
 
@@ -153,43 +191,62 @@ export const HomeView: React.FC = () => {
   }, [carouselGames.length, paused]);
 
   const latestGames = useMemo(
-    () => [...games].sort((a, b) => b.stats.updatedAt.localeCompare(a.stats.updatedAt)).slice(0, 12),
-    [games]
+    () =>
+      serverBrowse
+        ? srv.latest
+        : [...games].sort((a, b) => b.stats.updatedAt.localeCompare(a.stats.updatedAt)).slice(0, 12),
+    [games, serverBrowse, srv]
   );
   const popularGames = useMemo(
     () =>
-      uniqueShowcase([...games].sort((a, b) => (b.popularityScore ?? 0) - (a.popularityScore ?? 0))).slice(0, 8),
-    [games]
+      serverBrowse
+        ? uniqueShowcase(srv.popular).slice(0, 8)
+        : uniqueShowcase([...games].sort((a, b) => (b.popularityScore ?? 0) - (a.popularityScore ?? 0))).slice(0, 8),
+    [games, serverBrowse, srv]
   );
   const topRated = useMemo(
     () =>
-      uniqueShowcase([...games].filter((g) => g.rating > 0).sort((a, b) => b.rating - a.rating)).slice(0, 4),
-    [games]
+      serverBrowse
+        ? uniqueShowcase(srv.carousel).slice(0, 4)
+        : uniqueShowcase([...games].filter((g) => g.rating > 0).sort((a, b) => b.rating - a.rating)).slice(0, 4),
+    [games, serverBrowse, srv]
   );
   const newReleases = useMemo(() => {
+    if (serverBrowse) return srv.newReleases;
     const parseTime = (d: string) => {
       const t = Date.parse(d || "");
       return Number.isNaN(t) ? -Infinity : t;
     };
     const withDate = games.filter((g) => !Number.isNaN(parseTime(g.releaseDate)));
     return [...withDate].sort((a, b) => parseTime(b.releaseDate) - parseTime(a.releaseDate)).slice(0, 12);
-  }, [games]);
+  }, [games, serverBrowse, srv]);
 
   const genreCounts = useMemo(() => {
+    if (serverBrowse && facets) return facets.genres.slice(0, 6).map((g) => [g.name, g.count] as [string, number]);
     const map = new Map<string, number>();
     games.forEach((g) => (g.genres || []).forEach((x) => map.set(x, (map.get(x) || 0) + 1)));
     return [...map.entries()].sort((a, b) => b[1] - a[1]).slice(0, 6);
-  }, [games]);
+  }, [games, serverBrowse, facets]);
 
   // Marquee ticker band uses a wider genre sweep, doubled for the loop.
   const marqueeGenres = useMemo(() => {
+    if (serverBrowse && facets) return facets.genres.slice(0, 24).map((g) => [g.name, g.count] as [string, number]);
     const map = new Map<string, number>();
     games.forEach((g) => (g.genres || []).forEach((x) => map.set(x, (map.get(x) || 0) + 1)));
     return [...map.entries()].sort((a, b) => b[1] - a[1]).slice(0, 24);
-  }, [games]);
+  }, [games, serverBrowse, facets]);
 
-  // Live catalog pulse — numbers computed from the loaded index.
+  // Live catalog pulse — numbers computed from the loaded index (or the server
+  // facets in server-browse mode).
   const catalogStats = useMemo(() => {
+    if (serverBrowse && facets) {
+      return {
+        games: facets.total,
+        genres: facets.genreCount ?? facets.genres.length,
+        downloads: facets.downloads ?? 0,
+        updated30: facets.updated30 ?? 0,
+      };
+    }
     const genres = new Set<string>();
     let downloads = 0;
     let updated30 = 0;
@@ -199,7 +256,7 @@ export const HomeView: React.FC = () => {
       if (isUpdated(g)) updated30++;
     }
     return { games: games.length, genres: genres.size, downloads, updated30 };
-  }, [games]);
+  }, [games, serverBrowse, facets]);
 
   if (loading) {
     return (
