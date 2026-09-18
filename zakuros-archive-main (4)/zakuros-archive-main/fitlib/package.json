@@ -10,7 +10,8 @@
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
     "test": "tsx server/test_cleanup.ts",
-    "check:catalog": "tsx server/checkCatalog.ts"
+    "check:catalog": "tsx server/checkCatalog.ts",
+    "fix:appids": "tsx server/fixAppidIssues.ts"
   },
   "dependencies": {
     "compression": "^1.7.5",
