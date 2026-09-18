@@ -6,6 +6,26 @@ import {
   RatingSummary,
 } from "../types";
 
+// ── Deployment config ────────────────────────────────────────────────────────
+// The catalog (games list) and the community API can live on different origins
+// so the UI can be served statically while the catalog sits on a CDN and the
+// comments/ratings API on a small host. All three default to same-origin.
+//   VITE_CATALOG_URL          absolute URL of the games JSON (default /api/games)
+//   VITE_CATALOG_VERSION_URL  absolute URL of the tiny version string; set to
+//                             "off" to disable change-polling (static catalog)
+//   VITE_API_BASE_URL         origin for the comments/ratings API (default "")
+const VITE_ENV = ((import.meta as any).env ?? {}) as Record<string, string | undefined>;
+const API_BASE = String(VITE_ENV.VITE_API_BASE_URL ?? "").replace(/\/+$/, "");
+const CUSTOM_CATALOG_URL = VITE_ENV.VITE_CATALOG_URL ? String(VITE_ENV.VITE_CATALOG_URL) : "";
+const CATALOG_URL = CUSTOM_CATALOG_URL || `${API_BASE}/api/games`;
+const CATALOG_VERSION_URL =
+  VITE_ENV.VITE_CATALOG_VERSION_URL !== undefined
+    ? String(VITE_ENV.VITE_CATALOG_VERSION_URL)
+    : CUSTOM_CATALOG_URL
+      ? ""
+      : `${API_BASE}/api/catalog/version`;
+const API = (path: string) => `${API_BASE}${path}`;
+
 // Cookie helper functions
 const getCookie = (name: string): string => {
   const value = `; ${document.cookie}`;
