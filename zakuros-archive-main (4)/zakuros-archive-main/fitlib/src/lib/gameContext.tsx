@@ -26,6 +26,11 @@ const CATALOG_VERSION_URL =
       : `${API_BASE}/api/catalog/version`;
 const API = (path: string) => `${API_BASE}${path}`;
 
+// Phase 2: when enabled, Browse / quick-search / related run against the server
+// query API and the client only holds a small featured slice instead of all
+// ~81k games. Off by default so the full-catalog path remains the fallback.
+const SERVER_BROWSE = VITE_ENV.VITE_SERVER_BROWSE === "1" && !CUSTOM_CATALOG_URL;
+
 // Cookie helper functions
 const getCookie = (name: string): string => {
   const value = `; ${document.cookie}`;
@@ -53,6 +58,22 @@ interface CatalogSearchParams {
   developer?: string;
   year?: string;
   minRating?: number;
+  classic?: boolean;
+  coverless?: boolean;
+  nsfw?: boolean;
+}
+
+export interface FacetItem {
+  name: string;
+  count: number;
+}
+
+export interface CatalogFacets {
+  total: number;
+  nsfwCount: number;
+  genres: FacetItem[];
+  developers: FacetItem[];
+  years: string[];
 }
 
 interface GameContextType {
@@ -77,6 +98,13 @@ interface GameContextType {
   authorKey: string;
   authorName: string;
   searchGames: (params: CatalogSearchParams) => Promise<{ games: Game[]; total: number }>;
+  // Server-browse capability (Phase 2). When `serverBrowse` is true, `games`
+  // holds only a small featured slice — use these accessors for the rest.
+  serverBrowse: boolean;
+  totalGames: number;
+  getGame: (gameId: string) => Promise<Game | null>;
+  getFacets: () => Promise<CatalogFacets>;
+  getRelated: (gameId: string, limit?: number) => Promise<Game[]>;
   getGameSummary: (gameId: string) => Promise<string>;
   getComments: (gameId: string) => Promise<GameComment[]>;
   addComment: (
@@ -110,6 +138,8 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [bookmarks, setBookmarks] = useState<string[]>([]);
   const [visitorId, setVisitorId] = useState<string>("");
+  // Whole-catalog totals in server-browse mode (the featured slice is partial).
+  const [serverStats, setServerStats] = useState<{ total: number; nsfwCount: number } | null>(null);
 
   // Generate/resolve a stable anonymous visitor id (guest identity for community)
   useEffect(() => {
@@ -139,7 +169,10 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
         : games.filter((g) => !(g.genres || []).some((x) => NSFW_GENRES.includes(x.toLowerCase().trim()))),
     [games, showNSFW]
   );
-  const nsfwCount = games.length - visibleGames.length;
+  const nsfwCount =
+    SERVER_BROWSE && serverStats ? serverStats.nsfwCount : games.length - visibleGames.length;
+  const totalGames =
+    SERVER_BROWSE && serverStats ? serverStats.total : visibleGames.length;
 
   const authorKey = user ? `u:${user.username}` : `v:${visitorId}`;
   const authorName = user ? user.username : `Guest`;
@@ -254,6 +287,47 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return p;
   }, []);
 
+  // Server-browse helpers: fetch a single full record, the filter facets, and
+  // same-genre neighbours without holding the whole catalog client-side.
+  const detailCache = useRef<Map<string, Game>>(new Map());
+  const facetsRef = useRef<CatalogFacets | null>(null);
+  const getGame = useCallback(async (gameId: string): Promise<Game | null> => {
+    const cached = detailCache.current.get(gameId);
+    if (cached) return cached;
+    try {
+      const g = (await jsonFetch(API(`/api/games/${encodeURIComponent(gameId)}`))) as Game;
+      if (g && g.id) {
+        detailCache.current.set(gameId, g);
+        return g;
+      }
+      return null;
+    } catch {
+      return null;
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  const getFacets = useCallback((): Promise<CatalogFacets> => {
+    if (facetsRef.current) return Promise.resolve(facetsRef.current);
+    return (async () => {
+      const data = (await jsonFetch(API(`/api/games/facets?nsfw=1`))) as CatalogFacets;
+      facetsRef.current = data;
+      setServerStats({ total: data.total, nsfwCount: data.nsfwCount });
+      return data;
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  const getRelated = useCallback(async (gameId: string, limit = 12): Promise<Game[]> => {
+    try {
+      const data = (await jsonFetch(
+        API(`/api/games/${encodeURIComponent(gameId)}/related?limit=${limit}&nsfw=1`)
+      )) as { games?: Game[] };
+      return Array.isArray(data?.games) ? data.games : [];
+    } catch {
+      return [];
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const searchGames = useCallback(async (params: CatalogSearchParams) => {
     const qs = new URLSearchParams();
     Object.entries(params).forEach(([k, v]) => {
@@ -312,19 +386,55 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const fetchGamesFromBackend = async () => {
     setLoading(true);
 
+    // In server-browse mode only a small featured slice is kept in memory; the
+    // rest of the catalog is queried on demand (Browse, quick-search, related).
+    const catalogUrl = SERVER_BROWSE
+      ? `${API_BASE}/api/games?sort=popular&limit=120&nsfw=1`
+      : CATALOG_URL;
+
     // 1. Try the catalog endpoint (backend API by default, or a remote URL)
     try {
-      const res = await fetch(CATALOG_URL);
+      const res = await fetch(catalogUrl);
       if (res.ok) {
         const data = await res.json();
         const games: Game[] = Array.isArray(data) ? data : (data.games ?? []);
         setGames(games);
         setError(null);
         setLoading(false);
+        if (SERVER_BROWSE) {
+          // Whole-catalog totals + facets power the NSFW badge and filters.
+          try {
+            const f = await fetch(`${API_BASE}/api/games/facets?nsfw=1`);
+            if (f.ok) {
+              const j = (await f.json()) as CatalogFacets;
+              facetsRef.current = j;
+              setServerStats({ total: j.total, nsfwCount: j.nsfwCount });
+            }
+          } catch {
+            // best-effort — Browse recomputes facets from its own request
+          }
+        }
         return;
       }
     } catch {
       // Backend unavailable — fall through to JSON
+    }
+
+    // 1b. Featured fetch failed — fall back to the full catalog if possible.
+    if (SERVER_BROWSE) {
+      try {
+        const res = await fetch(CATALOG_URL);
+        if (res.ok) {
+          const data = await res.json();
+          const games: Game[] = Array.isArray(data) ? data : (data.games ?? []);
+          setGames(games);
+          setError(null);
+          setLoading(false);
+          return;
+        }
+      } catch {
+        // fall through to local JSON database
+      }
     }
 
     // 2. Fall back to a local JSON database file
@@ -376,13 +486,13 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
         if (version === lastVersion) return;
         lastVersion = version;
-        const g = await fetch(CATALOG_URL);
-        if (!g.ok) return;
-        const data = await g.json();
+        // Catalog changed server-side — drop caches and reload (featured slice
+        // in server-browse mode, full catalog otherwise).
+        facetsRef.current = null;
+        detailCache.current.clear();
+        summaryCache.current.clear();
         if (stopped) return;
-        const next: Game[] = Array.isArray(data) ? data : (data.games ?? []);
-        setGames(next);
-        setError(null);
+        await fetchGamesFromBackend();
       } catch {
         // backend offline; keep current data
       }
@@ -534,6 +644,11 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
         authorKey,
         authorName,
         searchGames,
+        serverBrowse: SERVER_BROWSE,
+        totalGames,
+        getGame,
+        getFacets,
+        getRelated,
         getGameSummary,
         getComments,
         addComment,
