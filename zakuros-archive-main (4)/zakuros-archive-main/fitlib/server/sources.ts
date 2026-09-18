@@ -783,6 +783,121 @@ export function pruneForeignFiller(games: Game[]): number {
   return removed;
 }
 
+// ── Persist-time self-heal ───────────────────────────────────────────────────
+// The corrections applied by the one-time cleanup scripts must survive future
+// source syncs and grind writes, otherwise a re-import re-introduces the same
+// problems. These run before every catalog write.
+
+const STEAM_LIBRARY_COVER = (id: number) =>
+  `https://cdn.akamai.steamstatic.com/steam/apps/${id}/library_600x900.jpg`;
+
+// A cover fetched for a *different* app than the game's resolved steamId (e.g.
+// "Resident Evil" wearing RE4's library art) is a title-match artifact. When a
+// numeric steamId is present, trust it over the stale cover appid. Games with no
+// steamId are left untouched (the cover may be their only art).
+export function alignCoverAppids(games: Game[]): number {
+  let fixed = 0;
+  for (const g of games) {
+    if (g.classic || typeof g.steamId !== "number") continue;
+    const coverAppid = (g.coverImage || "").match(/\/apps\/(\d+)\//)?.[1];
+    if (!coverAppid || coverAppid === String(g.steamId)) continue;
+    g.coverImage = STEAM_LIBRARY_COVER(g.steamId);
+    fixed++;
+  }
+  return fixed;
+}
+
+// Import titles of the form "English / Русский" are the same game listed twice.
+// Fold the bilingual row into its Latin-only original (sources + any metadata),
+// but only when the Latin half matches exactly AND the two agree on Steam
+// identity — so sequels ("Crazy Machines 2" vs "… 3"), bundles ("… Дилогия")
+// and localised-subtitle variants stay separate.
+const BILINGUAL_BUNDLE =
+  /дилоги|трилоги|антолог|аддон|addon|antholog|collect|компил|все части|\btrilogy\b|\bdilogy\b|\bbundle\b|\bcomplete\b/i;
+
+function latinSegment(title: string): string {
+  let best = "";
+  let bestScore = -1;
+  for (const seg of (title || "").split(/\s*[/|]\s*/)) {
+    const score = (seg.match(/[A-Za-z]/g) || []).length;
+    if (score > bestScore) {
+      bestScore = score;
+      best = seg;
+    }
+  }
+  return best;
+}
+
+function keyLooksSubstantial(key: string): boolean {
+  const t = key.split(" ").filter(Boolean);
+  return t.length >= 2 || (t.length === 1 && t[0].length >= 5);
+}
+
+export function mergeBilingualDuplicates(games: Game[]): number {
+  const isBilingual = (g: Game) =>
+    /[A-Za-z]/.test(g.title || "") && /[\u0400-\u04ff]/.test(g.title || "");
+  const targets = games.filter(isBilingual);
+  if (!targets.length) return 0;
+
+  const targetSet = new Set(targets);
+  const byKey = new Map<string, Game[]>();
+  for (const g of games) {
+    if (targetSet.has(g)) continue;
+    const k = normalizeForMatch(g.title || "");
+    if (!k) continue;
+    const arr = byKey.get(k) ?? [];
+    arr.push(g);
+    byKey.set(k, arr);
+  }
+
+  const doomed = new Set<Game>();
+  let merged = 0;
+  for (const g of targets) {
+    if (g.classic || BILINGUAL_BUNDLE.test(g.title || "")) continue;
+    const key = normalizeForMatch(latinSegment(g.title || ""));
+    if (!keyLooksSubstantial(key)) continue;
+    const keeper = (byKey.get(key) || []).find((h) => !targetSet.has(h) && !doomed.has(h));
+    if (!keeper) continue;
+    if (
+      typeof keeper.steamId === "number" &&
+      typeof g.steamId === "number" &&
+      keeper.steamId !== g.steamId
+    ) {
+      continue;
+    }
+    foldInto(keeper, g);
+    doomed.add(g);
+    merged++;
+  }
+
+  if (merged) {
+    for (let i = games.length - 1; i >= 0; i--) {
+      if (doomed.has(games[i])) games.splice(i, 1);
+    }
+  }
+  return merged;
+}
+
+// One entry point for every persist path (dev server, grind, IGDB filler) so a
+// single call keeps the catalog clean: drop re-imported filler, fold bilingual
+// dupes, collapse same-appid/edition dupes, then re-align mismatched covers.
+export function selfHealCatalog(games: Game[]): {
+  filler: number;
+  bilingual: number;
+  merged: number;
+  covers: number;
+} {
+  const filler = pruneForeignFiller(games);
+  const bilingual = mergeBilingualDuplicates(games);
+  const { games: stabilized, merged } = stabilizeCatalog(games);
+  if (merged > 0) {
+    games.length = 0;
+    for (const g of stabilized) games.push(g);
+  }
+  const covers = alignCoverAppids(games);
+  return { filler, bilingual, merged, covers };
+}
+
 // ── Steam enrichment for newly added PC titles ───────────────────────────────
 
 const STEAM_SEARCH_URL = (term: string) =>
@@ -946,7 +1061,12 @@ export function setRealScreenshots(game: Game, shots: string[] | undefined): boo
 // and unknown dev/publisher labels. Grind/live-enrichment treats these as
 // "missing" so the real values replace them.
 export function summaryIsPlaceholder(s: string | undefined | null): boolean {
-  return !s || /^Available via:|fantastic game curated|unknown description|no description available|no summary/i.test(s);
+  return (
+    !s ||
+    /^Available via:|fantastic game curated|unknown description|no description available|no summary|^retro \/ classic title/i.test(
+      s
+    )
+  );
 }
 
 export function devIsPlaceholder(s: string | undefined | null): boolean {
