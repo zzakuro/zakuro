@@ -307,7 +307,7 @@ export const HomeView: React.FC = () => {
                   src={heroSrc}
                   alt={activeCarouselGame.title}
                   referrerPolicy="no-referrer"
-                  fetchpriority="high"
+                  fetchPriority="high"
                   decoding="async"
                   initial={{ scale: 1.06 }}
                   animate={{ scale: 1 }}

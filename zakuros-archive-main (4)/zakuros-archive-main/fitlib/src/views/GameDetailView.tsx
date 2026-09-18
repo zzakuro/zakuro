@@ -464,7 +464,7 @@ export const GameDetailView: React.FC = () => {
                       src={featureShot}
                       alt={`${title} screenshot ${shotIdx + 1}`}
                       referrerPolicy="no-referrer"
-                      fetchpriority="high"
+                      fetchPriority="high"
                       decoding="async"
                       className="h-full w-full object-cover"
                       onError={() => setFeatBroken(true)}

@@ -71,3 +71,8 @@
   resolves ~58 offline (clears 64 rows) — the other 4 need `--online` or manual review.
 - [ ] ~243 `steamId`s absent from `data/steam_apps.json`; `npm run fix:appids -- --online` verifies them.
 - [ ] EroTorrent adult titles (~2,600) still need a doujin/adult metadata source.
+  Investigated 2026-09-18: **no clean second API exists.** VNDB covers ~30% (visual novels only);
+  IGDB, Steam store search, and the offline `steam_apps.json` miss the 3D/doujin-sim bulk;
+  EroTorrent records carry almost no DLsite `RJ` work numbers (8/4,554), so a direct DLsite
+  `product.json` lookup isn't possible, and DLsite search has no offline-friendly API.
+  Best remaining option is the post-grind Steam resolver (`fix:appids --online`) + IGDB fill.
