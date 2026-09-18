@@ -25,6 +25,16 @@
   Refuses to write while `data/.grind-active` exists and backs up the catalog first.
   After the grind: `npm run fix:appids -- --online --apply --resolve`, then re-run the checker.
 - Post-grind chain: cover watcher → `ZakuroIgdbCoverFill` (IGDB metadata fill) → catalog checker.
+- IGDB fill (`Temp/opencode/igdb-cover-fill.ts`) now also fills `trailers` from IGDB `videos`
+  (mapped to YouTube embeds) when a game has none; Steam-sourced mp4 trailers still win.
+
+## UI features
+- Detail page (`GameDetailView`) uses the Steam transparent `logo.png` as the title art when a
+  `steamId` exists (falls back to the text title), and the trailer lightbox plays both direct
+  video files (Steam mp4/webm) and embed URLs (YouTube/Vimeo) via an `<iframe>`.
+- `SourcesView` shows a public **Catalog health** panel (field-coverage bars) backed by
+  `GET /api/catalog/health`, which serves `data/snapshots/latest.json` (run the checker to refresh).
+- Unknown routes render a 404 page (`NotFound` in `App.tsx`).
 
 ## Deployment knobs (`fitlib/`)
 - `VITE_CATALOG_URL` — absolute games JSON URL (default `/api/games`).
