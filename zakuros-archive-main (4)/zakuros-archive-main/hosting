@@ -1,0 +1,22 @@
+Here's the full updated ranked list with links:
+
+Rank	Provider	Type	Link
+1	BuyVM	VPS	https://buyvm.net
+2	FlokiNET	VPS/Shared/Dedicated	https://billing.flokinet.is
+3	AlexHost	VPS/Shared/Dedicated	https://alexhost.com
+4	LyraHosting	Shared/VPS/Dedicated	https://lyrahosting.com
+5	Internet.bs	Domains only	https://internetbs.net
+6	CSRDP.host	VPS/RDP	https://csrdp.host
+7	Warez-Host	Shared/VPS/Dedicated	https://clients.warez-host.com
+8	SwissRDP	VPS/RDP	https://swissrdp.com
+
+By use case:
+
+Need	Best Pick
+Best overall VPS	BuyVM
+Best for privacy	FlokiNET
+Best shared/WordPress hosting	AlexHost
+Best offshore shared hosting	LyraHosting
+Best for domains only	Internet.bs
+Budget Windows RDP	CSRDP.host
+Avoid	Warez-Host, SwissRDP
