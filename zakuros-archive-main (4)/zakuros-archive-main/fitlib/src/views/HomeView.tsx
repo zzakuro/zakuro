@@ -56,7 +56,7 @@ const Rail: React.FC<{ children: React.ReactNode }> = ({ children }) => (
 
 /* ---------- view ---------- */
 export const HomeView: React.FC = () => {
-  const { games, loading, error } = useGame();
+  const { games, loading, error, getGameSummary } = useGame();
   const navigate = useNavigate();
   const [carouselIndex, setCarouselIndex] = useState(0);
   const [paused, setPaused] = useState(false);
@@ -102,6 +102,33 @@ export const HomeView: React.FC = () => {
   useEffect(() => {
     setHeroImgFailed(false);
   }, [activeCarouselGame?.id]);
+
+  // Descriptions are omitted from the list payload; hydrate the active slide.
+  const [carouselSummary, setCarouselSummary] = useState<string>("");
+  useEffect(() => {
+    const g = activeCarouselGame;
+    if (!g) {
+      setCarouselSummary("");
+      return;
+    }
+    if (g.summary) {
+      setCarouselSummary(g.summary);
+      return;
+    }
+    if (!g.hasSummary) {
+      setCarouselSummary("");
+      return;
+    }
+    let cancelled = false;
+    getGameSummary(g.id)
+      .then((s) => {
+        if (!cancelled) setCarouselSummary(s);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [activeCarouselGame?.id, getGameSummary]);
 
   const heroSrc = activeCarouselGame?.steamId
     ? `https://cdn.akamai.steamstatic.com/steam/apps/${activeCarouselGame.steamId}/library_hero.jpg`
@@ -300,7 +327,7 @@ export const HomeView: React.FC = () => {
               transition={{ delay: 0.34 }}
               className="mt-4 max-w-xl text-xs leading-relaxed text-zinc-400 line-clamp-2 md:text-sm"
             >
-              {activeCarouselGame.summary}
+              {carouselSummary}
             </motion.p>
 
             <motion.div
