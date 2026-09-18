@@ -19,6 +19,11 @@
   realigns mismatched covers, and strips `classic` from any game with a `steamId`.
 - List payload omits `summary` (carries `hasSummary`); client lazy-loads text via
   `GET /api/games/:id/summary`. `/api/games/:id` still returns the full record.
+- `npm run fix:appids` → `server/fixAppidIssues.ts` appid resolver (dry-run by default).
+  Flags: `--apply` (write), `--online` (verify appids against the live store),
+  `--resolve` (re-search cleared titles for the right appid), `--limit N` (cap live calls).
+  Refuses to write while `data/.grind-active` exists and backs up the catalog first.
+  After the grind: `npm run fix:appids -- --online --apply --resolve`, then re-run the checker.
 - Post-grind chain: cover watcher → `ZakuroIgdbCoverFill` (IGDB metadata fill) → catalog checker.
 
 ## Deployment knobs (`fitlib/`)
@@ -28,6 +33,7 @@
 - Community persistence goes through `CommunityStore` (`server/communityStore.ts`); JSON files by default.
 
 ## Known data-quality backlog
-- [ ] ~70 games share a `steamId` with a dissimilar title (edition mismatches) — see checker snapshot.
-- [ ] ~243 `steamId`s absent from `data/steam_apps.json`.
+- [ ] ~62 appids are shared across dissimilar titles (edition mismatches); `npm run fix:appids`
+  resolves ~58 offline (clears 64 rows) — the other 4 need `--online` or manual review.
+- [ ] ~243 `steamId`s absent from `data/steam_apps.json`; `npm run fix:appids -- --online` verifies them.
 - [ ] EroTorrent adult titles (~2,600) still need a doujin/adult metadata source.
