@@ -14,6 +14,7 @@ import {
   devIsPlaceholder,
 } from "./sources";
 import { igdbBestMatch, cleanForSearch, normalizeSearchTitle } from "./igdbMatch";
+import { normalizeClassicFlag } from "./normalize";
 import { Game } from "../src/types";
 
 let passed = 0;

@@ -898,9 +898,11 @@ export function selfHealCatalog(games: Game[]): {
     games.length = 0;
     for (const g of stabilized) games.push(g);
   }
-  const covers = alignCoverAppids(games);
+  // Strip mis-tagged classics before cover alignment so newly non-classic PC
+  // games get their covers aligned in the same pass.
   let classic = 0;
   for (const g of games) if (normalizeClassicFlag(g)) classic++;
+  const covers = alignCoverAppids(games);
   return { filler, bilingual, merged, covers, classic };
 }
 
