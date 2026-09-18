@@ -22,6 +22,11 @@ const daysSince = (iso: string): number => {
 };
 const isNew = (g: Game) => daysSince(g.releaseDate) <= 120;
 const isUpdated = (g: Game) => daysSince(g.stats.updatedAt) <= 30;
+const NSFW_GENRES = ["nsfw", "porn", "hentai", "adult", "eroge", "erotic"];
+const hideNsfw = (list: Game[], showNSFW: boolean): Game[] =>
+  showNSFW
+    ? list
+    : list.filter((g) => !(g.genres || []).some((x) => NSFW_GENRES.includes(x.toLowerCase().trim())));
 
 const SectionHeader: React.FC<{
   eyebrow: string;

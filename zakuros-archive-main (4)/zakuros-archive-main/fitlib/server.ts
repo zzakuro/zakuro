@@ -272,6 +272,11 @@ function applyQuery(
     case "filesize":
       result = [...result].sort((a, b) => parseSizeMb(b.fileSize) - parseSizeMb(a.fileSize));
       break;
+    case "updated":
+      result = [...result].sort((a, b) =>
+        (b.stats?.updatedAt ?? "").localeCompare(a.stats?.updatedAt ?? "")
+      );
+      break;
   }
 
   const total = result.length;
@@ -523,16 +528,28 @@ async function startServer() {
         if (isNsfwGame(g)) nsfwCount++;
       }
       const pool = nsfw ? gamesCatalog : gamesCatalog.filter((g) => !isNsfwGame(g));
+      const now = Date.now();
+      const daysSince = (iso: string) => {
+        const t = Date.parse(iso || "");
+        return Number.isNaN(t) ? Infinity : (now - t) / 86_400_000;
+      };
+      let downloads = 0;
+      let updated30 = 0;
       for (const g of pool) {
         for (const genre of g.genres || []) genreMap.set(genre, (genreMap.get(genre) || 0) + 1);
         if (g.developer) devMap.set(g.developer, (devMap.get(g.developer) || 0) + 1);
         const y = (g.releaseDate || "").match(/(19|20)\d{2}/)?.[0];
         if (y) years.add(y);
+        downloads += g.stats?.downloads ?? 0;
+        if (daysSince(g.stats?.updatedAt || "") <= 30) updated30++;
       }
       const body = {
         total: pool.length,
         nsfwCount,
         revision: catalogRevision,
+        genreCount: genreMap.size,
+        downloads,
+        updated30,
         genres: [...genreMap.entries()]
           .map(([name, count]) => ({ name, count }))
           .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name)),

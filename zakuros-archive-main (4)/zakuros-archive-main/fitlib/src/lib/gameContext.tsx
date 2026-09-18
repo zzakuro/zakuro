@@ -71,6 +71,9 @@ export interface FacetItem {
 export interface CatalogFacets {
   total: number;
   nsfwCount: number;
+  genreCount?: number;
+  downloads?: number;
+  updated30?: number;
   genres: FacetItem[];
   developers: FacetItem[];
   years: string[];
