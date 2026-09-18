@@ -1,14 +1,33 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { useSearchParams } from "react-router-dom";
 import { SlidersHorizontal, Search, X, ChevronDown, RotateCcw } from "lucide-react";
-import { useGame } from "../lib/gameContext";
+import { useGame, CatalogFacets } from "../lib/gameContext";
+import { Game } from "../types";
 import { GameCard } from "../components/GameCard";
 
 type FilterPill = { key: string; label: string; clear: () => void };
 
+const NSFW_GENRES = ["nsfw", "porn", "hentai", "adult", "eroge", "erotic"];
+
 export const BrowseView: React.FC = () => {
-  const { games, searchQuery, setSearchQuery, loading } = useGame();
+  const {
+    games,
+    searchQuery,
+    setSearchQuery,
+    loading,
+    serverBrowse,
+    totalGames,
+    searchGames,
+    getFacets,
+  } = useGame();
   const [searchParams, setSearchParams] = useSearchParams();
+  // Server-side browse state (unused when serverBrowse is off).
+  const [facets, setFacets] = useState<CatalogFacets | null>(null);
+  const [serverResults, setServerResults] = useState<Game[]>([]);
+  const [serverTotal, setServerTotal] = useState(0);
+  const [serverLoading, setServerLoading] = useState(false);
+  const [serverFailed, setServerFailed] = useState(false);
+  const [debouncedQuery, setDebouncedQuery] = useState(searchQuery);
 
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [selectedGenre, setSelectedGenre] = useState<string>("");
@@ -41,31 +60,113 @@ export const BrowseView: React.FC = () => {
     setPage(1);
   }, [searchQuery, selectedGenre, selectedDeveloper, selectedYear, selectedMinRating, sortBy, showClassic]);
 
-  const genresList = useMemo(() => Array.from(new Set([
-    "Visual Novel", "Metroidvania", "Souls-like", "Roguelike", "Rhythm", "Racing",
-    "Fighting", "JRPG", "CRPG", "ARPG", "Deckbuilder", "Card Game", "Board Game",
-    "Stealth", "Survival", "Horror", "Open World", "Sandbox", "Strategy",
-    "Turn-based", "Tower Defense", "Idle", "Bullet Hell", "Platformer", "Puzzle",
-    "Point-and-click", "MOBA", "MMO", "Battle Royale", "City Builder", "Farming",
-    "Co-op", "Cozy", "Walking Sim", "Story-rich", "Cyberpunk", "Fantasy", "Sci-Fi",
-    "Post-apocalyptic", "Retro", "Arcade", "Pinball", "Management", "Simulator",
-    "Space", "Zombie", "VR", "Hidden Object", "NSFW",
-    "Action", "Adventure", "RPG", "Indie", "Simulation", "Casual", "Shooter",
-    "Sports", "Puzzle",
-    ...[...games].sort((a, b) => a.title.localeCompare(b.title)).flatMap((g) => g.genres || []),
-  ])), [games]);
+  // Debounce the text query before it reaches the server.
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedQuery(searchQuery), 250);
+    return () => clearTimeout(t);
+  }, [searchQuery]);
 
-  const developersList = useMemo(
-    () => Array.from(new Set(games.map((g) => g.developer))).sort(),
-    [games]
-  );
+  // Server-browse: pull the filter taxonomies once (whole-catalog facets).
+  useEffect(() => {
+    if (!serverBrowse) return;
+    let alive = true;
+    getFacets()
+      .then((f) => alive && setFacets(f))
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, [serverBrowse, getFacets]);
+
+  // Server-browse: run the actual query on the server whenever filters change.
+  useEffect(() => {
+    if (!serverBrowse) return;
+    let alive = true;
+    const sortMap: Record<string, string> = {
+      "Most Popular": "popular",
+      Newest: "newest",
+      "Highest Rated": "rating",
+      "A–Z": "az",
+      "File Size": "filesize",
+    };
+    setServerLoading(true);
+    searchGames({
+      q: debouncedQuery || undefined,
+      genre: selectedGenre || undefined,
+      developer: selectedDeveloper || undefined,
+      year: selectedYear || undefined,
+      minRating: selectedMinRating || undefined,
+      sort: sortMap[sortBy] ?? "popular",
+      classic: showClassic || undefined,
+      coverless: showNoCover || undefined,
+      nsfw: true,
+      limit: ITEMS_PER_PAGE,
+      offset: (page - 1) * ITEMS_PER_PAGE,
+    })
+      .then((r) => {
+        if (!alive) return;
+        setServerResults(r.games);
+        setServerTotal(r.total);
+        setServerFailed(false);
+      })
+      .catch(() => {
+        // Fall back to the locally-loaded slice rather than showing an error.
+        if (alive) setServerFailed(true);
+      })
+      .finally(() => {
+        if (alive) setServerLoading(false);
+      });
+    return () => {
+      alive = false;
+    };
+  }, [
+    serverBrowse,
+    debouncedQuery,
+    selectedGenre,
+    selectedDeveloper,
+    selectedYear,
+    selectedMinRating,
+    sortBy,
+    showClassic,
+    showNoCover,
+    page,
+    searchGames,
+  ]);
+
+  const genresList = useMemo(() => {
+    const curated = [
+      "Visual Novel", "Metroidvania", "Souls-like", "Roguelike", "Rhythm", "Racing",
+      "Fighting", "JRPG", "CRPG", "ARPG", "Deckbuilder", "Card Game", "Board Game",
+      "Stealth", "Survival", "Horror", "Open World", "Sandbox", "Strategy",
+      "Turn-based", "Tower Defense", "Idle", "Bullet Hell", "Platformer", "Puzzle",
+      "Point-and-click", "MOBA", "MMO", "Battle Royale", "City Builder", "Farming",
+      "Co-op", "Cozy", "Walking Sim", "Story-rich", "Cyberpunk", "Fantasy", "Sci-Fi",
+      "Post-apocalyptic", "Retro", "Arcade", "Pinball", "Management", "Simulator",
+      "Space", "Zombie", "VR", "Hidden Object", "NSFW",
+      "Action", "Adventure", "RPG", "Indie", "Simulation", "Casual", "Shooter",
+      "Sports", "Puzzle",
+    ];
+    const dynamic =
+      serverBrowse && facets
+        ? facets.genres.map((g) => g.name)
+        : [...games].sort((a, b) => a.title.localeCompare(b.title)).flatMap((g) => g.genres || []);
+    return Array.from(new Set([...curated, ...dynamic]));
+  }, [games, serverBrowse, facets]);
+
+  const developersList = useMemo(() => {
+    if (serverBrowse && facets) return facets.developers.map((d) => d.name);
+    return Array.from(new Set(games.map((g) => g.developer))).sort();
+  }, [games, serverBrowse, facets]);
   // Data-derived years (matches ISO, "Dec 11 2015", "Q3 2026", ...) so the
   // filter is honest about what's actually in the catalog.
-  const yearsList = useMemo(() => Array.from(new Set(
-    games
-      .map((g) => g.releaseDate.match(/(19|20)\d{2}/)?.[0])
-      .filter((y): y is string => !!y)
-  )).sort((a, b) => Number(b) - Number(a)), [games]);
+  const yearsList = useMemo(() => {
+    if (serverBrowse && facets) return facets.years;
+    return Array.from(new Set(
+      games
+        .map((g) => g.releaseDate.match(/(19|20)\d{2}/)?.[0])
+        .filter((y): y is string => !!y)
+    )).sort((a, b) => Number(b) - Number(a));
+  }, [games, serverBrowse, facets]);
 
   const handleClearFilters = () => {
     setSelectedGenre("");
@@ -123,7 +224,9 @@ export const BrowseView: React.FC = () => {
     });
   }, [filteredGames, sortBy]);
 
-  const totalPages = Math.ceil(sortedGames.length / ITEMS_PER_PAGE);
+  const totalPages = serverBrowse
+    ? Math.max(1, Math.ceil(serverTotal / ITEMS_PER_PAGE))
+    : Math.ceil(sortedGames.length / ITEMS_PER_PAGE);
   // Clamp the page whenever the result set shrinks (filter/data poll change),
   // so we never render an empty slice while showing "Page 4/2".
   useEffect(() => {
@@ -131,6 +234,21 @@ export const BrowseView: React.FC = () => {
   }, [totalPages]);
   const safePage = Math.max(1, Math.min(page, Math.max(1, totalPages)));
   const pagedGames = sortedGames.slice((safePage - 1) * ITEMS_PER_PAGE, safePage * ITEMS_PER_PAGE);
+
+  // Server-browse result set (client-side NSFW hide when the toggle is off).
+  const serverVisible = useMemo(
+    () =>
+      showNSFW
+        ? serverResults
+        : serverResults.filter(
+            (g) => !(g.genres || []).some((x) => NSFW_GENRES.includes(x.toLowerCase().trim()))
+          ),
+    [serverResults, showNSFW]
+  );
+  const useServerSet = serverBrowse && !serverFailed;
+  const displayGames = useServerSet ? serverVisible : pagedGames;
+  const displayTotal = useServerSet ? serverTotal : sortedGames.length;
+  const isLoading = loading || (serverBrowse && serverLoading);
 
   const scrollTop = () => window.scrollTo({ top: 0, behavior: "smooth" });
 
@@ -151,10 +269,13 @@ export const BrowseView: React.FC = () => {
 
   // Top genres quick-chip rail (kept in sync with the sidebar select + URL).
   const quickGenres = useMemo(() => {
+    if (serverBrowse && facets) {
+      return facets.genres.slice(0, 18).map((g) => [g.name, g.count] as [string, number]);
+    }
     const map = new Map<string, number>();
     games.forEach((g) => (g.genres || []).forEach((x) => map.set(x, (map.get(x) || 0) + 1)));
     return [...map.entries()].sort((a, b) => b[1] - a[1]).slice(0, 18);
-  }, [games]);
+  }, [games, serverBrowse, facets]);
 
   const selectQuickGenre = (genre: string) => {
     setSelectedGenre(genre);
@@ -205,7 +326,7 @@ export const BrowseView: React.FC = () => {
             Browse Games
           </h1>
           <p className="mt-1.5 font-mono text-xs text-zinc-500">
-            {sortedGames.length.toLocaleString()} of {games.length.toLocaleString()} titles indexed
+            {displayTotal.toLocaleString()} of {(serverBrowse ? totalGames : games.length).toLocaleString()} titles indexed
           </p>
         </div>
 
@@ -362,13 +483,13 @@ export const BrowseView: React.FC = () => {
 
         {/* Grid */}
         <section className="flex-1">
-          {loading ? (
+          {isLoading ? (
             <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 xl:grid-cols-4">
               {Array.from({ length: 12 }).map((_, i) => (
                 <div key={i} className="skeleton aspect-[3/4]" />
               ))}
             </div>
-          ) : sortedGames.length === 0 ? (
+          ) : displayTotal === 0 ? (
             <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-white/10 bg-white/[0.02] p-12 text-center">
               <Search className="mb-4 h-10 w-10 text-zinc-700" />
               <h3 className="font-display text-sm font-bold text-zinc-300">No Game Found</h3>
@@ -404,10 +525,10 @@ export const BrowseView: React.FC = () => {
 
               <div className="mb-6 flex items-center justify-between">
                 <p className="font-mono text-xs text-zinc-500">
-                  Showing <span className="font-bold text-rose-400">{sortedGames.length.toLocaleString()}</span>
+                  Showing <span className="font-bold text-rose-400">{displayTotal.toLocaleString()}</span>
                   {totalPages > 1 && <span className="text-zinc-600"> · Page {page}/{totalPages}</span>}
                 </p>
-                {sortedGames.length < games.length && (
+                {displayTotal < (serverBrowse ? totalGames : games.length) && (
                   <button
                     onClick={handleClearFilters}
                     className="font-mono text-xs font-bold text-rose-500 underline transition hover:text-rose-400"
@@ -418,7 +539,7 @@ export const BrowseView: React.FC = () => {
               </div>
 
               <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 xl:grid-cols-4">
-                {pagedGames.map((game, i) => (
+                {displayGames.map((game, i) => (
                   <div key={game.id} className="card-enter h-full" style={{ animationDelay: `${(i % 12) * 28}ms` }}>
                     <GameCard game={game} />
                   </div>
