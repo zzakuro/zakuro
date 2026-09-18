@@ -38,28 +38,31 @@ function searchTokens(s: string): Set<string> {
   );
 }
 
-export function igdbBestMatch<T extends { name?: string }>(query: string, results: T[] | undefined): T | null {
+// 0..1 similarity between a query title and one candidate name. Exact match
+// wins; otherwise containment (when long enough) or token-set overlap. Shared
+// by the IGDB and VNDB matchers so the acceptance bar stays consistent.
+export function titleMatchScore(query: string, name: string | undefined): number {
+  if (!name) return 0;
   const a = normalizeSearchTitle(query);
-  if (a.replace(/\s/g, "").length < 3) return null;
+  if (a.replace(/\s/g, "").length < 3) return 0;
+  const b = normalizeSearchTitle(name);
+  if (!b) return 0;
+  if (a === b) return 1;
+  if ((a.includes(b) || b.includes(a)) && Math.min(a.length, b.length) >= 5) return 0.85;
   const at = searchTokens(query);
+  const bt = searchTokens(name);
+  let inter = 0;
+  for (const t of at) if (bt.has(t)) inter++;
+  const uni = at.size + bt.size - inter;
+  return uni ? inter / uni : 0;
+}
+
+export function igdbBestMatch<T extends { name?: string }>(query: string, results: T[] | undefined): T | null {
   let best: T | null = null;
   let bestScore = 0;
 
   for (const r of results || []) {
-    if (!r?.name) continue;
-    const b = normalizeSearchTitle(r.name);
-    if (!b) continue;
-
-    let score = 0;
-    if (a === b) score = 1;
-    else if ((a.includes(b) || b.includes(a)) && Math.min(a.length, b.length) >= 5) score = 0.85;
-    else {
-      const bt = searchTokens(r.name);
-      let inter = 0;
-      for (const t of at) if (bt.has(t)) inter++;
-      const uni = at.size + bt.size - inter;
-      score = uni ? inter / uni : 0;
-    }
+    const score = titleMatchScore(query, r?.name);
     if (score > bestScore) {
       bestScore = score;
       best = r;

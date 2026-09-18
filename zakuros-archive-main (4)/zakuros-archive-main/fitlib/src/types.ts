@@ -71,6 +71,7 @@ export interface Game {
   stats: GameStats;
   steamId?: number;
   igdbId?: number;
+  vndbId?: number; // Visual Novel Database id (adult/doujin metadata source)
   reviewCount?: number;
   popularityScore?: number;
   linux?: LinuxSupportInfo;
