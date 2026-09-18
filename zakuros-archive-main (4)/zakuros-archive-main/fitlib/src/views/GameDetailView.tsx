@@ -698,7 +698,10 @@ export const GameDetailView: React.FC = () => {
               </div>
 
               <div className="divide-y divide-white/[0.05] text-xs">
-                <InfoRow label="Developer" value={<span className="font-semibold text-white">{developer}</span>} />
+                <InfoRow label="Developer" value={<span className="font-semibold text-white">{developer || "—"}</span>} />
+                {publisher && publisher !== developer && (
+                  <InfoRow label="Publisher" value={<span className="font-semibold text-white">{publisher}</span>} />
+                )}
                 <InfoRow label="Release" value={<span className="font-semibold text-white">{year || "—"}</span>} />
                 <InfoRow label="Install size" value={<span className="font-mono font-semibold text-white">{game.fileSize || "—"}</span>} />
                 <InfoRow
