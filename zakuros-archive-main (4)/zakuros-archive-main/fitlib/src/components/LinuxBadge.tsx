@@ -33,17 +33,18 @@ export const LinuxBadge: React.FC<{ linux: LinuxSupportInfo; className?: string 
     : TIER_LABELS[linux.tier || "unknown"] || "Linux";
   const key = linux.native ? "native" : linux.tier || "unknown";
   const style = TIER_STYLES[key] || TIER_STYLES.unknown;
+  const detail = linux.native
+    ? "Runs natively on Linux"
+    : linux.tier
+      ? `Linux compatibility via Proton — ${linux.tier}${linux.confidence ? ` (${linux.confidence})` : ""}${linux.votes ? ` · ${linux.votes} reports` : ""}`
+      : "No Linux report yet";
 
   return (
     <span
+      role="img"
+      aria-label={`${label}: ${detail}`}
       className={`inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[9px] font-black uppercase tracking-widest ring-1 ring-black/20 backdrop-blur-sm ${style} ${className}`}
-      title={
-        linux.native
-          ? "Runs natively on Linux"
-          : linux.tier
-            ? `Linux compatibility via Proton — ${linux.tier}${linux.confidence ? ` (${linux.confidence})` : ""}${linux.votes ? ` · ${linux.votes} reports` : ""}`
-            : "No Linux report yet"
-      }
+      title={detail}
     >
       <MonitorSmartphone className="h-2.5 w-2.5" />
       {label}

@@ -17,6 +17,10 @@ import { PageHero, Reveal } from "../components/PageHero";
 export const AboutView: React.FC = () => {
   const [activeFaq, setActiveFaq] = useState<number | null>(null);
 
+  const scrollToFaq = () => {
+    document.getElementById("faq-section")?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
+
   const stats = [
     { label: "Indexed Releases", value: "5,000+", icon: Database },
     { label: "Indexed Sources", value: "8", icon: Layers },
@@ -99,12 +103,13 @@ export const AboutView: React.FC = () => {
         lead="Zakuro's Archive is a read-only index of PC game releases from reputable repack and direct-download groups. Search, filter, and find download sources — all in one place, with no ads and no file hosting."
         actions={
           <>
-            <a
-              href="#faq-section"
+            <button
+              type="button"
+              onClick={scrollToFaq}
               className="rounded-full border border-white/10 bg-white/[0.03] px-6 py-2.5 font-mono text-xs font-bold text-zinc-300 transition hover:border-rose-500/40 hover:text-white"
             >
               Read the FAQ
-            </a>
+            </button>
             <a
               href="https://discord.gg"
               target="_blank"
@@ -165,21 +170,34 @@ export const AboutView: React.FC = () => {
           </p>
         </div>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          {sources.map((src, idx) => (
-            <a
-              key={idx}
-              href={src.url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="panel panel-hover group flex flex-col gap-1.5 p-4"
-            >
-              <div className="flex items-center justify-between">
-                <span className="font-mono font-bold text-white text-xs group-hover:text-rose-400 transition">{src.name}</span>
-                <ExternalLink className="h-3 w-3 text-zinc-600 group-hover:text-rose-400 transition" />
+          {sources.map((src, idx) => {
+            const linked = src.url && src.url !== "#";
+            const cardClass = "panel panel-hover group flex flex-col gap-1.5 p-4";
+            const inner = (
+              <>
+                <div className="flex items-center justify-between">
+                  <span className="font-mono font-bold text-white text-xs group-hover:text-rose-400 transition">{src.name}</span>
+                  {linked && <ExternalLink className="h-3 w-3 text-zinc-600 group-hover:text-rose-400 transition" />}
+                </div>
+                <span className="text-[10px] font-mono text-zinc-500 uppercase tracking-wider">{src.type}</span>
+              </>
+            );
+            return linked ? (
+              <a
+                key={idx}
+                href={src.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className={cardClass}
+              >
+                {inner}
+              </a>
+            ) : (
+              <div key={idx} className={cardClass} aria-label={`${src.name} — no public site linked`}>
+                {inner}
               </div>
-              <span className="text-[10px] font-mono text-zinc-500 uppercase tracking-wider">{src.type}</span>
-            </a>
-          ))}
+            );
+          })}
         </div>
       </section>
       </Reveal>
@@ -203,6 +221,7 @@ export const AboutView: React.FC = () => {
               >
                 <button
                   onClick={() => setActiveFaq(isOpen ? null : idx)}
+                  aria-expanded={isOpen}
                   className="w-full flex items-center justify-between p-5 text-left hover:bg-zinc-900/10 transition"
                 >
                   <span className="font-display font-bold text-white text-xs sm:text-sm uppercase tracking-wide">

@@ -93,10 +93,12 @@ export function communityRouter() {
     if (!comment) return res.status(404).json({ error: "Comment not found." });
     const key = sanitizeAuthorKey(req.body?.authorKey);
     const i = comment.likes.indexOf(key);
-    if (i >= 0) comment.likes.splice(i, 1);
-    else comment.likes.push(key);
+    const desired = typeof req.body?.liked === "boolean" ? req.body.liked : undefined;
+    const liked = desired === undefined ? i < 0 : desired;
+    if (liked && i < 0) comment.likes.push(key);
+    else if (!liked && i >= 0) comment.likes.splice(i, 1);
     store.saveComments();
-    res.json({ likes: comment.likes.length, liked: i < 0 });
+    res.json({ likes: comment.likes.length, liked });
   });
 
   router.post("/games/:id/comments/:commentId/report", (req, res) => {

@@ -37,6 +37,12 @@ export const HelpView: React.FC = () => {
     { icon: Bug, label: "Report a problem", href: "#report" },
   ];
 
+  const scrollToSection = (href: string) => {
+    const el = document.getElementById(href.replace(/^#/, ""));
+    if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+    else window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
   const guideSections = [
     {
       icon: Search,
@@ -211,14 +217,15 @@ export const HelpView: React.FC = () => {
         {/* Quick topic nav */}
         <div className="mt-7 flex flex-wrap justify-center gap-2">
           {quickLinks.map((q, idx) => (
-            <a
+            <button
               key={idx}
-              href={q.href}
+              type="button"
+              onClick={() => scrollToSection(q.href)}
               className="flex items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.03] px-4 py-2 text-[11px] font-bold text-zinc-300 hover:border-rose-500/40 hover:text-white font-mono transition"
             >
               <q.icon className="h-3.5 w-3.5 text-rose-400" />
               {q.label}
-            </a>
+            </button>
           ))}
         </div>
       </PageHero>
@@ -450,6 +457,7 @@ export const HelpView: React.FC = () => {
               <div key={idx} className="panel panel-hover rounded-xl overflow-hidden">
                 <button
                   onClick={() => setActiveFaq(isOpen ? null : idx)}
+                  aria-expanded={isOpen}
                   className="w-full flex items-center justify-between p-5 text-left hover:bg-zinc-900/10 transition"
                 >
                   <span className="font-display font-bold text-white text-xs sm:text-sm uppercase tracking-wide">{faq.q}</span>

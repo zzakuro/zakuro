@@ -1,4 +1,4 @@
-﻿import React, { useState } from "react";
+﻿import React, { useEffect, useState } from "react";
 import { useNavigate, Link, useLocation } from "react-router-dom";
 import { User, Lock, Mail, Gamepad2, ArrowRight } from "lucide-react";
 import { useGame } from "../lib/gameContext";
@@ -12,6 +12,12 @@ export const AuthView: React.FC = () => {
   // Mode Toggler: true = login, false = signup (driven by the route so
   // /register actually lands on the register form).
   const [isLogin, setIsLogin] = useState(() => !location.pathname.endsWith("/register"));
+
+  // Keep the form in sync when the route changes (e.g. browser back/forward,
+  // or the toggle below pushing /login or /register).
+  useEffect(() => {
+    setIsLogin(!location.pathname.endsWith("/register"));
+  }, [location.pathname]);
 
   // Form Fields
   const [username, setUsername] = useState("");
@@ -80,11 +86,14 @@ export const AuthView: React.FC = () => {
           
           {/* Username */}
           <div>
-            <label className="block text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-1.5 font-mono">Username</label>
+            <label htmlFor="auth-username" className="block text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-1.5 font-mono">Username</label>
             <div className="relative">
               <input
+                id="auth-username"
+                name="username"
                 type="text"
                 required
+                autoComplete="username"
                 placeholder="e.g. repacker99"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
@@ -96,11 +105,14 @@ export const AuthView: React.FC = () => {
 
           {/* Password */}
           <div>
-            <label className="block text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-1.5 font-mono">Password</label>
+            <label htmlFor="auth-password" className="block text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-1.5 font-mono">Password</label>
             <div className="relative">
               <input
+                id="auth-password"
+                name="password"
                 type="password"
                 required
+                autoComplete={isLogin ? "current-password" : "new-password"}
                 placeholder="••••••••"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
@@ -126,8 +138,8 @@ export const AuthView: React.FC = () => {
           <button
             type="button"
             onClick={() => {
-              setIsLogin(!isLogin);
               setError("");
+              navigate(isLogin ? "/register" : "/login");
             }}
             className="text-zinc-400 hover:text-rose-400 transition"
           >

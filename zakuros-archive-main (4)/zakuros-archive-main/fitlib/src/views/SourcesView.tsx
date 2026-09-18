@@ -215,7 +215,14 @@ export const SourcesView: React.FC = () => {
                     </span>
                     <span className="font-mono text-xs font-bold text-white">{v}%</span>
                   </div>
-                  <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-white/[0.06]">
+                  <div
+                    className="mt-2 h-1.5 overflow-hidden rounded-full bg-white/[0.06]"
+                    role="progressbar"
+                    aria-label={`${label} coverage`}
+                    aria-valuenow={v}
+                    aria-valuemin={0}
+                    aria-valuemax={100}
+                  >
                     <div
                       className="h-full rounded-full bg-gradient-to-r from-rose-500 to-rose-400"
                       style={{ width: `${v}%` }}

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useRef, useState } from "react";
 import {
   Heart,
   Copy,
@@ -15,6 +15,8 @@ import { PageHero, Reveal } from "../components/PageHero";
 
 export const DonateView: React.FC = () => {
   const [copied, setCopied] = useState<string | null>(null);
+  const [copyError, setCopyError] = useState(false);
+  const timers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
 
   const wallets = [
     { key: "btc", ticker: "BTC", name: "Bitcoin", address: "bc1qzakuroarchive0x0000000000000000demo" },
@@ -23,13 +25,37 @@ export const DonateView: React.FC = () => {
   ];
 
   const copyAddress = async (key: string, value: string) => {
+    setCopyError(false);
+    let ok = false;
     try {
       await navigator.clipboard.writeText(value);
-      setCopied(key);
-      setTimeout(() => setCopied(null), 2000);
+      ok = true;
     } catch {
-      // clipboard blocked; nothing to do
+      // Clipboard API blocked (insecure context / permissions): fall back to
+      // a hidden textarea + execCommand so copying still works.
+      try {
+        const ta = document.createElement("textarea");
+        ta.value = value;
+        ta.setAttribute("readonly", "");
+        ta.style.position = "fixed";
+        ta.style.opacity = "0";
+        document.body.appendChild(ta);
+        ta.select();
+        ok = document.execCommand("copy");
+        document.body.removeChild(ta);
+      } catch {
+        ok = false;
+      }
     }
+    if (!ok) {
+      setCopyError(true);
+      return;
+    }
+    setCopied(key);
+    if (timers.current[key]) clearTimeout(timers.current[key]);
+    timers.current[key] = setTimeout(() => {
+      setCopied((c) => (c === key ? null : c));
+    }, 2000);
   };
 
   const useOfFunds = [
@@ -89,6 +115,11 @@ export const DonateView: React.FC = () => {
                 </button>
               </div>
             ))}
+            {copyError && (
+              <p className="pt-1 font-mono text-[10px] text-rose-400">
+                Couldn't copy automatically — select the address and copy it manually.
+              </p>
+            )}
           </div>
         </div>
 
