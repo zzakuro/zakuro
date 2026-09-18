@@ -9,7 +9,7 @@
     ~2,623 still lack Steam metadata (no `steamId`, no cover/screenshots).
 
 ## Catalog tooling (run from `fitlib/`)
-- `npm test` → `server/test_cleanup.ts` (offline regression tests, 57 checks).
+- `npm test` → `server/test_cleanup.ts` (offline regression tests, 78 checks).
 - `npm run check:catalog` → `server/checkCatalog.ts` read-only audit; writes
   `data/snapshots/catalog-<stamp>.json` + `latest.json`. Safe while the grind writes.
   Hard-fails on structural corruption (dup ids, pending self-heal); warns on the known
@@ -42,10 +42,28 @@
   `GET /api/catalog/health`, which serves `data/snapshots/latest.json` (run the checker to refresh).
 - Unknown routes render a 404 page (`NotFound` in `App.tsx`).
 
+## Server-side browse (Phase 2)
+- `VITE_SERVER_BROWSE=1` switches the client from "download all ~81k games" to
+  "hold a 120-game featured slice + query the server". Enabled in the live
+  `run-dev-server.cmd`; off by default everywhere else (full-catalog fallback).
+- New server query API (all on `/api/games`): `q`, `genre`, `developer`, `year`,
+  `minRating`, `classic`, `coverless`, `sort` (`popular|newest|rating|az|downloads|filesize|updated`),
+  `limit`, `offset`, `nsfw=0|1` (omitting `nsfw` = include, back-compat).
+- `GET /api/games/facets?nsfw=1` → `{total, nsfwCount, genreCount, downloads, updated30,
+  genres[{name,count}], developers[{name,count}] (top 2000), years[]}` (cached per catalog revision).
+- `GET /api/games/:id/related?limit=N&nsfw=1` → same-genre neighbours (card projection).
+- Client accessors in `gameContext`: `serverBrowse`, `totalGames`, `getGame`, `getFacets`,
+  `getRelated`, and `searchGames` (now accepts `classic/coverless/nsfw`).
+- Browse, Navbar quick-search/genre-dropdown, Home rails + catalog pulse, and Detail
+  related all use the server in this mode. Verified with a headless-Chrome smoke test:
+  `/api/games` largest response ~106 KB (featured slice) vs ~4.9 MB full catalog.
+
 ## Deployment knobs (`fitlib/`)
 - `VITE_CATALOG_URL` — absolute games JSON URL (default `/api/games`).
 - `VITE_CATALOG_VERSION_URL` — version-string URL; unset/"off" disables change-polling (static).
 - `VITE_API_BASE_URL` — origin for comments/ratings API (default same-origin).
+- `VITE_SERVER_BROWSE` — `1` enables server-side browse/search (see above). Requires the
+  backend query API, so it is ignored when `VITE_CATALOG_URL` points at a static file.
 - Community persistence goes through `CommunityStore` (`server/communityStore.ts`); JSON files by default.
 
 ## Known data-quality backlog
