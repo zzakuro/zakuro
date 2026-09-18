@@ -14,6 +14,11 @@ import { GameComments } from "../components/GameComments";
 import { LinuxBadge } from "../components/LinuxBadge";
 import { GameCard, PlaceholderCover } from "../components/GameCard";
 
+// Trailer sources are either direct video files (Steam mp4/webm) or embed URLs
+// (IGDB videos mapped to YouTube). Pick the right player per source.
+const EMBED_SRC = /youtube(-nocookie)?\.com\/embed\/|youtu\.be\/|player\.vimeo\.com/;
+const isEmbedTrailer = (src?: string) => !!src && EMBED_SRC.test(src);
+
 export const GameDetailView: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const { games, user, toggleWishlist, toggleLike, bookmarks, toggleBookmark } = useGame();
@@ -983,15 +988,26 @@ export const GameDetailView: React.FC = () => {
                   </span>
                 </>
               )}
-              <video
-                key={activeTrailer.src}
-                src={activeTrailer.src}
-                poster={activeTrailer.thumb}
-                controls
-                autoPlay
-                playsInline
-                className="aspect-video w-full bg-black"
-              />
+              {isEmbedTrailer(activeTrailer.src) ? (
+                <iframe
+                  key={activeTrailer.src}
+                  src={`${activeTrailer.src}${activeTrailer.src.includes("?") ? "&" : "?"}autoplay=1&rel=0`}
+                  title={activeTrailer.name || "Trailer"}
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                  allowFullScreen
+                  className="aspect-video w-full border-0 bg-black"
+                />
+              ) : (
+                <video
+                  key={activeTrailer.src}
+                  src={activeTrailer.src}
+                  poster={activeTrailer.thumb}
+                  controls
+                  autoPlay
+                  playsInline
+                  className="aspect-video w-full bg-black"
+                />
+              )}
               <div className="px-4 py-3">
                 <span className="font-mono text-[10px] font-bold uppercase tracking-widest text-rose-400">
                   {title}
