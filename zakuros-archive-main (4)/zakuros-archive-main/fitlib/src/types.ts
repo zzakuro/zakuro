@@ -63,6 +63,9 @@ export interface Game {
   // screenshots[]/downloadSources[] arrays to keep the catalog payload small).
   screenshotCount?: number;
   sourceCount?: number;
+  // The list projection omits `summary` and instead flags it here; the client
+  // lazy-loads the text from /api/games/:id/summary when a card is shown.
+  hasSummary?: boolean;
   summary: string;
   systemRequirements: GameRequirements;
   stats: GameStats;

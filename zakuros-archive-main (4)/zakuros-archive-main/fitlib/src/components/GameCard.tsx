@@ -1,9 +1,10 @@
-import React, { useState } from "react";
+import React, { useCallback, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { Star, Eye, ArrowUpRight } from "lucide-react";
 import { Game } from "../types";
 import { formatDistanceToNow, parseISO } from "date-fns";
 import { LinuxBadge } from "./LinuxBadge";
+import { useGame } from "../lib/gameContext";
 
 type CardBadge = "NEW" | "HOT" | "UPDATED" | "VR";
 
@@ -56,6 +57,22 @@ export const PlaceholderCover: React.FC<{ title: string; className?: string }> =
 
 export const GameCard: React.FC<GameCardProps> = ({ game, badge }) => {
   const [imgFailed, setImgFailed] = useState(false);
+  const { getGameSummary } = useGame();
+
+  // The list payload ships only `hasSummary`; fetch the text on first hover/focus.
+  const [summary, setSummary] = useState<string>(game.summary ?? "");
+  const [summaryLoading, setSummaryLoading] = useState(false);
+  const summaryRequested = useRef(false);
+  const loadSummary = useCallback(() => {
+    if (summary || summaryRequested.current) return;
+    summaryRequested.current = true;
+    if (!game.hasSummary) return;
+    setSummaryLoading(true);
+    getGameSummary(game.id)
+      .then((s) => setSummary(s))
+      .catch(() => {})
+      .finally(() => setSummaryLoading(false));
+  }, [summary, game.hasSummary, game.id, getGameSummary]);
 
   let relativeUpdate = "";
   try {
@@ -88,6 +105,8 @@ export const GameCard: React.FC<GameCardProps> = ({ game, badge }) => {
 
       <Link
         to={`/game/${game.id}`}
+        onMouseEnter={loadSummary}
+        onFocus={loadSummary}
         className="relative flex h-full w-full flex-col overflow-hidden rounded-xl bg-[#0d0d10] ring-1 ring-white/[0.06] transition-all duration-300 hover:-translate-y-1 hover:ring-rose-500/50 hover:shadow-2xl hover:shadow-rose-950/20"
       >
       {/* Cover */}
@@ -145,7 +164,7 @@ export const GameCard: React.FC<GameCardProps> = ({ game, badge }) => {
           </div>
           <div className="translate-y-2 transition-transform duration-300 group-hover:translate-y-0 group-focus-within:translate-y-0">
             <p className="line-clamp-3 text-[11px] leading-relaxed text-zinc-300">
-              {game.summary || "No description available."}
+              {summary || (summaryLoading ? "Loading description…" : "No description available.")}
             </p>
             <span className="mt-2 inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-widest text-rose-400">
               View game
