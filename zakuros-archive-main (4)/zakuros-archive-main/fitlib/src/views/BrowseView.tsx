@@ -19,6 +19,7 @@ export const BrowseView: React.FC = () => {
     totalGames,
     searchGames,
     getFacets,
+    showNSFW,
   } = useGame();
   const [searchParams, setSearchParams] = useSearchParams();
   // Server-side browse state (unused when serverBrowse is off).
