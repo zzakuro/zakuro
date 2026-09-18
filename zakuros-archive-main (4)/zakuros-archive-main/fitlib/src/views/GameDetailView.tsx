@@ -33,6 +33,7 @@ export const GameDetailView: React.FC = () => {
   const [shotIdx, setShotIdx] = useState<number>(0);
   const [featBroken, setFeatBroken] = useState<boolean>(false);
   const [heroBroken, setHeroBroken] = useState<boolean>(false);
+  const [logoBroken, setLogoBroken] = useState<boolean>(false);
   const [trailers, setTrailers] = useState<GameTrailer[]>([]);
   const [activeTrailer, setActiveTrailer] = useState<GameTrailer | null>(null);
   // Debounces wheel navigation so a single scroll gesture flips one item, not a dozen.
@@ -57,6 +58,7 @@ export const GameDetailView: React.FC = () => {
     setShotIdx(0);
     setFeatBroken(false);
     setHeroBroken(false);
+    setLogoBroken(false);
     setTrailers(game?.trailers || []);
     setActiveTrailer(null);
     const keys = Object.keys(game?.systemRequirements ?? {});
@@ -263,6 +265,13 @@ export const GameDetailView: React.FC = () => {
     : "";
   const heroOk = heroUrl && !heroBroken;
 
+  // Steam ships a transparent game logo (white art) that reads far better over
+  // the hero than the plain text title. Fall back to text when absent/broken.
+  const logoUrl = game.steamId
+    ? `https://cdn.akamai.steamstatic.com/steam/apps/${game.steamId}/logo.png`
+    : "";
+  const logoOk = logoUrl && !logoBroken;
+
   const systemRequirements = game.systemRequirements ?? {};
   const reqKeys = Object.keys(systemRequirements);
   const activeReq = (systemRequirements as any)[reqOs] ? reqOs : ((reqKeys[0] || "windows") as "windows" | "linux" | "mac");
@@ -371,7 +380,18 @@ export const GameDetailView: React.FC = () => {
           </div>
 
           <h1 className="font-display text-4xl font-bold tracking-tight text-white md:text-6xl">
-            {title}
+            {logoOk ? (
+              <img
+                src={logoUrl}
+                alt={title}
+                referrerPolicy="no-referrer"
+                decoding="async"
+                className="max-h-20 w-auto max-w-full object-contain drop-shadow-[0_2px_14px_rgba(0,0,0,0.7)] md:max-h-28"
+                onError={() => setLogoBroken(true)}
+              />
+            ) : (
+              title
+            )}
           </h1>
 
           <p className="mt-2 text-sm text-zinc-400">
