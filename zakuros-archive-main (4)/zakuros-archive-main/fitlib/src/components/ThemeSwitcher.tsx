@@ -39,7 +39,7 @@ const ThemeSwitcher: React.FC = () => {
       <button
         onClick={() => setOpen((v) => !v)}
         aria-label="Change theme"
-        className={`flex h-9 items-center gap-1.5 rounded-full border px-3 text-xs transition ${
+        className={`flex h-8 items-center gap-1.5 rounded-full border px-3 text-xs transition ${
           open
             ? "border-rose-500/40 bg-white/[0.05] text-white"
             : "border-white/10 bg-white/[0.03] text-zinc-400 hover:border-rose-500/40 hover:text-white"
