@@ -41,7 +41,7 @@ export const BrowseView: React.FC = () => {
     setPage(1);
   }, [searchQuery, selectedGenre, selectedDeveloper, selectedYear, selectedMinRating, sortBy, showClassic]);
 
-  const genresList = Array.from(new Set([
+  const genresList = useMemo(() => Array.from(new Set([
     "Visual Novel", "Metroidvania", "Souls-like", "Roguelike", "Rhythm", "Racing",
     "Fighting", "JRPG", "CRPG", "ARPG", "Deckbuilder", "Card Game", "Board Game",
     "Stealth", "Survival", "Horror", "Open World", "Sandbox", "Strategy",
@@ -53,16 +53,19 @@ export const BrowseView: React.FC = () => {
     "Action", "Adventure", "RPG", "Indie", "Simulation", "Casual", "Shooter",
     "Sports", "Puzzle",
     ...[...games].sort((a, b) => a.title.localeCompare(b.title)).flatMap((g) => g.genres || []),
-  ]));
+  ])), [games]);
 
-  const developersList = Array.from(new Set(games.map((g) => g.developer))).sort();
+  const developersList = useMemo(
+    () => Array.from(new Set(games.map((g) => g.developer))).sort(),
+    [games]
+  );
   // Data-derived years (matches ISO, "Dec 11 2015", "Q3 2026", ...) so the
   // filter is honest about what's actually in the catalog.
-  const yearsList = Array.from(new Set(
+  const yearsList = useMemo(() => Array.from(new Set(
     games
       .map((g) => g.releaseDate.match(/(19|20)\d{2}/)?.[0])
       .filter((y): y is string => !!y)
-  )).sort((a, b) => Number(b) - Number(a));
+  )).sort((a, b) => Number(b) - Number(a)), [games]);
 
   const handleClearFilters = () => {
     setSelectedGenre("");
