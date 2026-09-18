@@ -349,3 +349,131 @@ body::before {
     animation: none;
   }
 }
+
+/* ------------------------------------------------------------------ */
+/* Wave 3 — "Archive Awakened": depth, life, and pointer-driven sheen. */
+/* All opt-in utility classes; nothing here shifts layout or a11y.     */
+/* ------------------------------------------------------------------ */
+
+/* Cursor-tracking glare. A parent card sets --mx/--my (percent) from its
+   pointer-move handler; children read them to paint a soft spotlight that
+   follows the mouse in step with the cursor — no layout churn, no JS paint. */
+.spot-card {
+  position: relative;
+  isolation: isolate;
+}
+.spot-card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  border-radius: inherit;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 240ms ease;
+  background:
+    radial-gradient(130px circle at var(--mx, 50%) var(--my, 50%), rgba(255, 255, 255, 0.10), transparent 68%),
+    radial-gradient(280px circle at var(--mx, 50%) var(--my, 30%), var(--accent-glow, rgba(244, 63, 94, 0.06)), transparent 72%);
+}
+.spot-card:hover::before {
+  opacity: 1;
+}
+
+/* Layered text glow — big display headlines glow like lit signage. */
+.glow-text {
+  text-shadow:
+    0 0 18px rgba(244, 63, 94, 0.35),
+    0 0 60px rgba(244, 63, 94, 0.18),
+    0 2px 24px rgba(0, 0, 0, 0.7);
+}
+
+/* Slow-spin conic ring used for hero orbit + featured-panel halos. */
+@keyframes spin-slower {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+.animate-spin-slower {
+  animation: spin-slower 26s linear infinite;
+}
+
+/* Gentle radial "breathing" for aurora blobs — pulses luminance without
+   touching `filter`, so the blur / blend stays intact. */
+@keyframes blob-breathe {
+  0%, 100% { opacity: 0.82; }
+  50% { opacity: 1; }
+}
+.blob-breathe {
+  animation: blob-breathe 9s ease-in-out infinite;
+}
+
+/* Soft vertical float for chips / doodads (no layout shift). */
+@keyframes float-y {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-8px); }
+}
+.float-y {
+  animation: float-y 5.5s ease-in-out infinite;
+}
+.float-delay-1 { animation-delay: -1.8s; }
+.float-delay-2 { animation-delay: -3.6s; }
+
+/* Fixture vignette — adds inner-depth to cinema panels and hero backdrops. */
+.vignette {
+  box-shadow: inset 0 0 120px 30px rgba(0, 0, 0, 0.55);
+}
+
+/* Animated conic border ring (mask-keyhole: the gradient only hugs the edge);
+   pair with a dark inner fill so the gradient reads as a true glowline. */
+.ring-animated {
+  position: relative;
+}
+.ring-animated::after {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  padding: 1px;
+  background: conic-gradient(
+    from var(--ring-angle, 0deg),
+    transparent 0deg,
+    rgba(244, 63, 94, 0.55) 90deg,
+    rgba(244, 63, 94, 0.12) 180deg,
+    transparent 270deg,
+    transparent 360deg
+  );
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+}
+@property --ring-angle {
+  syntax: "<angle>";
+  initial-value: 45deg;
+  inherits: false;
+}
+.ring-animated.ring-glow::after {
+  animation: ring-spin-glow 4s linear infinite;
+}
+@keyframes ring-spin-glow {
+  from { --ring-angle: 0deg; }
+  to { --ring-angle: 360deg; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .animate-spin-slower,
+  .blob-breathe,
+  .float-y,
+  .float-delay-1,
+  .float-delay-2,
+  .ring-animated.ring-glow::after {
+    animation: none;
+  }
+  .ring-animated::after {
+    background: conic-gradient(
+      from 45deg,
+      transparent 0deg,
+      rgba(244, 63, 94, 0.45) 120deg,
+      rgba(244, 63, 94, 0.1) 240deg,
+      transparent 360deg
+    );
+  }
+}
