@@ -80,7 +80,7 @@ export const BrowseView: React.FC = () => {
     setPage(1);
   };
 
-  const filteredGames = games.filter((game) => {
+  const filteredGames = useMemo(() => games.filter((game) => {
     const q = searchQuery.toLowerCase();
     const matchesSearch = searchQuery
       ? game.title.toLowerCase().includes(q) ||
@@ -98,29 +98,30 @@ export const BrowseView: React.FC = () => {
     const matchesClassic = showClassic ? game.classic === true : true;
     const matchesCover = showNoCover ? !game.coverImage : true;
     return matchesSearch && matchesGenre && matchesDeveloper && matchesYear && matchesRating && matchesClassic && matchesCover;
-  });
+  }), [games, searchQuery, selectedGenre, selectedDeveloper, selectedYear, selectedMinRating, showClassic, showNoCover]);
 
-  const parseTime = (d: string) => {
-    const t = Date.parse(d || "");
-    return Number.isNaN(t) ? -Infinity : t;
-  };
-
-  const sortedGames = [...filteredGames].sort((a, b) => {
-    if (sortBy === "Most Popular") return (b.popularityScore ?? 0) - (a.popularityScore ?? 0);
-    if (sortBy === "Newest") return parseTime(b.releaseDate) - parseTime(a.releaseDate);
-    if (sortBy === "Highest Rated") return b.rating - a.rating;
-    if (sortBy === "A–Z") return a.title.localeCompare(b.title);
-    if (sortBy === "File Size") {
-      const parseSize = (s: string) => {
-        const v = parseFloat(s);
-        if (Number.isNaN(v)) return -Infinity;
-        if (s.includes("TB")) return v * 1024;
-        return v;
-      };
-      return parseSize(b.fileSize) - parseSize(a.fileSize);
-    }
-    return 0;
-  });
+  const sortedGames = useMemo(() => {
+    const parseTime = (d: string) => {
+      const t = Date.parse(d || "");
+      return Number.isNaN(t) ? -Infinity : t;
+    };
+    return [...filteredGames].sort((a, b) => {
+      if (sortBy === "Most Popular") return (b.popularityScore ?? 0) - (a.popularityScore ?? 0);
+      if (sortBy === "Newest") return parseTime(b.releaseDate) - parseTime(a.releaseDate);
+      if (sortBy === "Highest Rated") return b.rating - a.rating;
+      if (sortBy === "A–Z") return a.title.localeCompare(b.title);
+      if (sortBy === "File Size") {
+        const parseSize = (s: string) => {
+          const v = parseFloat(s);
+          if (Number.isNaN(v)) return -Infinity;
+          if (s.includes("TB")) return v * 1024;
+          return v;
+        };
+        return parseSize(b.fileSize) - parseSize(a.fileSize);
+      }
+      return 0;
+    });
+  }, [filteredGames, sortBy]);
 
   const totalPages = Math.ceil(sortedGames.length / ITEMS_PER_PAGE);
   // Clamp the page whenever the result set shrinks (filter/data poll change),
