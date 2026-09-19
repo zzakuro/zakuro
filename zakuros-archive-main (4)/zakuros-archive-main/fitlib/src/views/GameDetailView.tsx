@@ -349,7 +349,7 @@ export const GameDetailView: React.FC = () => {
           faint veil, then a bottom-up scrim paints the theme background up
           from the seam so the poster melts into the body instead of ending
           at a hard edge. */}
-      <section className="relative -mt-17 h-[50vh] min-h-[340px] w-full overflow-hidden bg-[#09090c]">
+      <section className="relative -mt-17 h-[56vh] min-h-[380px] w-full overflow-hidden bg-[#09090c]">
         {heroOk ? (
           <img
             src={heroUrl}
@@ -364,9 +364,9 @@ export const GameDetailView: React.FC = () => {
             <div className="absolute -left-24 top-1/3 h-72 w-72 rounded-full bg-rose-500/10 blur-[100px]" />
           </div>
         )}
-        {/* Bottom-up scrim — solid page bg at the seam easing to transparent
-            at the top, so the lower half of the hero dissolves into the body. */}
-        <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-[#09090c] via-[#09090c]/40 to-transparent" />
+        {/* Bottom-up scrim — solid page bg at the seam, then a long gentle
+            dissolve to transparent at the top so the hero melts into the body. */}
+        <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-[#09090c] from-15% via-[#09090c]/45 via-65% to-transparent" />
         {/* Side scrim — keeps the masthead/logo zone dark and legible. */}
         <div className="pointer-events-none absolute inset-0 hidden bg-gradient-to-r from-[#09090c]/80 via-transparent to-transparent lg:block" />
 
@@ -389,10 +389,26 @@ export const GameDetailView: React.FC = () => {
         </div>
       </section>
 
-      {/* B. Heading — overlapping the hero (title + tags + byline) */}
+      {/* B. Heading — overlapping the hero (logo + tags + byline) */}
       <main className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="relative z-10 -mt-20 pt-2">
-          <div className="mb-3 flex flex-wrap items-center gap-1.5">
+          {/* Logo sits right above the tag row, over the fading hero image. */}
+          <h1 className="font-display text-4xl font-bold tracking-tight text-white md:text-6xl">
+            {logoOk ? (
+              <img
+                src={logoUrl}
+                alt={title}
+                referrerPolicy="no-referrer"
+                decoding="async"
+                className="max-h-20 w-auto max-w-full object-contain drop-shadow-[0_2px_14px_rgba(0,0,0,0.7)] md:max-h-28"
+                onError={() => setLogoBroken(true)}
+              />
+            ) : (
+              title
+            )}
+          </h1>
+
+          <div className="mt-3 mb-3 flex flex-wrap items-center gap-1.5">
             {(game.genres || []).map((g) => (
               <Link
                 key={g}
@@ -411,21 +427,6 @@ export const GameDetailView: React.FC = () => {
               <LinuxBadge linux={game.linux} className="!px-2.5 !py-1 !text-[10px]" />
             )}
           </div>
-
-          <h1 className="font-display text-4xl font-bold tracking-tight text-white md:text-6xl">
-            {logoOk ? (
-              <img
-                src={logoUrl}
-                alt={title}
-                referrerPolicy="no-referrer"
-                decoding="async"
-                className="max-h-20 w-auto max-w-full object-contain drop-shadow-[0_2px_14px_rgba(0,0,0,0.7)] md:max-h-28"
-                onError={() => setLogoBroken(true)}
-              />
-            ) : (
-              title
-            )}
-          </h1>
 
           <p className="mt-2 text-sm text-zinc-400">
             <span className="text-zinc-200">{developer}</span>
