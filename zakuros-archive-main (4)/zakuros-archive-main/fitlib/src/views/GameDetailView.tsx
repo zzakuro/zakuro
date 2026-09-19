@@ -345,10 +345,8 @@ export const GameDetailView: React.FC = () => {
       </AnimatePresence>
 
 {/* A. Hero backdrop — Steam library hero dissolved into the page
-          background (reference-layout style): the artwork is dimmed to a
-          faint veil, then a bottom-up scrim paints the theme background up
-          from the seam so the poster melts into the body instead of ending
-          at a hard edge. */}
+          background (reference-layout style): the artwork fades out going
+          down and blends into the page background at the seam. */}
       <section className="relative -mt-17 h-[54vh] min-h-[420px] w-full overflow-hidden bg-[#09090c] lg:h-[66vh]">
         {heroOk ? (
           <img
@@ -356,7 +354,7 @@ export const GameDetailView: React.FC = () => {
             alt={title}
             referrerPolicy="no-referrer"
             decoding="async"
-            className="h-full w-full scale-105 object-cover opacity-40"
+            className="h-full w-full scale-105 object-cover opacity-60 [mask-image:linear-gradient(to_bottom,black_35%,transparent_95%)]"
             onError={() => setHeroBroken(true)}
           />
         ) : (
@@ -364,11 +362,10 @@ export const GameDetailView: React.FC = () => {
             <div className="absolute -left-24 top-1/3 h-72 w-72 rounded-full bg-rose-500/10 blur-[100px]" />
           </div>
         )}
-        {/* Bottom-up scrim — solid page bg at the seam, then a long gentle
-            dissolve to transparent at the top so the hero melts into the body. */}
-        <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-[#09090c] from-15% via-[#09090c]/45 via-65% to-transparent" />
-        {/* Side scrim — keeps the masthead/logo zone dark and legible. */}
-        <div className="pointer-events-none absolute inset-0 hidden bg-gradient-to-r from-[#09090c]/80 via-transparent to-transparent lg:block" />
+        {/* Bottom-up dissolve — hard-coded page-bg gradient that eases from
+            solid at the seam to fully transparent, so the poster melts into
+            the body instead of ending at a visible edge. */}
+        <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(to_top,rgba(9,9,12,1)_0%,rgba(9,9,12,0.55)_55%,rgba(9,9,12,0)_100%)]" />
 
         {/* Game logo — pinned inside the hero, over the bottom of the fade
             (reference-layout style: sits just above the tag row below). */}
