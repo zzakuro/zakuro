@@ -80,6 +80,26 @@ export interface Game {
   classic?: boolean; // retro/classic titles (e.g. PSX ROMs) — used by the Classic filter
 }
 
+export interface SeriesSummary {
+  id: string;
+  name: string;
+  description?: string;
+  count: number;
+  covers: string[];
+  curated?: boolean;
+  badge?: string;
+}
+
+export interface SeriesGroup {
+  id: string;
+  name: string;
+  description?: string;
+  curated?: boolean;
+  badge?: string;
+  total?: number; // full group size (the games array may be capped server-side)
+  games: Game[];
+}
+
 export interface UserSession {
   username: string;
   role: "User" | "Admin" | "Uploader";

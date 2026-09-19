@@ -4,6 +4,8 @@ import {
   UserSession,
   GameComment,
   RatingSummary,
+  SeriesSummary,
+  SeriesGroup,
 } from "../types";
 
 // ── Deployment config ────────────────────────────────────────────────────────
@@ -109,6 +111,8 @@ interface GameContextType {
   getFacets: () => Promise<CatalogFacets>;
   getRelated: (gameId: string, limit?: number) => Promise<Game[]>;
   getGameSummary: (gameId: string) => Promise<string>;
+  getSeries: () => Promise<SeriesSummary[]>;
+  getSeriesGames: (seriesId: string) => Promise<SeriesGroup | null>;
   getComments: (gameId: string) => Promise<GameComment[]>;
   addComment: (
     gameId: string,
@@ -327,6 +331,39 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return Array.isArray(data?.games) ? data.games : [];
     } catch {
       return [];
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Series/collections: the grouped franchise index and one group's games.
+  // Computed server-side from the whole catalog (client slices would be
+  // incomplete in server-browse mode), cached here per session.
+  const seriesIndexRef = useRef<SeriesSummary[] | null>(null);
+  const seriesDetailCache = useRef<Map<string, SeriesGroup | null>>(new Map());
+  const getSeries = useCallback(async (): Promise<SeriesSummary[]> => {
+    if (seriesIndexRef.current) return seriesIndexRef.current;
+    try {
+      const data = (await jsonFetch(API("/api/series"))) as { series?: SeriesSummary[] };
+      const list = Array.isArray(data?.series) ? data.series : [];
+      seriesIndexRef.current = list;
+      return list;
+    } catch {
+      return [];
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  const getSeriesGames = useCallback(async (seriesId: string): Promise<SeriesGroup | null> => {
+    const cached = seriesDetailCache.current.get(seriesId);
+    if (cached !== undefined) return cached;
+    try {
+      const group = (await jsonFetch(API(`/api/series/${encodeURIComponent(seriesId)}`))) as SeriesGroup;
+      if (group && group.id) {
+        seriesDetailCache.current.set(seriesId, group);
+        return group;
+      }
+      return null;
+    } catch {
+      return null;
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -653,6 +690,8 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
         getFacets,
         getRelated,
         getGameSummary,
+        getSeries,
+        getSeriesGames,
         getComments,
         addComment,
         deleteComment,

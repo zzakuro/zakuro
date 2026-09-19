@@ -574,6 +574,66 @@ async function startServer() {
     }
   });
 
+  // A1c. Series / Collections — franchises grouped from data/collections.json
+  // (curated) plus auto-detected series derived from normalized titles. The
+  // whole catalog is scanned once per revision and cached; the index payload
+  // stays covers+counts, and a follow-up call fetches a single series' games.
+  const SERIES_GAME_CAP = 500;
+  let seriesCache: {
+    key: string;
+    index: SeriesSummary[];
+    groups: {
+      id: string;
+      name: string;
+      description?: string;
+      curated?: boolean;
+      badge?: string;
+      total: number;
+      games: ReturnType<typeof toCardGame>[];
+    }[];
+    groupCount: number;
+  } | null = null;
+  function getSeriesCatalog() {
+    const key = `${catalogRevision}`;
+    if (seriesCache && seriesCache.key === key) return seriesCache;
+    const { groups, index } = buildSeriesCatalog(gamesCatalog, readCuratedCollections());
+    const groupList = Array.from(groups.values()).map((group) => ({
+      id: group.id,
+      name: group.name,
+      description: group.description,
+      curated: group.curated,
+      badge: group.badge,
+      total: group.games.length,
+      games: group.games.slice(0, SERIES_GAME_CAP).map(toCardGame),
+    }));
+    seriesCache = { key, index, groups: groupList, groupCount: groupList.length };
+    return seriesCache;
+  }
+
+  app.get("/api/series", (_req, res) => {
+    try {
+      res.set("Cache-Control", "public, max-age=60");
+      const { index, groupCount } = getSeriesCatalog();
+      res.json({ total: groupCount, series: index });
+    } catch (e: any) {
+      console.error("[Series Error]:", e.message);
+      res.status(500).json({ error: "Failed to compute series index." });
+    }
+  });
+
+  app.get("/api/series/:id", (req, res) => {
+    try {
+      res.set("Cache-Control", "public, max-age=60");
+      const { groups } = getSeriesCatalog();
+      const group = groups.find((s) => s.id === req.params.id);
+      if (!group) return res.status(404).json({ error: "Series not found." });
+      res.json(group);
+    } catch (e: any) {
+      console.error("[Series Error]:", e.message);
+      res.status(500).json({ error: "Failed to load series." });
+    }
+  });
+
   // A2. Lightweight catalog version — lets clients detect changes without
   // re-downloading the entire catalog. Bumps whenever the catalog is mutated.
   app.get("/api/catalog/version", (_req, res) => {
