@@ -349,7 +349,7 @@ export const GameDetailView: React.FC = () => {
           faint veil, then a bottom-up scrim paints the theme background up
           from the seam so the poster melts into the body instead of ending
           at a hard edge. */}
-      <section className="relative -mt-17 h-[56vh] min-h-[380px] w-full overflow-hidden bg-[#09090c]">
+      <section className="relative -mt-17 h-[54vh] min-h-[420px] w-full overflow-hidden bg-[#09090c] lg:h-[66vh]">
         {heroOk ? (
           <img
             src={heroUrl}
@@ -391,7 +391,7 @@ export const GameDetailView: React.FC = () => {
 
       {/* B. Heading — overlapping the hero (logo + tags + byline) */}
       <main className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div className="relative z-10 -mt-20 pt-2">
+        <div className="relative z-10 -mt-24 pt-2">
           {/* Logo sits right above the tag row, over the fading hero image. */}
           <h1 className="font-display text-4xl font-bold tracking-tight text-white md:text-6xl">
             {logoOk ? (
@@ -400,7 +400,7 @@ export const GameDetailView: React.FC = () => {
                 alt={title}
                 referrerPolicy="no-referrer"
                 decoding="async"
-                className="max-h-20 w-auto max-w-full object-contain drop-shadow-[0_2px_14px_rgba(0,0,0,0.7)] md:max-h-28"
+                className="max-h-32 w-auto max-w-full object-contain drop-shadow-[0_4px_18px_rgba(0,0,0,0.85)] sm:max-h-40 md:max-h-48 lg:max-h-56"
                 onError={() => setLogoBroken(true)}
               />
             ) : (
