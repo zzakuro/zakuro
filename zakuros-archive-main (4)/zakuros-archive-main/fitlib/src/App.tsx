@@ -120,15 +120,16 @@ export default function App() {
             <div className="aurora-blob aurora-blob-soft right-[-12%] bottom-[-26%] h-[56vh] w-[44vw] bg-violet-500/[0.05]" />
           </div>
 
-          <Navbar />
-
-          {/* Skip link — lets keyboard/AT users jump straight past the nav chrome */}
+          {/* Skip link — first tab stop, jumps keyboard/AT users straight to content */}
           <a
             href="#main-content"
             className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[80] focus:rounded-full focus:bg-rose-500 focus:px-4 focus:py-2 focus:text-xs focus:font-bold focus:text-white"
           >
             Skip to content
           </a>
+
+          <Navbar />
+
           <div id="main-content" className="relative z-10 flex-grow">
             <RoutedBoundary>
               <Routes>
