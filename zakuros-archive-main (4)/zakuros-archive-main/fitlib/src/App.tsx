@@ -14,6 +14,8 @@ import { motion, AnimatePresence } from "motion/react";
 // in the critical first-paint chunk; each view loads only when navigated to.
 const HomeView = lazy(() => import("./views/HomeView").then((m) => ({ default: m.HomeView })));
 const BrowseView = lazy(() => import("./views/BrowseView").then((m) => ({ default: m.BrowseView })));
+const CollectionsView = lazy(() => import("./views/CollectionsView").then((m) => ({ default: m.CollectionsView })));
+const SeriesDetailView = lazy(() => import("./views/SeriesDetailView").then((m) => ({ default: m.SeriesDetailView })));
 const GameDetailView = lazy(() => import("./views/GameDetailView").then((m) => ({ default: m.GameDetailView })));
 const AboutView = lazy(() => import("./views/AboutView").then((m) => ({ default: m.AboutView })));
 const HelpView = lazy(() => import("./views/HelpView").then((m) => ({ default: m.HelpView })));
@@ -187,6 +189,8 @@ export default function App() {
               <Routes>
               <Route path="/" element={<HomeView />} />
               <Route path="/browse" element={<BrowseView />} />
+              <Route path="/collections" element={<CollectionsView />} />
+              <Route path="/collections/:id" element={<SeriesDetailView />} />
               <Route path="/game/:id" element={<GameDetailView />} />
               <Route path="/about" element={<AboutView />} />
               <Route path="/help" element={<HelpView />} />
@@ -217,6 +221,7 @@ export default function App() {
               <nav className="flex flex-wrap items-center justify-center gap-5 font-mono text-[11px]">
                 <Link to="/" className="transition hover:text-rose-400">Home</Link>
                 <Link to="/browse" className="transition hover:text-rose-400">Library</Link>
+                <Link to="/collections" className="transition hover:text-rose-400">Collections</Link>
                 <Link to="/sources" className="transition hover:text-rose-400">Sources</Link>
                 <Link to="/help" className="transition hover:text-rose-400">Help</Link>
                 <Link to="/donate" className="transition hover:text-rose-400">Donate</Link>

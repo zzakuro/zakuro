@@ -303,6 +303,7 @@ export const Navbar: React.FC = () => {
 
   const navItems = [
     { label: "Games", path: "/browse" },
+    { label: "Collections", path: "/collections" },
     { label: "Sources", path: "/sources" },
     { label: "Donate", path: "/donate", highlighted: true },
   ];
