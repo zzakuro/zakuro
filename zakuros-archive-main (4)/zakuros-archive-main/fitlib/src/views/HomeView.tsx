@@ -421,7 +421,7 @@ export const HomeView: React.FC = () => {
                 More Details
               </Link>
             </motion.div>
-          </div>
+          </motion.div>
 
           {/* Progress dots */}
           <div className="absolute bottom-6 left-1/2 z-30 flex -translate-x-1/2 gap-2">
