@@ -351,7 +351,8 @@ export const GameDetailView: React.FC = () => {
             src={heroUrl}
             alt={title}
             referrerPolicy="no-referrer"
-            className="h-full w-full object-cover opacity-45"
+            decoding="async"
+            className="h-full w-full object-cover opacity-60 [mask-image:radial-gradient(ellipse_70%_95%_at_52%_42%,black_48%,transparent_88%)] [mask-size:100%_100%]"
             onError={() => setHeroBroken(true)}
           />
         ) : (
@@ -359,8 +360,11 @@ export const GameDetailView: React.FC = () => {
             <div className="absolute -left-24 top-1/3 h-72 w-72 rounded-full bg-rose-500/10 blur-[100px]" />
           </div>
         )}
-        <div className="absolute inset-0 bg-gradient-to-t from-[#09090b] via-[#09090b]/30 to-transparent" />
-        <div className="absolute inset-0 bg-gradient-to-r from-[#09090b]/80 via-transparent to-transparent" />
+        {/* Edge-darkening so the logo sits on black, not on the photo — photo glows
+            inward from a bright core behind the masthead, dies to black at the rim */}
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_80%_100%_at_50%_38%,transparent_40%,#09090b_92%)]" />
+        <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-[#09090b] via-[#09090b]/35 to-transparent" />
+        <div className="pointer-events-none absolute inset-0 bg-gradient-to-r from-[#09090b]/85 via-transparent to-[#09090b]/85" />
 
         {/* Back / Share — cleared below the floating pill nav */}
         <div className="absolute inset-x-0 top-20 z-20 mx-auto flex max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
