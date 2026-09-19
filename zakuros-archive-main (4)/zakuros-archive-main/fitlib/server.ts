@@ -15,6 +15,7 @@ import {
   matchGenres,
 } from "./server/sources";
 import { Game } from "./src/types";
+import { buildSeriesCatalog, readCuratedCollections, SeriesSummary, SeriesGroup } from "./server/series";
 
 // Housed under data/ (not public/) so Vite's public-dir watcher doesn't force
 // a full browser page reload every time the debounced catalog write fires.
