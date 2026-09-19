@@ -431,6 +431,8 @@ export const Navbar: React.FC = () => {
             <div className="relative">
               <button
                 onClick={() => setGenresOpen((v) => !v)}
+                aria-expanded={genresOpen}
+                aria-haspopup="menu"
                 className={`relative flex items-center gap-1 rounded-full px-3.5 py-1.5 text-sm transition ${
                   genresOpen ? "text-white" : "text-zinc-400 hover:text-white"
                 }`}
