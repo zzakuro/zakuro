@@ -408,7 +408,7 @@ export const HomeView: React.FC = () => {
             >
               <Link
                 to={`/game/${activeCarouselGame.id}`}
-                className="btn-sheen flex items-center gap-2 rounded-full bg-rose-500 px-7 py-3 text-xs font-bold uppercase tracking-wide text-white shadow-lg shadow-rose-500/25 transition hover:bg-rose-400"
+                className="btn-sheen cta-breathe flex items-center gap-2 rounded-full bg-rose-500 px-7 py-3 text-xs font-bold uppercase tracking-wide text-white transition hover:bg-rose-400"
               >
                 <Download className="h-4 w-4" />
                 Download Now

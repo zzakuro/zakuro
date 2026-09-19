@@ -287,7 +287,7 @@ export const BrowseView: React.FC = () => {
     });
 
   const selectCls =
-    "w-full rounded-lg border border-white/10 bg-[#0d0d10] py-2 pl-3 pr-8 text-xs text-zinc-300 outline-none transition focus:border-rose-500/50";
+    "focus-glow w-full rounded-lg border border-white/10 bg-[#0d0d10] py-2 pl-3 pr-8 text-xs text-zinc-300 outline-none transition focus:border-rose-500/50";
   const activeFilterCls = "bg-rose-500/10 border-rose-500/40 text-rose-400";
   const idleFilterCls = "bg-[#0d0d10] border-white/10 text-zinc-400 hover:border-white/25 hover:text-white";
   const chipActiveCls = "border-rose-500/40 bg-rose-500/10 text-rose-400";
@@ -379,7 +379,7 @@ export const BrowseView: React.FC = () => {
                   return next;
                 });
               }}
-              className="appearance-none rounded-full border border-white/10 bg-[#0d0d10] py-2 pl-4 pr-10 text-xs font-semibold text-zinc-300 outline-none transition focus:border-rose-500/50"
+              className="focus-glow appearance-none rounded-full border border-white/10 bg-[#0d0d10] py-2 pl-4 pr-10 text-xs font-semibold text-zinc-300 outline-none transition focus:border-rose-500/50"
             >
               <option value="Most Popular">Sort: Most Popular</option>
               <option value="Newest">Sort: Newest</option>
@@ -435,7 +435,7 @@ export const BrowseView: React.FC = () => {
                   placeholder="Enter title…"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full rounded-lg border border-white/10 bg-[#0d0d10] py-2 pl-3 pr-8 text-xs text-white outline-none transition placeholder-zinc-600 focus:border-rose-500/50"
+                  className="focus-glow w-full rounded-lg border border-white/10 bg-[#0d0d10] py-2 pl-3 pr-8 text-xs text-white outline-none transition placeholder-zinc-600 focus:border-rose-500/50"
                 />
                 {searchQuery && (
                   <button

@@ -586,3 +586,67 @@ body::before {
     display: none;
   }
 }
+
+/* Wave 5 — more cool: breathing CTAs, logo pulse, focus glow, footer line. */
+
+/* Primary CTA breathing halo — the homepage "Download Now" reads as
+   obviously live while the sheen sweeps across on hover. */
+@keyframes cta-breathe {
+  0%,
+  100% {
+    box-shadow: 0 0 20px 0 rgba(244, 63, 94, 0.38), 0 8px 28px -8px rgba(244, 63, 94, 0.5);
+  }
+  50% {
+    box-shadow: 0 0 36px 6px rgba(244, 63, 94, 0.6), 0 10px 34px -6px rgba(244, 63, 94, 0.5);
+  }
+}
+.cta-breathe {
+  animation: cta-breathe 3s ease-in-out infinite;
+}
+
+/* Navbar brand badge — a slow expanding pulse ring. */
+@keyframes z-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(244, 63, 94, 0.4);
+  }
+  55% {
+    box-shadow: 0 0 0 7px rgba(244, 63, 94, 0);
+  }
+}
+.z-logo {
+  animation: z-pulse 3.4s ease-in-out infinite;
+}
+
+/* Soft rose bloom around focused inputs (utility class). */
+.focus-glow:focus {
+  box-shadow:
+    0 0 0 3px rgba(244, 63, 94, 0.12),
+    0 0 26px -6px rgba(244, 63, 94, 0.45);
+}
+
+/* Footer top hairline — a thin gradient seam instead of a flat border. */
+.footer-glow {
+  position: relative;
+}
+.footer-glow::before {
+  content: "";
+  position: absolute;
+  top: -1px;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(
+    to right,
+    transparent,
+    color-mix(in srgb, var(--color-rose-500) 70%, transparent),
+    transparent
+  );
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cta-breathe,
+  .z-logo {
+    animation: none;
+  }
+}

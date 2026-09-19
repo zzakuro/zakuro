@@ -387,7 +387,7 @@ export const Navbar: React.FC = () => {
         >
           {/* Brand */}
           <Link to="/" className="flex items-center gap-2.5 rounded-full pr-1 transition hover:opacity-90">
-            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-rose-500 to-rose-700 text-sm font-black text-white shadow-lg shadow-rose-500/25">
+            <span className="z-logo flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-rose-500 to-rose-700 text-sm font-black text-white shadow-lg shadow-rose-500/25">
               Z
             </span>
             <span className="hidden font-display text-sm font-bold tracking-widest text-white md:block">

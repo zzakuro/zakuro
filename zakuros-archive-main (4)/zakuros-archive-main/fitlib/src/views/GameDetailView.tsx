@@ -13,6 +13,7 @@ import { RatingPanel } from "../components/RatingPanel";
 import { GameComments } from "../components/GameComments";
 import { LinuxBadge } from "../components/LinuxBadge";
 import { GameCard, PlaceholderCover } from "../components/GameCard";
+import { Reveal } from "../components/PageHero";
 
 // Trailer sources are either direct video files (Steam mp4/webm) or embed URLs
 // (IGDB videos mapped to YouTube). Pick the right player per source.
@@ -595,17 +596,20 @@ export const GameDetailView: React.FC = () => {
             )}
 
             {/* About this game */}
-            <div id="about_game">
-              <h2 className="mb-3 font-display text-2xl font-bold tracking-tight text-white">
-                About this game
-              </h2>
-              <p className="whitespace-pre-line text-sm leading-relaxed text-zinc-400">
-                {summary || "No description available."}
-              </p>
-            </div>
+            <Reveal>
+              <div id="about_game">
+                <h2 className="mb-3 font-display text-2xl font-bold tracking-tight text-white">
+                  About this game
+                </h2>
+                <p className="whitespace-pre-line text-sm leading-relaxed text-zinc-400">
+                  {summary || "No description available."}
+                </p>
+              </div>
+            </Reveal>
 
             {/* System requirements */}
-            <div id="system_requirements">
+            <Reveal delay={0.05}>
+              <div id="system_requirements">
               <h2 className="mb-4 font-display text-2xl font-bold tracking-tight text-white">
                 System requirements
               </h2>

@@ -3,12 +3,12 @@
  * SPDX-License-Identifier: Apache-2.5
  */
 
-import React, { Suspense, lazy, useEffect } from "react";
+import React, { Suspense, lazy, useEffect, useState } from "react";
 import { HashRouter, Routes, Route, Link, useLocation } from "react-router-dom";
 import { GameProvider } from "./lib/gameContext";
 import { Navbar } from "./components/Navbar";
-import { Heart } from "lucide-react";
-import { motion } from "motion/react";
+import { Heart, ArrowUp } from "lucide-react";
+import { motion, AnimatePresence } from "motion/react";
 
 // Route-level code splitting — the shell (Navbar, provider, router) stays
 // in the critical first-paint chunk; each view loads only when navigated to.
@@ -55,6 +55,34 @@ function CursorGlow() {
     };
   }, []);
   return <div id="cursor-glow" aria-hidden />;
+}
+
+// Floating back-to-top button, only once the page has any meaningful scroll.
+function BackToTop() {
+  const [show, setShow] = useState(false);
+  useEffect(() => {
+    const onScroll = () => setShow(window.scrollY > 640);
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+  return (
+    <AnimatePresence>
+      {show && (
+        <motion.button
+          initial={{ opacity: 0, y: 16, scale: 0.9 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          exit={{ opacity: 0, y: 16, scale: 0.9 }}
+          transition={{ duration: 0.2, ease: "easeOut" }}
+          onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+          aria-label="Back to top"
+          className="fixed bottom-6 right-6 z-40 flex h-11 w-11 items-center justify-center rounded-full bg-[#0d0d10] text-rose-400 shadow-xl shadow-black ring-1 ring-white/10 backdrop-blur transition hover:bg-rose-500 hover:text-white hover:shadow-rose-500/25"
+        >
+          <ArrowUp className="h-4 w-4" />
+        </motion.button>
+      )}
+    </AnimatePresence>
+  );
 }
 
 // Safety net: a render error anywhere in a view must not take down the whole
@@ -172,7 +200,7 @@ export default function App() {
           </div>
 
           {/* Footer */}
-          <footer className="relative z-10 border-t border-white/5 bg-[#0a0a0c] py-10 text-xs text-zinc-500">
+          <footer className="footer-glow relative z-10 border-t border-white/5 bg-[#0a0a0c] py-10 text-xs text-zinc-500">
             <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-6 px-4 sm:px-6 md:flex-row lg:px-8">
               <div className="flex items-center gap-2.5">
                 <span className="flex h-6 w-6 items-center justify-center rounded-md bg-gradient-to-br from-rose-500 to-rose-700 text-xs font-black text-white">
@@ -200,6 +228,8 @@ export default function App() {
               </p>
             </div>
           </footer>
+
+          <BackToTop />
         </div>
       </HashRouter>
     </GameProvider>
