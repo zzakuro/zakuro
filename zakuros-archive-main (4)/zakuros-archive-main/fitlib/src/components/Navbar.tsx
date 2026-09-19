@@ -406,6 +406,7 @@ export const Navbar: React.FC = () => {
                 <Link
                   key={item.path}
                   to={item.path}
+                  aria-current={isActive ? "page" : undefined}
                   className={`relative rounded-full px-3.5 py-1.5 text-sm transition ${
                     item.highlighted
                       ? "font-bold text-rose-400 hover:text-rose-300"

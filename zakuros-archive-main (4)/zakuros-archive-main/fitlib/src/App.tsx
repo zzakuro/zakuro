@@ -122,7 +122,14 @@ export default function App() {
 
           <Navbar />
 
-          <div className="relative z-10 flex-grow">
+          {/* Skip link — lets keyboard/AT users jump straight past the nav chrome */}
+          <a
+            href="#main-content"
+            className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[80] focus:rounded-full focus:bg-rose-500 focus:px-4 focus:py-2 focus:text-xs focus:font-bold focus:text-white"
+          >
+            Skip to content
+          </a>
+          <div id="main-content" className="relative z-10 flex-grow">
             <RoutedBoundary>
               <Routes>
               <Route path="/" element={<HomeView />} />
