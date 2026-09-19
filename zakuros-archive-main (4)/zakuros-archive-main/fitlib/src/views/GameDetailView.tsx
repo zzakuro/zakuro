@@ -662,7 +662,7 @@ export const GameDetailView: React.FC = () => {
                   setShowDownloadMenu(true);
                   showToast("Opening Secure Download Mirrors Portal...");
                 }}
-                className="flex h-12 w-full cursor-pointer items-center justify-center gap-2.5 rounded-xl bg-rose-500 font-display text-sm font-bold uppercase tracking-wider text-white shadow-lg shadow-rose-500/25 transition hover:bg-rose-400 active:scale-[0.99]"
+                className="btn-sheen flex h-12 w-full cursor-pointer items-center justify-center gap-2.5 rounded-xl bg-rose-500 font-display text-sm font-bold uppercase tracking-wider text-white shadow-lg shadow-rose-500/25 transition hover:bg-rose-400 active:scale-[0.99]"
               >
                 <Download className="h-4 w-4" />
                 Download · {game.fileSize || "—"}
@@ -833,7 +833,7 @@ export const GameDetailView: React.FC = () => {
                   setShowDownloadMenu(true);
                   showToast("Opening Secure Download Mirrors Portal...");
                 }}
-                className="mt-4 flex h-11 w-full cursor-pointer items-center justify-center gap-2.5 rounded-xl bg-rose-500 font-display text-xs font-bold uppercase tracking-wider text-white shadow-lg shadow-rose-500/20 transition hover:bg-rose-400 active:scale-[0.98]"
+                className="btn-sheen mt-4 flex h-11 w-full cursor-pointer items-center justify-center gap-2.5 rounded-xl bg-rose-500 font-display text-xs font-bold uppercase tracking-wider text-white shadow-lg shadow-rose-500/20 transition hover:bg-rose-400 active:scale-[0.98]"
               >
                 <Download className="h-4 w-4" />
                 Download · {game.fileSize || "—"}

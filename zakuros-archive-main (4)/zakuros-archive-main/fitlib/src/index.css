@@ -477,3 +477,112 @@ body::before {
     );
   }
 }
+
+/* ------------------------------------------------------------------ */
+/* Wave 4 — "Everything cooler": cursor glow, card tilt & sheen.       */
+/* Pure additive utility styles; no layout shifts, reduced-motion safe. */
+/* ------------------------------------------------------------------ */
+
+/* Soft cursor follower — a screen-blended bloom that trails the pointer
+   and echoes the brand palette. Painted above page layers, under chrome. */
+#cursor-glow {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 560px;
+  height: 560px;
+  z-index: 5;
+  pointer-events: none;
+  border-radius: 9999px;
+  mix-blend-mode: screen;
+  background: radial-gradient(
+    circle at center,
+    rgba(244, 63, 94, 0.09) 0%,
+    rgba(139, 92, 246, 0.05) 32%,
+    transparent 64%
+  );
+  transition: transform 180ms cubic-bezier(0.22, 1, 0.36, 1);
+  will-change: transform;
+}
+@media (pointer: coarse) {
+  #cursor-glow {
+    display: none;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  #cursor-glow {
+    transition: none;
+  }
+}
+
+/* 3D tilt shell for cards — perspective + rotation driven by --rx/--ry
+   CSS vars (set by a tiny pointer handler). Inner glare uses --mx/--my. */
+.tilt-card {
+  position: relative;
+  transform: perspective(1000px) rotateX(var(--rx, 0deg)) rotateY(var(--ry, 0deg));
+  transform-style: preserve-3d;
+  transition: transform 320ms cubic-bezier(0.22, 1, 0.36, 1);
+  will-change: transform;
+}
+.tilt-card:hover {
+  transition-duration: 110ms;
+}
+.tilt-card .tilt-glare {
+  position: absolute;
+  inset: 0;
+  z-index: 20;
+  border-radius: inherit;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 240ms ease;
+  background: radial-gradient(
+    420px circle at var(--mx, 50%) var(--my, 50%),
+    rgba(255, 255, 255, 0.11),
+    transparent 48%
+  );
+}
+.tilt-card:hover .tilt-glare {
+  opacity: 1;
+}
+@media (prefers-reduced-motion: reduce) {
+  .tilt-card {
+    transform: none;
+  }
+  .tilt-card .tilt-glare {
+    opacity: 0;
+  }
+}
+
+/* Sheen sweep on primary buttons — a skewed light streak crosses once
+   per hover. Pair with `relative overflow-hidden` on the button. */
+.btn-sheen {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+}
+.btn-sheen::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -120%;
+  z-index: 1;
+  width: 55%;
+  height: 100%;
+  transform: skewX(-20deg);
+  background: linear-gradient(
+    to right,
+    transparent,
+    rgba(255, 255, 255, 0.32),
+    transparent
+  );
+  transition: left 0.75s ease;
+}
+.btn-sheen:hover::after,
+.btn-sheen:focus-visible::after {
+  left: 130%;
+}
+@media (prefers-reduced-motion: reduce) {
+  .btn-sheen::after {
+    display: none;
+  }
+}

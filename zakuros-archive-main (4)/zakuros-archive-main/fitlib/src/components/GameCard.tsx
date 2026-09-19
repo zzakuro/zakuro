@@ -58,6 +58,35 @@ export const PlaceholderCover: React.FC<{ title: string; className?: string }> =
 export const GameCard: React.FC<GameCardProps> = ({ game, badge }) => {
   const [imgFailed, setImgFailed] = useState(false);
   const { getGameSummary } = useGame();
+  const tiltRef = useRef<HTMLDivElement>(null);
+  const tiltFrame = useRef<number>(0);
+
+  // 3D tilt driven by CSS vars (--rx/--ry) + a glare hotspot (--mx/--my).
+  // Cheap: only fires while the pointer is over a card, paints via one DOM
+  // style write per frame, and disabled under prefers-reduced-motion.
+  const onCardMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    const el = tiltRef.current;
+    if (!el) return;
+    if (typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    const rect = el.getBoundingClientRect();
+    const x = (e.clientX - rect.left) / rect.width;
+    const y = (e.clientY - rect.top) / rect.height;
+    cancelAnimationFrame(tiltFrame.current);
+    tiltFrame.current = requestAnimationFrame(() => {
+      el.style.setProperty("--rx", `${((y - 0.5) * -9).toFixed(2)}deg`);
+      el.style.setProperty("--ry", `${((x - 0.5) * 11).toFixed(2)}deg`);
+      el.style.setProperty("--mx", `${(x * 100).toFixed(2)}%`);
+      el.style.setProperty("--my", `${(y * 100).toFixed(2)}%`);
+    });
+  };
+
+  const onCardLeave = () => {
+    const el = tiltRef.current;
+    cancelAnimationFrame(tiltFrame.current);
+    if (!el) return;
+    el.style.setProperty("--rx", "0deg");
+    el.style.setProperty("--ry", "0deg");
+  };
 
   // The list payload ships only `hasSummary`; fetch the text on first hover/focus.
   const [summary, setSummary] = useState<string>(game.summary ?? "");
@@ -92,7 +121,12 @@ export const GameCard: React.FC<GameCardProps> = ({ game, badge }) => {
         : "text-rose-400 [&>svg]:fill-rose-400 [&>svg]:text-rose-400";
 
   return (
-    <div className="group relative flex h-full">
+    <div
+      ref={tiltRef}
+      onPointerMove={onCardMove}
+      onPointerLeave={onCardLeave}
+      className="group tilt-card relative flex h-full rounded-xl"
+    >
       {/* Hover bloom — a soft tri-color aura that bleeds out past the card edges */}
       <div
         aria-hidden
@@ -190,6 +224,9 @@ export const GameCard: React.FC<GameCardProps> = ({ game, badge }) => {
           </div>
         </div>
       </Link>
+
+      {/* Pointer glare — a soft spotlight pinned to the cursor on hover */}
+      <div aria-hidden className="tilt-glare" />
     </div>
   );
 };

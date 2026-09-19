@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.5
  */
 
-import React, { Suspense, lazy } from "react";
+import React, { Suspense, lazy, useEffect } from "react";
 import { HashRouter, Routes, Route, Link, useLocation } from "react-router-dom";
 import { GameProvider } from "./lib/gameContext";
 import { Navbar } from "./components/Navbar";
@@ -33,6 +33,28 @@ function RouteFallback() {
       </div>
     </div>
   );
+}
+
+// Soft bloom that follows the cursor (decorative; hidden on touch/reduced-motion).
+function CursorGlow() {
+  useEffect(() => {
+    const el = document.getElementById("cursor-glow");
+    if (!el) return;
+    if (typeof window !== "undefined" && window.matchMedia("(pointer: coarse)").matches) return;
+    let raf = 0;
+    const onMove = (e: PointerEvent) => {
+      cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(() => {
+        el.style.transform = `translate(${e.clientX - 280}px, ${e.clientY - 280}px)`;
+      });
+    };
+    window.addEventListener("pointermove", onMove, { passive: true });
+    return () => {
+      window.removeEventListener("pointermove", onMove);
+      cancelAnimationFrame(raf);
+    };
+  }, []);
+  return <div id="cursor-glow" aria-hidden />;
 }
 
 // Safety net: a render error anywhere in a view must not take down the whole
@@ -119,6 +141,8 @@ export default function App() {
             <div className="aurora-blob aurora-blob-soft aurora-blob-alt bottom-[-30%] left-[16%] h-[60vh] w-[50vw] bg-rose-500/[0.05]" />
             <div className="aurora-blob aurora-blob-soft right-[-12%] bottom-[-26%] h-[56vh] w-[44vw] bg-violet-500/[0.05]" />
           </div>
+
+          <CursorGlow />
 
           {/* Skip link — first tab stop, jumps keyboard/AT users straight to content */}
           <a

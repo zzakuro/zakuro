@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { motion, AnimatePresence } from "motion/react";
+import { motion, AnimatePresence, useScroll, useTransform } from "motion/react";
 import {
   Star,
   Download,
@@ -102,6 +102,13 @@ export const HomeView: React.FC = () => {
   const [carouselIndex, setCarouselIndex] = useState(0);
   const [paused, setPaused] = useState(false);
   const [heroImgFailed, setHeroImgFailed] = useState(false);
+
+  // Cinematic hero: the backdrop drifts slower than the page and the text
+  // fades out as you scroll away from the top, so the intro reads as depth.
+  const heroRef = useRef<HTMLElement>(null);
+  const { scrollYProgress } = useScroll({ target: heroRef, offset: ["start start", "end start"] });
+  const heroBgY = useTransform(scrollYProgress, [0, 1], ["0%", "24%"]);
+  const heroContentOpacity = useTransform(scrollYProgress, [0, 0.8], [1, 0.12]);
 
   // Collapse repack-variant duplicates in the showcase rows: same Steam appid
   // (or near-identical title when no appid) appears once, keeping the richest,
@@ -277,6 +284,7 @@ export const HomeView: React.FC = () => {
       {/* 1. Hero carousel */}
       {activeCarouselGame && (
         <section
+          ref={heroRef}
           onMouseEnter={() => setPaused(true)}
           onMouseLeave={() => setPaused(false)}
           className="relative -mt-17 h-[78vh] min-h-[520px] w-full overflow-hidden border-b border-white/5 bg-black"
@@ -311,6 +319,7 @@ export const HomeView: React.FC = () => {
                   initial={{ scale: 1.06 }}
                   animate={{ scale: 1 }}
                   transition={{ duration: 9, ease: "easeOut" }}
+                  style={{ y: heroBgY }}
                   onError={() => setHeroImgFailed(true)}
                   className="h-full w-full object-cover opacity-60 saturate-[0.9]"
                 />
@@ -337,7 +346,7 @@ export const HomeView: React.FC = () => {
             <ChevronRight className="h-5 w-5" />
           </button>
 
-          <div className="absolute inset-0 z-20 mx-auto flex max-w-7xl flex-col justify-end px-4 pb-20 sm:px-6 lg:px-8">
+          <motion.div className="absolute inset-0 z-20 mx-auto flex max-w-7xl flex-col justify-end px-4 pb-20 sm:px-6 lg:px-8" style={{ opacity: heroContentOpacity }}>
             <motion.div
               initial={{ y: 14, opacity: 0 }}
               animate={{ y: 0, opacity: 1 }}
@@ -399,7 +408,7 @@ export const HomeView: React.FC = () => {
             >
               <Link
                 to={`/game/${activeCarouselGame.id}`}
-                className="flex items-center gap-2 rounded-full bg-rose-500 px-7 py-3 text-xs font-bold uppercase tracking-wide text-white shadow-lg shadow-rose-500/25 transition hover:bg-rose-400"
+                className="btn-sheen flex items-center gap-2 rounded-full bg-rose-500 px-7 py-3 text-xs font-bold uppercase tracking-wide text-white shadow-lg shadow-rose-500/25 transition hover:bg-rose-400"
               >
                 <Download className="h-4 w-4" />
                 Download Now
