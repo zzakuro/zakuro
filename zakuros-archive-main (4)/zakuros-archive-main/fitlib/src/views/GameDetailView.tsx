@@ -344,15 +344,19 @@ export const GameDetailView: React.FC = () => {
         )}
       </AnimatePresence>
 
-      {/* A. Hero backdrop — clean image band (kryo-style) */}
-      <section className="relative -mt-17 h-[42vh] min-h-[300px] w-full overflow-hidden border-b border-white/5 bg-black">
+{/* A. Hero backdrop — Steam library hero dissolved into the page
+          background (reference-layout style): the artwork is dimmed to a
+          faint veil, then a bottom-up scrim paints the theme background up
+          from the seam so the poster melts into the body instead of ending
+          at a hard edge. */}
+      <section className="relative -mt-17 h-[50vh] min-h-[340px] w-full overflow-hidden bg-[#09090c]">
         {heroOk ? (
           <img
             src={heroUrl}
             alt={title}
             referrerPolicy="no-referrer"
             decoding="async"
-            className="h-full w-full object-cover opacity-75 [mask-image:linear-gradient(to_bottom,black_68%,transparent_99%)]"
+            className="h-full w-full scale-105 object-cover opacity-40"
             onError={() => setHeroBroken(true)}
           />
         ) : (
@@ -360,11 +364,11 @@ export const GameDetailView: React.FC = () => {
             <div className="absolute -left-24 top-1/3 h-72 w-72 rounded-full bg-rose-500/10 blur-[100px]" />
           </div>
         )}
-        {/* Edge-darkening so the logo sits on black, not on the photo — photo glows
-            inward from a bright core behind the masthead, dies to black at the rim */}
-        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_80%_100%_at_50%_38%,transparent_40%,#09090b_92%)]" />
-        <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-[#09090b] via-[#09090b]/35 to-transparent" />
-        <div className="pointer-events-none absolute inset-0 bg-gradient-to-r from-[#09090b]/85 via-transparent to-[#09090b]/85" />
+        {/* Bottom-up scrim — solid page bg at the seam easing to transparent
+            at the top, so the lower half of the hero dissolves into the body. */}
+        <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-[#09090c] via-[#09090c]/40 to-transparent" />
+        {/* Side scrim — keeps the masthead/logo zone dark and legible. */}
+        <div className="pointer-events-none absolute inset-0 hidden bg-gradient-to-r from-[#09090c]/80 via-transparent to-transparent lg:block" />
 
         {/* Back / Share — cleared below the floating pill nav */}
         <div className="absolute inset-x-0 top-20 z-20 mx-auto flex max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
