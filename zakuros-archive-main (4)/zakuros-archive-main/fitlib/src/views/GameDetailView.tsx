@@ -370,6 +370,27 @@ export const GameDetailView: React.FC = () => {
         {/* Side scrim — keeps the masthead/logo zone dark and legible. */}
         <div className="pointer-events-none absolute inset-0 hidden bg-gradient-to-r from-[#09090c]/80 via-transparent to-transparent lg:block" />
 
+        {/* Game logo — pinned inside the hero, over the bottom of the fade
+            (reference-layout style: sits just above the tag row below). */}
+        <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <div className="max-w-3xl pb-10 lg:pb-14">
+            <h1 className="font-display text-4xl font-bold tracking-tight text-white md:text-6xl">
+              {logoOk ? (
+                <img
+                  src={logoUrl}
+                  alt={title}
+                  referrerPolicy="no-referrer"
+                  decoding="async"
+                  className="max-h-32 w-auto max-w-full object-contain drop-shadow-[0_4px_18px_rgba(0,0,0,0.85)] sm:max-h-40 md:max-h-48 lg:max-h-56"
+                  onError={() => setLogoBroken(true)}
+                />
+              ) : (
+                title
+              )}
+            </h1>
+          </div>
+        </div>
+
         {/* Back / Share — cleared below the floating pill nav */}
         <div className="absolute inset-x-0 top-20 z-20 mx-auto flex max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
           <button
@@ -389,26 +410,10 @@ export const GameDetailView: React.FC = () => {
         </div>
       </section>
 
-      {/* B. Heading — overlapping the hero (logo + tags + byline) */}
+      {/* B. Heading — overlapping the hero (tags + byline) */}
       <main className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div className="relative z-10 -mt-24 pt-2">
-          {/* Logo sits right above the tag row, over the fading hero image. */}
-          <h1 className="font-display text-4xl font-bold tracking-tight text-white md:text-6xl">
-            {logoOk ? (
-              <img
-                src={logoUrl}
-                alt={title}
-                referrerPolicy="no-referrer"
-                decoding="async"
-                className="max-h-32 w-auto max-w-full object-contain drop-shadow-[0_4px_18px_rgba(0,0,0,0.85)] sm:max-h-40 md:max-h-48 lg:max-h-56"
-                onError={() => setLogoBroken(true)}
-              />
-            ) : (
-              title
-            )}
-          </h1>
-
-          <div className="mt-3 mb-3 flex flex-wrap items-center gap-1.5">
+        <div className="relative z-10 -mt-8 pt-2">
+          <div className="mb-3 flex flex-wrap items-center gap-1.5">
             {(game.genres || []).map((g) => (
               <Link
                 key={g}
