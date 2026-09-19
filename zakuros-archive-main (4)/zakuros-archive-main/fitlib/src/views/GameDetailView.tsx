@@ -1247,8 +1247,8 @@ const ActionBtn: React.FC<{
 );
 
 const InfoRow: React.FC<{ label: string; value: React.ReactNode }> = ({ label, value }) => (
-  <div className="flex items-center justify-between px-0 py-3">
-    <span className="font-mono font-semibold text-zinc-500">{label}</span>
+  <div className="group flex items-center justify-between rounded-md px-1.5 py-3 transition hover:bg-white/[0.02]">
+    <span className="font-mono font-semibold text-zinc-500 transition group-hover:text-rose-400/90">{label}</span>
     {value}
   </div>
 );

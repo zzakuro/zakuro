@@ -337,12 +337,22 @@ export const Navbar: React.FC = () => {
     }
   };
 
-  // Global Ctrl/Cmd+K shortcut opens the search overlay
+  // Global shortcuts: Ctrl/Cmd+K toggles, "/" opens the search overlay
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
+      const t = e.target as HTMLElement | null;
+      const tag = t?.tagName;
+      const typing =
+        tag === "INPUT" ||
+        tag === "TEXTAREA" ||
+        tag === "SELECT" ||
+        t?.isContentEditable === true;
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") {
         e.preventDefault();
         setSearchOpen((v) => !v);
+      } else if (e.key === "/" && !typing) {
+        e.preventDefault();
+        setSearchOpen(true);
       }
     };
     window.addEventListener("keydown", onKey);
@@ -495,6 +505,10 @@ export const Navbar: React.FC = () => {
               <span className="hidden sm:inline">Search</span>
               <kbd className="hidden items-center gap-0.5 rounded border border-white/10 bg-black/40 px-1.5 py-0.5 font-mono text-[9px] text-zinc-500 xl:flex">
                 Ctrl&nbsp;K
+              </kbd>
+              <span className="separator hidden h-3 w-px bg-white/10 xl:block" />
+              <kbd className="hidden items-center gap-0.5 rounded border border-white/10 bg-black/40 px-1.5 py-0.5 font-mono text-[9px] text-zinc-500 xl:flex">
+                /
               </kbd>
             </button>
 

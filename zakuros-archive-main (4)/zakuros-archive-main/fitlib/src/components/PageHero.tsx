@@ -45,6 +45,10 @@ export const PageHero: React.FC<{
 
     <Reveal className="relative">
       <span className="mb-5 inline-flex items-center gap-2 rounded-full border border-rose-500/25 bg-rose-500/10 px-3.5 py-1.5 font-mono text-[10px] font-bold uppercase tracking-[0.2em] text-rose-400">
+        <span className="relative flex h-1.5 w-1.5">
+          <span className="absolute inline-flex h-full w-full motion-safe:animate-ping rounded-full bg-rose-400 opacity-75" />
+          <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-rose-400" />
+        </span>
         {eyebrow}
       </span>
       <h1 className="font-display text-4xl font-black uppercase leading-[1.05] tracking-tight text-white sm:text-6xl">
