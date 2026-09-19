@@ -347,7 +347,7 @@ export const GameDetailView: React.FC = () => {
 {/* A. Hero backdrop — Steam library hero dissolved into the page
           background (reference-layout style): the artwork fades out going
           down and blends into the page background at the seam. */}
-      <section className="relative -mt-17 h-[54vh] min-h-[420px] w-full overflow-hidden bg-[#09090c] lg:h-[66vh]">
+      <section className="relative -mt-17 h-[54vh] min-h-[420px] w-full overflow-hidden bg-[var(--color-dark-bg)] lg:h-[66vh]">
         {heroOk ? (
           <img
             src={heroUrl}
@@ -362,10 +362,10 @@ export const GameDetailView: React.FC = () => {
             <div className="absolute -left-24 top-1/3 h-72 w-72 rounded-full bg-rose-500/10 blur-[100px]" />
           </div>
         )}
-        {/* Bottom-up dissolve — hard-coded page-bg gradient that eases from
-            solid at the seam to fully transparent, so the poster melts into
-            the body instead of ending at a visible edge. */}
-        <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(to_top,rgba(9,9,12,1)_0%,rgba(9,9,12,0.55)_55%,rgba(9,9,12,0)_100%)]" />
+        {/* Bottom-up dissolve — fades to the *actual* site background (via the
+            CSS variable, theme-aware) so the poster melts into the body
+            instead of fading to a hard-coded black. */}
+        <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(to_top,var(--color-dark-bg)_0%,color-mix(in_srgb,var(--color-dark-bg)_55%,transparent)_55%,transparent_100%)]" />
 
         {/* Game logo — pinned inside the hero, over the bottom of the fade
             (reference-layout style: sits just above the tag row below). */}
