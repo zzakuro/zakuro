@@ -653,8 +653,10 @@ export const GameDetailView: React.FC = () => {
                 )}
               </div>
             </div>
+            </Reveal>
 
             {/* Download mirrors */}
+            <Reveal delay={0.1}>
             <div id="download_mirrors">
               <h2 className="mb-4 font-display text-2xl font-bold tracking-tight text-white">
                 Download {title}
@@ -721,6 +723,7 @@ export const GameDetailView: React.FC = () => {
                 </div>
               )}
             </div>
+            </Reveal>
 
             {/* Comments */}
             <div id="comments">
@@ -936,6 +939,7 @@ export const GameDetailView: React.FC = () => {
 
         {/* C. More like this */}
         {related.length > 0 && (
+          <Reveal>
           <section className="mt-16">
             <div className="mb-5 flex items-end justify-between gap-4">
               <div>
@@ -959,6 +963,7 @@ export const GameDetailView: React.FC = () => {
               ))}
             </div>
           </section>
+          </Reveal>
         )}
       </main>
 
