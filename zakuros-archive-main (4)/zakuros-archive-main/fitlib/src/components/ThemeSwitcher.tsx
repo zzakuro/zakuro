@@ -39,6 +39,8 @@ const ThemeSwitcher: React.FC = () => {
       <button
         onClick={() => setOpen((v) => !v)}
         aria-label="Change theme"
+        aria-haspopup="menu"
+        aria-expanded={open}
         className={`flex h-8 items-center gap-1.5 rounded-full border px-3 text-xs transition ${
           open
             ? "border-rose-500/40 bg-white/[0.05] text-white"
