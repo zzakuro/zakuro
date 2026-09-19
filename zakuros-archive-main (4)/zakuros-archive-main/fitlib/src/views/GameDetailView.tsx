@@ -352,7 +352,7 @@ export const GameDetailView: React.FC = () => {
             alt={title}
             referrerPolicy="no-referrer"
             decoding="async"
-            className="h-full w-full object-cover opacity-60 [mask-image:linear-gradient(to_bottom,black_30%,transparent_88%)]"
+            className="h-full w-full object-cover opacity-75 [mask-image:linear-gradient(to_bottom,black_68%,transparent_99%)]"
             onError={() => setHeroBroken(true)}
           />
         ) : (
