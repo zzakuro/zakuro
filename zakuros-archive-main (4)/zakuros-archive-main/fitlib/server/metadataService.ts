@@ -389,11 +389,63 @@ export async function fetchIGDBDetails(title: string): Promise<Partial<GameMetad
   }
 }
 
+// ── GOG (last-resort backup keyed by gog.com product id) ─────────────────────
+// Used ONLY when Steam/IGDB produced no usable metadata for a game that has a
+// gogId (delisted or region-blocked Steam app, IGDB down, whatever). The public
+// api.gog.com/products/{id} endpoint needs no auth.
+const GOG_SCREENSHOT_FMT = "ggvgm_2x"; // decent-size GOG screenshot formatter
+
+function gogScreenshotUrl(screen: any): string {
+  if (!screen) return "";
+  const imgs = Array.isArray(screen.formatted_images) ? screen.formatted_images : [];
+  const chosen =
+    imgs.find((f: any) => f && f.formatter_name === GOG_SCREENSHOT_FMT) ||
+    imgs.find((f: any) => f && f.formatter_name === "ggvgm") ||
+    imgs[0];
+  return (chosen && chosen.image_url) || "";
+}
+
+export async function fetchGogDetails(gogId: string): Promise<Partial<GameMetadataExtended>> {
+  const url = `https://api.gog.com/products/${encodeURIComponent(gogId)}?expand=description,screenshots`;
+  try {
+    const response = await fetch(url, {
+      headers: { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) ZakurosArchive/1.0" },
+    });
+    if (!response.ok) {
+      // 404 = no such product (definitive no-match); 429/5xx = transient.
+      if (response.status === 404) return {};
+      throw new Error(`GOG API responded with code: ${response.status}`);
+    }
+    const data = await response.json() as any;
+    if (!data || !data.id) return {};
+    const screenshots = (Array.isArray(data.screenshots) ? data.screenshots : [])
+      .map(gogScreenshotUrl)
+      .filter(Boolean);
+    const full = cleanSteamDescription(data.description && data.description.full);
+    const releaseDateRaw = typeof data.release_date === "string" ? data.release_date : "";
+    return {
+      title: String(data.title || ""),
+      summary: (data.description && data.description.lead) || full || "",
+      rating: undefined,
+      releaseDate: releaseDateRaw ? new Date(releaseDateRaw).toISOString().slice(0, 10) : undefined,
+      screenshots,
+      linuxNative: !!(data.content_system_compatibility && data.content_system_compatibility.linux),
+    };
+  } catch (error: any) {
+    // Keep our own readable errors; harden anything unexpected without lying
+    // about which backend this came from.
+    if (error && error.message === "RATE_LIMIT_EXCEEDED") throw error;
+    if (error && error.message.startsWith("GOG API responded with code")) throw error;
+    throw new Error(`GOG product info unverifiable for gogId ${gogId}: ${error && error.message}`);
+  }
+}
+
 // 3. Orchestrated Fetching with Caching Layer (Redis + In-Memory Fallback)
 export async function getGameMetadata(
   gameId: string,
   title: string,
-  steamId?: number
+  steamId?: number,
+  gogId?: string
 ): Promise<GameMetadataExtended> {
   const cacheKey = `game:metadata:${gameId}`;
   const ttl = 3600; // 1 hour caching TTL
@@ -421,6 +473,9 @@ export async function getGameMetadata(
   // B. Cache Miss: Fetch metadata
   console.log(`[Cache Miss] Fetching live metadata for game ${title} (AppID: ${steamId || "N/A"})...`);
 
+  let fetchFailed: any = null; // remembers a rate-limit/transient error so we
+                               // can still serve a GOG fallback if available.
+
   let finalMetadata: GameMetadataExtended = {
     title,
     summary: `${title} is a fantastic game curated on Zakuro's Archive. Loading detailed system notes and downloads.`,
@@ -438,34 +493,61 @@ export async function getGameMetadata(
     let linuxNative = false;
     let proton: LinuxSupportInfo | null = null;
 
-    // Parallel fetch for speed
-    const fetchers: Promise<any>[] = [];
+    // Parallel fetch for speed. Errors are recorded, not thrown, so a single
+    // dead backend never blocks the Steam/IGDB/GOG fallback chain.
+    const fetchers: Promise<void>[] = [];
 
     if (steamId) {
       fetchers.push(fetchSteamDetails(steamId).then(res => {
         steamData = res;
         if (res.linuxNative) linuxNative = true;
+      }).catch((e) => {
+        console.warn(`[Steam API Error] ${title}:`, e.message);
+        fetchFailed = fetchFailed || e;
       }));
-      fetchers.push(fetchProtonSummary(steamId).then(p => proton = p));
+      fetchers.push(fetchProtonSummary(steamId).then(p => { proton = p; }).catch(() => {}));
     }
     if (process.env.IGDB_CLIENT_ID) {
-      fetchers.push(fetchIGDBDetails(title).then(res => igdbData = res));
+      fetchers.push(fetchIGDBDetails(title).then(res => { igdbData = res; }).catch((e) => {
+        console.warn(`[IGDB API Error] ${title}:`, e.message);
+        fetchFailed = fetchFailed || e;
+      }));
     }
 
     await Promise.all(fetchers);
 
-    // Merge outputs (Steam details take priority, then IGDB, then base defaults)
+    const hasSteamMeta = !!(steamData.summary || steamData.developer || steamData.releaseDate || (steamData.screenshots && steamData.screenshots.length > 0));
+    const hasIgdbMeta = !!(igdbData.summary || igdbData.developer || (igdbData.screenshots && igdbData.screenshots.length > 0) || igdbData.coverImage);
+
+    // GOG is a strict last resort — used only when neither Steam nor IGDB
+    // produced usable metadata (missing/dead appid, API down, rate-limited).
+    let gogData: Partial<GameMetadataExtended> = {};
+    if (gogId && !hasSteamMeta && !hasIgdbMeta) {
+      console.log(`[GOG Fallback] Steam/IGDB produced nothing for "${title}", trying gogId ${gogId}...`);
+      try {
+        gogData = await fetchGogDetails(gogId);
+        if (gogData.linuxNative) linuxNative = true;
+      } catch (e: any) {
+        console.warn(`[GOG API Error] fallback for gogId ${gogId}:`, e.message);
+        fetchFailed = fetchFailed || e;
+      }
+    }
+
+    // Merge outputs (Steam > IGDB > GOG > base defaults; GOG only ever has data
+    // when the first two are empty, so it cannot shadow them).
     finalMetadata = {
       title,
       verifiedTitle: steamData.title || undefined,
-      summary: steamData.summary || igdbData.summary || finalMetadata.summary,
-      rating: steamData.rating !== undefined ? steamData.rating : (igdbData.rating || finalMetadata.rating),
-      releaseDate: steamData.releaseDate || finalMetadata.releaseDate,
+      summary: steamData.summary || igdbData.summary || gogData.summary || finalMetadata.summary,
+      rating: steamData.rating !== undefined ? steamData.rating : (igdbData.rating || gogData.rating || finalMetadata.rating),
+      releaseDate: steamData.releaseDate || gogData.releaseDate || finalMetadata.releaseDate,
       developer: steamData.developer || finalMetadata.developer,
       publisher: steamData.publisher || finalMetadata.publisher,
       screenshots: (steamData.screenshots && steamData.screenshots.length > 0)
         ? steamData.screenshots
-        : (finalMetadata.screenshots),
+        : ((gogData.screenshots && gogData.screenshots.length > 0)
+          ? gogData.screenshots
+          : finalMetadata.screenshots),
       screenshot: steamData.screenshot || finalMetadata.screenshot,
       genres: steamData.genres || finalMetadata.genres,
       trailers: steamData.trailers || finalMetadata.trailers,
@@ -501,11 +583,22 @@ export async function getGameMetadata(
     }
 
   } catch (fetchError: any) {
-    if (fetchError.message === "RATE_LIMIT_EXCEEDED") {
+    if (fetchError && fetchError.message === "RATE_LIMIT_EXCEEDED") {
       console.warn(`[API Rate Limited] High frequency requests for game ${gameId}. Serving stale/default.`);
       throw fetchError;
     }
-    console.error(`[Enrichment Error] Critical error during fallback extraction for ${gameId}:`, fetchError);
+    console.error(`[Enrichment Error] Critical error during fallback extraction for ${gameId}:`, fetchError?.message || fetchError);
+  }
+
+  // Preserve the old 429 contract when a backend was rate-limited and nothing
+  // real (Steam/IGDB/GOG) could be assembled as a fallback.
+  if (
+    fetchFailed &&
+    fetchFailed.message === "RATE_LIMIT_EXCEEDED" &&
+    finalMetadata.summary.includes("fantastic game curated")
+  ) {
+    console.warn(`[API Rate Limited] No usable fallback metadata for ${gameId}. Surfacing 429.`);
+    throw fetchFailed;
   }
 
   return finalMetadata;

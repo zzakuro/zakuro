@@ -761,7 +761,7 @@ async function startServer() {
 
     try {
       // Fetch dynamic metadata asynchronously via Steam Store App Details or IGDB API
-      const metadata = await getGameMetadata(game.id, game.title, game.steamId);
+      const metadata = await getGameMetadata(game.id, game.title, game.steamId, game.gogId);
 
       // Persist newly-pulled metadata back into the catalog so a single visit
       // makes the enrichment permanent instead of re-fetching it forever.
