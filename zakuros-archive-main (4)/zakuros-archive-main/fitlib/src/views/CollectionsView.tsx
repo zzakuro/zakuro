@@ -8,7 +8,7 @@ import { SeriesSummary } from "../types";
 
 type FilterTab = "all" | "featured";
 
-const ITEMS_PER_PAGE = 24;
+const ITEMS_PER_PAGE = 10;
 
 export const CollectionsView: React.FC = () => {
   const { getSeries } = useGame();
@@ -166,7 +166,7 @@ export const CollectionsView: React.FC = () => {
       )}
 
       {visible.length > 0 && (
-        <div id="series_grid" className="grid grid-cols-1 gap-x-5 gap-y-6 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+        <div id="series_grid" className="grid grid-cols-2 gap-4 sm:grid-cols-3 xl:grid-cols-4">
           {visible.map((s, i) => (
             <Reveal key={s.id} delay={(i % 8) * 25}>
               <SeriesCard s={s} />
