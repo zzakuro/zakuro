@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { ArrowRight, Layers3, Search, Loader2 } from "lucide-react";
 import { PageHero, Reveal } from "../components/PageHero";
@@ -7,6 +7,7 @@ import { useGame } from "../lib/gameContext";
 import { SeriesSummary } from "../types";
 
 type FilterTab = "all" | "featured";
+type SortMode = "auto" | "alpha";
 
 const ITEMS_PER_PAGE = 10;
 
@@ -20,10 +21,10 @@ export const CollectionsView: React.FC = () => {
   const [tab, setTab] = useState<FilterTab>("all");
   const [query, setQuery] = useState("");
   const [debouncedQ, setDebouncedQ] = useState("");
-  const [sort, setSort] = useState<"auto" | "alpha">("auto");
+  const [sort, setSort] = useState<SortMode>("auto");
   const sentinelRef = useRef<HTMLDivElement | null>(null);
   const fetchSeq = useRef(0);
-  const resetting = useRef(falseprop);
+  const loaded = useRef(false Weekly).current;
   const hasMore = series.length < serverTotal;
 
   useEffect(() => {
@@ -31,13 +32,8 @@ export const CollectionsView: React.FC = () => {
     return () => clearTimeout(t);
   }, [query]);
 
-  useEffect(() => {
-    setPage(1);
-  }, [tab, debouncedQ, sort]);
-
-  const loadFirstPage = useCallback(async () => {
+  const loadFirst = useCallback(async () => {
     const seq = ++fetchSeq.current;
-    resetting.current = true;
     setLoading(true);
     setError(null);
     setSeries([]);
@@ -47,29 +43,23 @@ export const CollectionsView: React.FC = () => {
         limit: ITEMS_PER_PAGE,
         offset: 0,
         curated: tab === "featured",
-        minCount: 1,
         q: debouncedQ || undefined,
       });
       if (seq !== fetchSeq.current) return;
       setSeries(Array.isArray(res.series) ? res.series : []);
       setServerTotal(res.total ?? 0);
-      setError(null);
     } catch (e: any) {
       if (seq !== fetchSeq.current) return;
       setError(e?.message ?? "Failed to load collections.");
-      setSeries([]);
     } finally {
       if (seq === fetchSeq.current) setLoading(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tab, debouncedQ, sort]);
-
-  useEffect(() => {
-    loadFirstPage();
-  }, [loadFirstPage]);
+  }, [tab, debouncedQ]);
 
   const loadMore = useCallback(async () => {
-    if (resetting.current || loadingMore || !hasMore || loading) return;
+    if (loading || loadingMore) return;
+    if (series.length >= serverTotal) return;
     const seq = fetchSeq.current;
     setLoadingMore(true);
     try {
@@ -77,27 +67,31 @@ export const CollectionsView: React.FC = () => {
         limit: ITEMS_PER_PAGE,
         offset: series.length,
         curated: tab === "featured",
-        minCount: 1,
         q: debouncedQ || undefined,
       });
       if (seq !== fetchSeq.current) return;
       const more = Array.isArray(res.series) ? res.series : [];
       setServerTotal(res.total ?? serverTotal);
       setSeries((prev) => {
-        const seen = new Set(prev.map((x) => x.id));
-        return [...prev, ...more.filter((x) => !seen.has(x.id))];
+        const seen = new Set(prev.map((s) => s.id));
+        return [...prev, ...more.filter((s) => !seen.has(s.id))];
       });
-    } catch {
-      // silently retry on next sentinel hit
+    } catch (e: any) {
+      if (seq !== fetchSeq.current) return;
+      setError(e?.message ?? "Failed to load more collections.");
     } finally {
       if (seq === fetchSeq.current) setLoadingMore(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [loadingMore, hasMore, loading, series.length, tab, debouncedQ, serverTotal]);
+  }, [loading, loadingMore, series.length, serverTotal, tab, debouncedQ]);
+
+  useEffect(() => {
+    loadFirst();
+  }, [loadFirst]);
 
   useEffect(() => {
     const el = sentinelRef.current;
-    if (!el) return;
+    if (!el || loading) return;
     const io = new IntersectionObserver(
       (entries) => {
         if (entries.some((e) => e.isIntersecting)) loadMore();
@@ -106,29 +100,23 @@ export const CollectionsView: React.FC = () => {
     );
     io.observe(el);
     return () => io.disconnect();
-  }, [loadMore]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading, series.length, tab, debouncedQ]);
 
-  const visibleList = useMemo(() => {
-    let list = series;
-    if (sort === "alpha") {
-      list = [...list].sort((a, b) => a.name.localeCompare(b.name, "en"));
-    }
-    return list;
-  }, [series, sort]);
-
-  const scrollTop = () => {
-    if (typeof window !== "undefined") window.scrollTo({ top: 0, behavior: "auto" });
-  };
+  const visible = sort === "alpha"
+    ? [...series].sort((a, b) => a.name.localeCompare(b.name, "en"))
+    : series;
 
   const tabCls =
     "rounded-full border px-4 py-1.5 font-mono text-[11px] font-bold transition";
   const tabActiveCls = "border-rose-500/40 bg-rose-500/10 text-rose-400";
-  const tabIdleCls = "border-white/10 bg-[#0d0d10] text-zinc-400 hover:border-white/25 hover:text-white";
+  const tabIdleCls =
+    "border-white/10 bg-[#0d0d10] text-zinc-400 hover:border-white/25 hover:text-white";
 
   return (
-    <div id="collections_view" className="mx-auto max-w-7xl space-y-8 px-4 py-12 sm:px-6 lg:px-8">
+    <div id="collections_view" className="mx-auto max-w-7xl space-y-12 px-4 py-12 sm:px-6 lg:px-8">
       <PageHero
-        eyebrow="🕹️ Series & Collections"
+        eyebrow="Series & Collections"
         title={
           <>
             Explore <span className="text-gradient">Series</span>
@@ -136,55 +124,47 @@ export const CollectionsView: React.FC = () => {
         }
         lead="Every franchise in the archive, grouped under one roof — from Grand Theft Auto and Call of Duty to the auto-detected series that keep appearing across the index."
       >
-        <div className="mt-6 flex flex-wrap items-center justify-center gap-2">
-          <div className="inline-flex rounded-full border border-white/10 bg-[#0d0d10] p-1">
-            {(["all", "featured"] as const).map((t) => (
-              <button
-                key={t}
-                onClick={() => {
-                  setTab(t);
-                  scrollTop();
-                }}
-                className={`${tabCls} ${tab === t ? tabActiveCls : tabIdleCls}`}
-              >
-                {t === "all" ? "All Series" : "Featured"}
-              </button>
-            ))}
-          </div>
-        </div>
       </PageHero>
 
       <div className="flex flex-col items-center justify-between gap-3 sm:flex-row">
-        <label className="relative w-full max-w-md">
-          <span className="sr-only">Search series</span>
-          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-500" />
-          <input
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search series…"
-            className="w-full rounded-lg border border-white/10 bg-[#0d0d10] py-2 pl-9 pr-3 font-mono text-xs text-zinc-200 outline-none transition placeholder:text-zinc-600 focus:border-rose-500/40"
-          />
-        </label>
+        <div className="inline-flex rounded-full border border-white/10 bg-[#0d0d10] p-1">
+          {(["all", "featured"] as const).map((t) => (
+            <button
+              key={t}
+              onClick={() => setTab(t)}
+              className={`${tabCls} ${tab === t ? tabActiveCls : tabIdleCls}`}
+            >
+              {t === "all" ? "All Series" : "Featured"}
+            </button>
+          ))}
+        </div>
         <div className="flex items-center gap-2">
+          <label className="relative">
+            <span className="sr-only">Search series</span>
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-500" />
+            <input
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Search series…"
+              className="w-full min-w-56 rounded-lg border border-white/10 bg-[#0d0d10] py-2 pl-9 pr-3 font-mono text-xs text-zinc-200 outline-none transition placeholder:text-zinc-600 focus:border-rose-500/40"
+            />
+          </label>
           <button
-            onClick={() => {
-              setSort(sort === "alpha" ? "auto" : "alpha");
-              scrollTop();
-            }}
-            className="inline-flex items-center gap-1.5 rounded-lg border border-white/10 bg-[#0d0d10] px-3 py-2 font-mono text-xs font-bold text-zinc-400 transition hover:text-white"
-            title="Toggle A–Z sort"
+            onClick={() => setSort(sort === "alpha" ? "auto" : "alpha")}
+            className={`rounded-lg border border-white/10 bg-[#0d0d10] px-3 py-2 font-mono text-xs font-bold transition ${
+              sort === "alpha" ? "border-rose-500/40 text-rose-400" : "text-zinc-400 hover:text-white"
+            }`}
           >
-            <Layers3 className="h-3.5 w-3.5" />
-            {sort === "alpha" ? "A–Z" : "Auto"}
+            A–Z
           </button>
         </div>
       </div>
 
       <p className="text-center font-mono text-[11px] text-zinc-500">
         {serverTotal.toLocaleString()} series
-        {hasMore ? (
+        {series.length < serverTotal && (
           <span className="text-zinc-600"> · showing {series.length.toLocaleString()}</span>
-        ) : null}
+        )}
       </p>
 
       {loading && (
@@ -199,53 +179,67 @@ export const CollectionsView: React.FC = () => {
         </div>
       )}
 
-      {!loading && !error && visibleList.length === 0 && (
+      {!loading && !error && visible.length === 0 && (
         <p className="text-center font-mono text-sm text-zinc-500">
           {debouncedQ ? `No series match “${debouncedQ}”.` : "No series found."}
         </p>
       )}
 
-      {visibleList.length > 0 && (
-        <div id="series_grid" className="grid grid-cols-2 gap-4 sm:grid-cols-3 xl:grid-cols-4">
-          {visibleList.map((s, i) => (
+      {!loading && visible.length > 0 && (
+        <div
+          id="series_grid"
+          className="grid grid-cols-2 gap-4 sm:grid-cols-3 xl:grid-cols-4"
+        >
+          {visible.map((s, i) => (
             <Reveal key={s.id} delay={(i % 8) * 25}>
               <SeriesCard s={s} />
             </Reveal>
           ))}
+        </div>
+      )}
 
-          <div ref={sentinelRef} className="h-1 w-full" aria-hidden="true" />
+      {!loading && hasMore && (
+        <div ref={sentinelRef} className="flex justify-center py-6">
+          <span className="font-mono text-[11px] text-zinc-600">
+            {loadingMore ? "Loading more…" : "Scroll for more"}
+          </span>
+        </div>
+      )}
 
-          {loadingMore && (
-            <div className="col-span-full flex items-center justify-center gap-2 py-8 font-mono text-[11px] text-zinc-500">
-              <Loader2 className="h-4 w-4 animate-spin" /> Loading more…
-            </div>
-          )}
-
-          {!hasMore && series.length > 0 && (
-            <button
-              onClick={scrollTop}
-              className="col-span-full my-4 mx-auto flex items-center gap-2 rounded-xl border border-white/10 bg-[#0d0d10] px-5 py-3 font-mono text-xs font-bold text-zinc-300 transition hover:border-rose-500/40 hover:text-white"
-            >
-              All {serverTotal.toLocaleString()} series loaded <ArrowRight className="h-3.5 w-3.5" />
-            </button>
-          )}
+      {!loading && hasMore && (
+        <div className="flex justify-center">
+          <button
+            onClick={loadMore}
+            disabled={loadingMore}
+            className="inline-flex items-center gap-2 rounded-lg border border-white/10 bg-[#0d0d10] px-5 py-2.5 font-mono text-xs font-bold text-zinc-300 transition hover:text-white disabled:opacity-50"
+          >
+            {loadingMore ? (
+              <>
+                <Loader2 className="h-3.5 w-3.5 animate-spin" /> Loading…
+              </>
+            ) : (
+              <>
+                Load more <ArrowRight className="h-3.5 w-3.5" />
+              </>
+            )}
+          </button>
         </div>
       )}
     </div>
   );
 };
 
-const cellCls =
-  "aspect-[3/4] w-full rounded-lg border border-white/5 bg-[#0d0d10] object-cover";
+const cellCls = "aspect-[3/4] w-full object-cover";
 
 const SeriesCard: React.FC<{ s: SeriesSummary }> = ({ s }) => {
   const covers = Array.isArray(s.covers) ? s.covers : [];
+  const gridCls = "grid grid-cols-2 gap-px bg-white/5";
   return (
     <Link
       to={`/collections/${s.id}`}
       className="group flex h-full flex-col overflow-hidden rounded-xl border border-white/10 bg-[#101015] transition hover:border-rose-500/40 hover:bg-[#141419]"
     >
-      <div className="grid grid-cols-2 overflow-hidden">
+      <div className={gridCls}>
         {covers.length > 0 ? (
           covers.slice(0, 4).map((c, i) => (
             <img key={i} src={c} alt="" loading="lazy" className={cellCls} />
@@ -254,16 +248,11 @@ const SeriesCard: React.FC<{ s: SeriesSummary }> = ({ s }) => {
           <>
             <PlaceholderCover title={s.name} className={cellCls} />
             <PlaceholderCover title={s.name} className={cellCls} />
+            <PlaceholderCover title={s.name} className={cellCls} />
+            <PlaceholderCover title={s.name} className={cellCls} />
           </>
         )}
       </div>
-      {covers.length === 3 && <PlaceholderCover title={s.name} className={cellCls} />}
-      {covers.length === 2 && (
-        <div className="grid grid-cols-2">
-          <PlaceholderCover title={s.name} className={cellCls} />
-          <PlaceholderCover title={s.name} className={cellCls} />
-        </div>
-      )}
       <div className="flex flex-1 flex-col gap-1.5 p-4 pt-3">
         <div className="flex items-center gap-2">
           <span className="min-w-0 flex-1 truncate text-sm font-bold text-zinc-100">
