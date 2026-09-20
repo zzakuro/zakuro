@@ -340,18 +340,35 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // incomplete in server-browse mode), cached here per session.
   const seriesIndexRef = useRef<SeriesSummary[] | null>(null);
   const seriesDetailCache = useRef<Map<string, SeriesGroup | null>>(new Map());
-  const getSeries = useCallback(async (): Promise<SeriesSummary[]> => {
-    if (seriesIndexRef.current) return seriesIndexRef.current;
-    try {
-      const data = (await jsonFetch(API("/api/series"))) as { series?: SeriesSummary[] };
-      const list = Array.isArray(data?.series) ? data.series : [];
-      seriesIndexRef.current = list;
-      return list;
-    } catch {
-      return [];
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  const getSeries = useCallback(
+    async (
+      params: {
+        limit?: number;
+        offset?: number;
+        q?: string;
+        curated?: boolean;
+        minCount?: number;
+      } = {}
+    ): Promise<{ total: number; series: SeriesSummary[] }> => {
+      try {
+        const qs = new URLSearchParams();
+        if (params.limit !== undefined) qs.set("limit", String(params.limit));
+        if (params.offset !== undefined) qs.set("offset", String(params.offset));
+        if (params.curated) qs.set("curated", "1");
+        if (params.minCount !== undefined) qs.set("minCount", String(params.minCount));
+        if (params.q) qs.set("q", params.q);
+        const data = (await jsonFetch(API(`/api/series${qs.toString() ? `?${qs.toString()}` : ""}`))) as {
+          total?: number;
+          series?: SeriesSummary[];
+        };
+        return { total: data?.total ?? 0, series: Array.isArray(data?.series) ? data.series : [] };
+      } catch {
+        return { total: 0, series: [] };
+      }
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    },
+    []
+  );
   const getSeriesGames = useCallback(async (seriesId: string): Promise<SeriesGroup | null> => {
     const cached = seriesDetailCache.current.get(seriesId);
     if (cached !== undefined) return cached;
