@@ -108,6 +108,11 @@ class ErrorBoundary extends React.Component<
     if (this.state.error) {
       return (
         <div className="flex h-[70vh] flex-col items-center justify-center gap-4 px-4 text-center">
+          <img
+            src="/404.webp"
+            alt="Something went wrong"
+            className="max-h-48 w-auto rounded-xl ring-1 ring-white/10"
+          />
           <h2 className="font-display text-xl font-bold uppercase text-white">SOMETHING WENT WRONG</h2>
           <p className="max-w-md text-xs text-zinc-500">{this.state.error.message}</p>
           <button
