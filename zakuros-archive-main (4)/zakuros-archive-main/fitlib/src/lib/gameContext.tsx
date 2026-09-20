@@ -111,7 +111,13 @@ interface GameContextType {
   getFacets: () => Promise<CatalogFacets>;
   getRelated: (gameId: string, limit?: number) => Promise<Game[]>;
   getGameSummary: (gameId: string) => Promise<string>;
-  getSeries: () => Promise<SeriesSummary[]>;
+  getSeries: (params?: {
+    limit?: number;
+    offset?: number;
+    q?: string;
+    curated?: boolean;
+    minCount?: number;
+  }) => Promise<{ total: number; series: SeriesSummary[] }>;
   getSeriesGames: (seriesId: string) => Promise<SeriesGroup | null>;
   getComments: (gameId: string) => Promise<GameComment[]>;
   addComment: (
