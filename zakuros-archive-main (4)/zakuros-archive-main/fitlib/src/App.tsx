@@ -144,6 +144,11 @@ function RoutedBoundary({ children }: { children: React.ReactNode }) {
 function NotFound() {
   return (
     <div className="mx-auto flex max-w-xl flex-col items-center justify-center gap-4 px-4 py-24 text-center">
+      <img
+        src="/404.webp"
+        alt="404 error illustration"
+        className="max-h-64 w-auto rounded-xl ring-1 ring-white/10"
+      />
       <p className="font-mono text-xs font-bold uppercase tracking-widest text-rose-400">404</p>
       <h2 className="font-display text-3xl font-bold uppercase text-white">Page not found</h2>
       <p className="max-w-sm text-sm text-zinc-500">
@@ -207,9 +212,9 @@ export default function App() {
           <footer className="footer-glow relative z-10 border-t border-white/5 bg-[#0a0a0c] py-10 text-xs text-zinc-500">
             <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-6 px-4 sm:px-6 md:flex-row lg:px-8">
               <div className="flex items-center gap-2.5">
-                <span className="flex h-6 w-6 items-center justify-center rounded-md bg-gradient-to-br from-rose-500 to-rose-700 text-xs font-black text-white">
-                  Z
-                </span>
+                <span className="flex h-6 w-6 shrink-0 items-center justify-center overflow-hidden rounded-md shadow-lg shadow-rose-500/25">
+                <img src="/logo.png" alt="Zakuro's Archive logo" className="h-full w-full object-cover" />
+              </span>
                 <span className="font-display text-sm font-bold tracking-widest text-white">
                   ZAKURO'S<span className="text-rose-400"> ARCHIVE</span>
                 </span>
