@@ -53,6 +53,7 @@ const setCookie = (name: string, value: string, days = 365) => {
 
 interface CatalogSearchParams {
   q?: string;
+  ids?: string[];
   limit?: number;
   offset?: number;
   sort?: string;

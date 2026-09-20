@@ -28,6 +28,17 @@ const hideNsfw = (list: Game[], showNSFW: boolean): Game[] =>
     ? list
     : list.filter((g) => !(g.genres || []).some((x) => NSFW_GENRES.includes(x.toLowerCase().trim())));
 
+// Pinned hero carousel — the site's "top games" showcase. Kept in display order;
+// each id is a catalog game id (see server catalog). Titles with no catalog
+// entry simply drop out and the slot falls back to rated highlights below.
+const FEATURED_IDS = [
+  "grand-theft-auto-v",
+  "wonderful-everyday-down-the-rabbit-hole",
+  "cyberpunk-2077",
+  "elden-ring",
+  "sekiro-shadows-die-twice",
+];
+
 const SectionHeader: React.FC<{
   eyebrow: string;
   title: React.ReactNode;
@@ -69,10 +80,11 @@ export const HomeView: React.FC = () => {
   const [facets, setFacets] = useState<Awaited<ReturnType<typeof getFacets>> | null>(null);
   const [srv, setSrv] = useState<{
     carousel: Game[];
+    rated: Game[];
     popular: Game[];
     newReleases: Game[];
     latest: Game[];
-  }>({ carousel: [], popular: [], newReleases: [], latest: [] });
+  }>({ carousel: [], rated: [], popular: [], newReleases: [], latest: [] });
 
   useEffect(() => {
     if (!serverBrowse) return;
@@ -82,13 +94,19 @@ export const HomeView: React.FC = () => {
       searchGames({ sort: "popular", limit: 8, nsfw: true }),
       searchGames({ sort: "newest", limit: 12, nsfw: true }),
       searchGames({ sort: "updated", limit: 12, nsfw: true }),
+      searchGames({ ids: FEATURED_IDS, nsfw: true }),
       getFacets().catch(() => null),
     ])
-      .then(([rated, popular, newest, updated, f]) => {
+      .then(([rated, popular, newest, updated, featured, f]) => {
         if (!alive) return;
         if (f) setFacets(f);
+        const byId = new Map(featured.games.map((g) => [g.id, g]));
+        const carousel: Game[] = FEATURED_IDS
+          .map((id) => byId.get(id))
+          .filter((g): g is Game => !!g);
         setSrv({
-          carousel: hideNsfw(rated.games, showNSFW).slice(0, 5),
+          carousel: hideNsfw(carousel, showNSFW),
+          rated: hideNsfw(rated.games, showNSFW),
           popular: hideNsfw(popular.games, showNSFW),
           newReleases: hideNsfw(newest.games, showNSFW),
           latest: hideNsfw(updated.games, showNSFW),
@@ -139,13 +157,13 @@ export const HomeView: React.FC = () => {
     return [...seen.values()];
   };
 
-  const carouselGames = useMemo(
-    () =>
-      serverBrowse
-        ? uniqueShowcase(srv.carousel).slice(0, 5)
-        : uniqueShowcase([...games].filter((g) => g.rating > 0).sort((a, b) => b.rating - a.rating)).slice(0, 5),
-    [games, serverBrowse, srv]
-  );
+  const carouselGames = useMemo(() => {
+    if (serverBrowse) return srv.carousel;
+    const byId = new Map(games.map((g) => [g.id, g] as const));
+    const pinned = FEATURED_IDS.map((id) => byId.get(id)).filter((g): g is Game => !!g);
+    if (pinned.length) return pinned;
+    return [...games].filter((g) => g.rating > 0).sort((a, b) => b.rating - a.rating).slice(0, 5);
+  }, [games, serverBrowse, srv]);
   const activeCarouselGame = carouselGames[carouselIndex];
 
   // Reset the image-failure flag whenever the hero game changes.
@@ -214,7 +232,7 @@ export const HomeView: React.FC = () => {
   const topRated = useMemo(
     () =>
       serverBrowse
-        ? uniqueShowcase(srv.carousel).slice(0, 4)
+        ? uniqueShowcase(srv.rated).slice(0, 4)
         : uniqueShowcase([...games].filter((g) => g.rating > 0).sort((a, b) => b.rating - a.rating)).slice(0, 4),
     [games, serverBrowse, srv]
   );

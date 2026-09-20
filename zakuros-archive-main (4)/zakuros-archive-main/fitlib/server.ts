@@ -154,6 +154,7 @@ process.on("exit", () => {
 
 interface CatalogQuery {
   q?: string;
+  ids?: string[];
   limit?: number;
   offset?: number;
   sort?: string;
@@ -186,6 +187,13 @@ function applyQuery(
   query: CatalogQuery
 ): { games: Game[]; total: number } {
   let result = games;
+
+  // Explicit id selection — lets clients pin a curated set (e.g. hero carousel)
+  // without re-deriving the order or fetching the whole catalog.
+  if (query.ids && query.ids.length) {
+    const wanted = new Set(query.ids);
+    result = games.filter((g) => wanted.has(g.id));
+  }
 
   // Adult filter — callers opt out with nsfw=false
   if (query.nsfw === false) {
@@ -486,6 +494,10 @@ async function startServer() {
           : req.query.nsfw === "1" || req.query.nsfw === "true";
       const { games, total } = applyQuery(gamesCatalog, {
         q: req.query.q as string | undefined,
+        ids:
+          typeof req.query.ids === "string" && req.query.ids.trim()
+            ? req.query.ids.split(",").map((s) => s.trim()).filter(Boolean)
+            : undefined,
         limit,
         offset,
         sort: req.query.sort as string | undefined,
