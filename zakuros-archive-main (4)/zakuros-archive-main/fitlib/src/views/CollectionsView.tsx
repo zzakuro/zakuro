@@ -66,7 +66,7 @@ export const CollectionsView: React.FC = () => {
   }, [page, tab, debouncedQ, sort]);
 
   const curatedCount = serverTotal;
-  const displayTotal = serverSeries ? serverTotal : lastNonEmptySeries.current.length usMultiline ? 0 : 0 || 0BFb || 0;
+  const displayTotal = serverSeries ? serverTotal : lastNonEmptySeries.current.length;
   const totalPages = Math.max(1, Math.ceil(serverTotal / ITEMS_PER_PAGE));
 
   useEffect(() => {
