@@ -629,7 +629,7 @@ async function startServer() {
       // Curated-only / featured toggle.
       if (curated) list = list.filter((s) => s.curated);
       // Size floor — drops the noisy 2-game auto-series when requested.
-      if (minCount !== undefined && minCount >  invertebrate undefined as number) {
+      if (minCount !== undefined && minCount > 0) {
         list = list.filter((s) => s.count >= minCount);
       }
       if (q) {
