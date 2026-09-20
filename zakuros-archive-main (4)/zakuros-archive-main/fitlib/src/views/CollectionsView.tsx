@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
-import { ArrowRight, Layers3, Search, Loader2 } from "lucide-react";
+import { ArrowRight, Layers3, Search } from "lucide-react";
 import { PageHero, Reveal } from "../components/PageHero";
 import { PlaceholderCover } from "../components/GameCard";
 import { useGame } from "../lib/gameContext";
@@ -10,6 +10,13 @@ type FilterTab = "all" | "featured";
 type SortMode = "auto" | "alpha";
 
 const ITEMS_PER_PAGE = 10;
+
+const tabActiveCls =
+  "border-rose-500/40 bg-rose-500/10 text-rose-400";
+const tabIdleCls =
+  "border-white/10 bg-[#0d0d10] text-zinc-400 hover:border-white/25 hover:text-white";
+const cellCls =
+  "aspect-[3/4] w-full rounded-lg border border-white/5 bg-[#0d0d10] object-cover";
 
 export const CollectionsView: React.FC = () => {
   const { getSeries } = useGame();
@@ -24,7 +31,7 @@ export const CollectionsView: React.FC = () => {
   const [sort, setSort] = useState<SortMode>("auto");
   const sentinelRef = useRef<HTMLDivElement | null>(null);
   const fetchSeq = useRef(0);
-  const loaded = useRef(false Weekly).current;
+
   const hasMore = series.length < serverTotal;
 
   useEffect(() => {
@@ -36,8 +43,6 @@ export const CollectionsView: React.FC = () => {
     const seq = ++fetchSeq.current;
     setLoading(true);
     setError(null);
-    setSeries([]);
-    setServerTotal(0);
     try {
       const res = await getSeries({
         limit: ITEMS_PER_PAGE,
@@ -56,6 +61,10 @@ export const CollectionsView: React.FC = () => {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tab, debouncedQ]);
+
+  useEffect(() => {
+    loadFirst();
+  }, [loadFirst]);
 
   const loadMore = useCallback(async () => {
     if (loading || loadingMore) return;
@@ -78,16 +87,12 @@ export const CollectionsView: React.FC = () => {
       });
     } catch (e: any) {
       if (seq !== fetchSeq.current) return;
-      setError(e?.message ?? "Failed to load more collections.");
+      // keep existing rows on load-more failure
     } finally {
       if (seq === fetchSeq.current) setLoadingMore(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loading, loadingMore, series.length, serverTotal, tab, debouncedQ]);
-
-  useEffect(() => {
-    loadFirst();
-  }, [loadFirst]);
 
   useEffect(() => {
     const el = sentinelRef.current;
@@ -103,20 +108,20 @@ export const CollectionsView: React.FC = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loading, series.length, tab, debouncedQ]);
 
-  const visible = sort === "alpha"
-    ? [...series].sort((a, b) => a.name.localeCompare(b.name, "en"))
-    : series;
+  const visible = useMemo(() => {
+    let list = series;
+    if (sort === "alpha") {
+      list = [...series].sort((a, b) => a.name.localeCompare(b.name, "en"));
+    }
+    return list;
+  }, [series, sort]);
 
-  const tabCls =
-    "rounded-full border px-4 py-1.5 font-mono text-[11px] font-bold transition";
-  const tabActiveCls = "border-rose-500/40 bg-rose-500/10 text-rose-400";
-  const tabIdleCls =
-    "border-white/10 bg-[#0d0d10] text-zinc-400 hover:border-white/25 hover:text-white";
+  const formatCount = (n: number) => n.toLocaleString();
 
   return (
     <div id="collections_view" className="mx-auto max-w-7xl space-y-12 px-4 py-12 sm:px-6 lg:px-8">
       <PageHero
-        eyebrow="Series & Collections"
+        eyebrow="🎮 Series & Collections"
         title={
           <>
             Explore <span className="text-gradient">Series</span>
@@ -124,47 +129,44 @@ export const CollectionsView: React.FC = () => {
         }
         lead="Every franchise in the archive, grouped under one roof — from Grand Theft Auto and Call of Duty to the auto-detected series that keep appearing across the index."
       >
+        <div className="mt-6 flex flex-wrap items-center justify-center gap-2">
+          <div className="inline-flex rounded-full border border-white/10 bg-[#0d0d10] p-1">
+            {(["all", "featured"] as const).map((t) => (
+              <button
+                key={t}
+                onClick={() => setTab(t)}
+                className={`rounded-full border px-4 py-1.5 font-mono text-[11px] font-bold transition ${
+                  tab === t ? tabActiveCls : tabIdleCls
+                }`}
+              >
+                {t === "all" ? "All Series" : "Featured"}
+              </button>
+            ))}
+          </div>
+        </div>
       </PageHero>
 
       <div className="flex flex-col items-center justify-between gap-3 sm:flex-row">
-        <div className="inline-flex rounded-full border border-white/10 bg-[#0d0d10] p-1">
-          {(["all", "featured"] as const).map((t) => (
-            <button
-              key={t}
-              onClick={() => setTab(t)}
-              className={`${tabCls} ${tab === t ? tabActiveCls : tabIdleCls}`}
-            >
-              {t === "all" ? "All Series" : "Featured"}
-            </button>
-          ))}
-        </div>
-        <div className="flex items-center gap-2">
-          <label className="relative">
-            <span className="sr-only">Search series</span>
-            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-500" />
-            <input
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search series…"
-              className="w-full min-w-56 rounded-lg border border-white/10 bg-[#0d0d10] py-2 pl-9 pr-3 font-mono text-xs text-zinc-200 outline-none transition placeholder:text-zinc-600 focus:border-rose-500/40"
-            />
-          </label>
-          <button
-            onClick={() => setSort(sort === "alpha" ? "auto" : "alpha")}
-            className={`rounded-lg border border-white/10 bg-[#0d0d10] px-3 py-2 font-mono text-xs font-bold transition ${
-              sort === "alpha" ? "border-rose-500/40 text-rose-400" : "text-zinc-400 hover:text-white"
-            }`}
-          >
-            A–Z
-          </button>
-        </div>
+        <label className="relative w-full max-w-md">
+          <span className="sr-only">Search series</span>
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-500" />
+          <input
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Search series…"
+            className="w-full rounded-lg border border-white/10 bg-[#0d0d10] py-2 pl-9 pr-3 font-mono text-xs text-zinc-200 outline-none transition placeholder:text-zinc-600 focus:border-rose-500/40"
+          />
+        </label>
+        <button
+          onClick={() => setSort(sort === "alpha" ? "auto" : "alpha")}
+          className="rounded-lg border border-white/10 bg-[#0d0d10] px-3 py-2 font-mono text-xs font-bold text-zinc-400 transition hover:text-white"
+        >
+          {sort === "alpha" ? "Sort: A–Z" : "Sort: Auto"}
+        </button>
       </div>
 
       <p className="text-center font-mono text-[11px] text-zinc-500">
-        {serverTotal.toLocaleString()} series
-        {series.length < serverTotal && (
-          <span className="text-zinc-600"> · showing {series.length.toLocaleString()}</span>
-        )}
+        {formatCount(serverTotal)} series
       </p>
 
       {loading && (
@@ -181,65 +183,48 @@ export const CollectionsView: React.FC = () => {
 
       {!loading && !error && visible.length === 0 && (
         <p className="text-center font-mono text-sm text-zinc-500">
-          {debouncedQ ? `No series match “${debouncedQ}”.` : "No series found."}
+          {query ? `No series match “${query}”.` : "No series found."}
         </p>
       )}
 
       {!loading && visible.length > 0 && (
-        <div
-          id="series_grid"
-          className="grid grid-cols-2 gap-4 sm:grid-cols-3 xl:grid-cols-4"
-        >
+        <div id="series_grid" className="grid grid-cols-2 gap-4 sm:grid-cols-3 xl:grid-cols-4">
           {visible.map((s, i) => (
             <Reveal key={s.id} delay={(i % 8) * 25}>
               <SeriesCard s={s} />
             </Reveal>
           ))}
-        </div>
-      )}
 
-      {!loading && hasMore && (
-        <div ref={sentinelRef} className="flex justify-center py-6">
-          <span className="font-mono text-[11px] text-zinc-600">
-            {loadingMore ? "Loading more…" : "Scroll for more"}
-          </span>
-        </div>
-      )}
+          <div ref={sentinelRef} id="series_sentinel" className="h-1" aria-hidden="true" />
 
-      {!loading && hasMore && (
-        <div className="flex justify-center">
-          <button
-            onClick={loadMore}
-            disabled={loadingMore}
-            className="inline-flex items-center gap-2 rounded-lg border border-white/10 bg-[#0d0d10] px-5 py-2.5 font-mono text-xs font-bold text-zinc-300 transition hover:text-white disabled:opacity-50"
-          >
-            {loadingMore ? (
-              <>
-                <Loader2 className="h-3.5 w-3.5 animate-spin" /> Loading…
-              </>
-            ) : (
-              <>
-                Load more <ArrowRight className="h-3.5 w-3.5" />
-              </>
-            )}
-          </button>
+          {loadingMore && (
+            <div className="col-span-full flex justify-center py-6">
+              <div className="h-5 w-5 animate-spin rounded-full border-2 border-rose-500/40 border-t-rose-400" />
+            </div>
+          )}
+
+          {!hasMore && series.length > 0 && (
+            <button
+              onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+              className="col-span-full mx-auto rounded-lg border border-white/10 bg-[#0d0d10] px-4 py-2 font-mono text-xs font-bold text-zinc-400 transition hover:text-white"
+            >
+              {formatCount(serverTotal)} series loaded — back to top ↑
+            </button>
+          )}
         </div>
       )}
     </div>
   );
 };
 
-const cellCls = "aspect-[3/4] w-full object-cover";
-
 const SeriesCard: React.FC<{ s: SeriesSummary }> = ({ s }) => {
   const covers = Array.isArray(s.covers) ? s.covers : [];
-  const gridCls = "grid grid-cols-2 gap-px bg-white/5";
   return (
     <Link
       to={`/collections/${s.id}`}
       className="group flex h-full flex-col overflow-hidden rounded-xl border border-white/10 bg-[#101015] transition hover:border-rose-500/40 hover:bg-[#141419]"
     >
-      <div className={gridCls}>
+      <div className="grid grid-cols-2 overflow-hidden">
         {covers.length > 0 ? (
           covers.slice(0, 4).map((c, i) => (
             <img key={i} src={c} alt="" loading="lazy" className={cellCls} />
@@ -248,11 +233,12 @@ const SeriesCard: React.FC<{ s: SeriesSummary }> = ({ s }) => {
           <>
             <PlaceholderCover title={s.name} className={cellCls} />
             <PlaceholderCover title={s.name} className={cellCls} />
-            <PlaceholderCover title={s.name} className={cellCls} />
-            <PlaceholderCover title={s.name} className={cellCls} />
           </>
         )}
       </div>
+      {covers.length === 3 && (
+        <PlaceholderCover title={s.name} className={cellCls} />
+      )}
       <div className="flex flex-1 flex-col gap-1.5 p-4 pt-3">
         <div className="flex items-center gap-2">
           <span className="min-w-0 flex-1 truncate text-sm font-bold text-zinc-100">
