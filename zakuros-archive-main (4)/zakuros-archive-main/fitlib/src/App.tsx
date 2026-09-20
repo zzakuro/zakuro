@@ -245,6 +245,18 @@ export default function App() {
           </footer>
 
           <BackToTop />
+
+          {/* Corner logo — a small fixed badge, bottom-left of the viewport */}
+          <motion.a
+            href="#"
+            aria-label="Zakuro's Archive"
+            initial={{ opacity: 0, scale: 0.8 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.3, ease: "easeOut" }}
+            className="fixed bottom-6 left-6 z-40 block h-12 w-12 overflow-hidden rounded-full shadow-xl shadow-black ring-1 ring-white/10 transition hover:ring-rose-500/40"
+          >
+            <img src="/logo.png" alt="Zakuro's Archive logo" className="h-full w-full object-cover" />
+          </motion.a>
         </div>
       </HashRouter>
     </GameProvider>
