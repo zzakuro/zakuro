@@ -224,21 +224,22 @@ const SeriesCard: React.FC<{ s: SeriesSummary }> = ({ s }) => {
       to={`/collections/${s.id}`}
       className="group flex h-full flex-col overflow-hidden rounded-xl border border-white/10 bg-[#101015] transition hover:border-rose-500/40 hover:bg-[#141419]"
     >
-      <div className="grid grid-cols-2 overflow-hidden">
-        {covers.length > 0 ? (
-          covers.slice(0, 4).map((c, i) => (
-            <img key={i} src={c} alt="" loading="lazy" className={cellCls} />
-          ))
-        ) : (
-          <>
-            <PlaceholderCover title={s.name} className={cellCls} />
-            <PlaceholderCover title={s.name} className={cellCls} />
-          </>
+      <div className="grid grid-cols-2 gap-px overflow-hidden bg-white/5">
+        {[0, 1, 2, 3].map((slot) =>
+          covers[slot] ? (
+            <img
+              key={slot}
+              src={covers[slot]}
+              alt=""
+              loading="lazy"
+              decoding="async"
+              className={cellCls}
+            />
+          ) : (
+            <PlaceholderCover key={slot} title={s.name} className={cellCls} />
+          )
         )}
       </div>
-      {covers.length === 3 && (
-        <PlaceholderCover title={s.name} className={cellCls} />
-      )}
       <div className="flex flex-1 flex-col gap-1.5 p-4 pt-3">
         <div className="flex items-center gap-2">
           <span className="min-w-0 flex-1 truncate text-sm font-bold text-zinc-100">
