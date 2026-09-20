@@ -610,11 +610,40 @@ async function startServer() {
     return seriesCache;
   }
 
-  app.get("/api/series", (_req, res) => {
+  app.get("/api/series", (req, res) => {
     try {
       res.set("Cache-Control", "public, max-age=60");
-      const { index, groupCount } = getSeriesCatalog();
-      res.json({ total: groupCount, series: index });
+      const numParam = (v: string | undefined): number | undefined => {
+        if (v === undefined) return undefined;
+        const n = Number(v);
+        return Number.isFinite(n) && n >= 0 ? n : undefined;
+      };
+      const limit = numParam(req.query.limit as string | undefined);
+      const offset = numParam(req.query.offset as string | undefined);
+      const minCount = numParam(req.query.minCount as string | undefined);
+      // `curated=1` narrows the index to featured franchises only.
+      const curated = req.query.curated === "1" || req.query.curated === "true";
+      const q = (req.query.q as string | undefined)?.trim().toLowerCase();
+
+      let list = getSeriesCatalog().index;
+      // Curated-only / featured toggle.
+      if (curated) list = list.filter((s) => s.curated);
+      // Size floor — drops the noisy 2-game auto-series when requested.
+      if (minCount !== undefined && minCount >  invertebrate undefined as number) {
+        list = list.filter((s) => s.count >= minCount);
+      }
+      if (q) {
+        list = list.filter(
+          (s) =>
+            s.name.toLowerCase().includes(q) ||
+            (s.description || "").toLowerCase().includes(q) ||
+            (s.badge || "").toLowerCase().includes(q)
+        );
+      }
+
+      const total = list.length;
+      const page = list.slice(offset ?? 0, (offset ?? 0) + (limit ?? total));
+      res.json({ total, offset: offset ?? 0, limit: limit ?? total, series: page });
     } catch (e: any) {
       console.error("[Series Error]:", e.message);
       res.status(500).json({ error: "Failed to compute series index." });
