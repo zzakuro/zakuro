@@ -190,7 +190,7 @@ export const CollectionsView: React.FC = () => {
       {!loading && visible.length > 0 && (
         <div id="series_grid" className="grid grid-cols-2 gap-4 sm:grid-cols-3 xl:grid-cols-4">
           {visible.map((s, i) => (
-            <Reveal key={s.id} delay={(i % 8) * 25}>
+            <Reveal key={s.id} delay={(i % 8) * 25} className="h-full">
               <SeriesCard s={s} />
             </Reveal>
           ))}
