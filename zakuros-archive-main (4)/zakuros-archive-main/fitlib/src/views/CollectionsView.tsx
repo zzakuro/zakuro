@@ -247,12 +247,12 @@ const SeriesCard: React.FC<{ s: SeriesSummary }> = ({ s }) => {
           ))
         ) : (
           <>
-            <PlaceholderCover className={cellCls} />
-            <PlaceholderCover className={cellCls} />
+            <PlaceholderCover title={s.name} className={cellCls} />
+            <PlaceholderCover title={s.name} className={cellCls} />
           </>
         )}
       </div>
-      {covers.length === 3 && <PlaceholderCover className={cellCls} />}
+      {covers.length === 3 && <PlaceholderCover title={s.name} className={cellCls} />}
       <div className="flex flex-1 flex-col gap-1.5 p-4 pt-3">
         <div className="flex items-center gap-2">
           <span className="min-w-0 flex-1 truncate text-sm font-bold text-zinc-100">
