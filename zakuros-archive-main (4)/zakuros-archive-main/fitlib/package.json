@@ -4,7 +4,7 @@
   "private": true,
   "description": "Zakuro's Archive â€” all-in-one game library index",
   "scripts": {
-    "dev": "tsx server.ts",
+    "dev": "tsx watch server.ts",
     "start": "tsx server.ts",
     "build": "vite build",
     "preview": "vite preview",
