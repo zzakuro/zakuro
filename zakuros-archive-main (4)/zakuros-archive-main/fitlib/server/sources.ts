@@ -52,6 +52,10 @@ interface ParsedEntry {
   downloads: DownloadSource[];
   gogId?: string;
   gogUrl?: string;
+  developer?: string;
+  genres?: string[];
+  rating?: number;
+  releaseDate?: string;
 }
 
 interface MergedKey {
@@ -64,6 +68,10 @@ interface MergedKey {
   platforms: Set<string>;
   gogId?: string;
   gogUrl?: string;
+  developer?: string;
+  genres?: string[];
+  rating?: number;
+  releaseDate?: string;
 }
 
 const PLATFORM_GENRES: Record<string, string> = {
@@ -331,7 +339,7 @@ function parseSourcePayload(data: unknown, repackerName: string): ParsedEntry[] 
   const rawEntries: ParsedEntry[] = [];
   for (const item of downloads) {
     if (!item || typeof item !== "object") continue;
-    const entry = item as { title?: unknown; fileSize?: unknown; uploadDate?: unknown; uris?: unknown[]; platform?: unknown; gogId?: unknown; gogUrl?: unknown };
+    const entry = item as { title?: unknown; fileSize?: unknown; uploadDate?: unknown; uris?: unknown[]; platform?: unknown; gogId?: unknown; gogUrl?: unknown; developer?: unknown; genres?: unknown; rating?: unknown; releaseDate?: unknown };
     const rawTitle = String(entry.title || "").trim();
     if (!rawTitle) continue;
 
@@ -340,6 +348,16 @@ function parseSourcePayload(data: unknown, repackerName: string): ParsedEntry[] 
     const platform = String(entry.platform || "").trim().toLowerCase();
     const gogId = entry.gogId ? String(entry.gogId).trim() : undefined;
     const gogUrl = entry.gogUrl ? String(entry.gogUrl).trim() : undefined;
+    const developer = entry.developer ? String(entry.developer).trim() : undefined;
+    const genres = Array.isArray(entry.genres)
+      ? Array.from(new Set(entry.genres.map((g) => String(g).trim()).filter(Boolean)))
+      : undefined;
+    const rating = typeof entry.rating === "number" && isFinite(entry.rating)
+      ? Math.max(0, Math.min(100, Math.round(entry.rating)))
+      : entry.rating !== undefined && entry.rating !== "" && entry.rating !== null
+        ? Math.max(0, Math.min(100, Math.round(Number(entry.rating))))
+        : undefined;
+    const releaseDate = entry.releaseDate ? String(entry.releaseDate).trim().slice(0, 10) : undefined;
 
     const sources: DownloadSource[] = [];
     for (const uri of Array.isArray(entry.uris) ? entry.uris : []) {
@@ -377,6 +395,10 @@ function parseSourcePayload(data: unknown, repackerName: string): ParsedEntry[] 
       downloads: sources,
       gogId,
       gogUrl,
+      developer,
+      genres,
+      rating,
+      releaseDate,
     });
   }
 
@@ -538,15 +560,16 @@ function buildGame(merged: MergedKey, repackers: string[]): Game {
   const baseGenres = merged.isClassic
       ? ["Classic", "Retro", ...consoleGenres(merged.platforms)]
       : ["PC Game"];
+  const sourceGenres = (merged.genres || []).filter((g) => !baseGenres.includes(g));
 
   return {
     id: makeId(merged.cleanTitle),
     title: merged.cleanTitle,
-    developer: "",
+    developer: merged.developer || "",
     publisher: repackers.join(", "),
-    genres: [...baseGenres, ...inferExtraGenres(merged.cleanTitle, baseGenres)],
-    releaseDate: merged.uploadDate,
-    rating: 0,
+    genres: [...baseGenres, ...sourceGenres, ...inferExtraGenres(merged.cleanTitle, [...baseGenres, ...sourceGenres])],
+    releaseDate: merged.releaseDate || merged.uploadDate,
+    rating: merged.rating || 0,
     fileSize,
     magnetLink: magnet,
     coverImage: "",
@@ -1511,6 +1534,10 @@ export async function syncSources(params: {
       platforms: new Set(),
       gogId: game.gogId,
       gogUrl: game.gogUrl,
+      developer: game.developer,
+      genres: game.genres,
+      rating: game.rating,
+      releaseDate: game.releaseDate,
     });
   }
 
@@ -1546,6 +1573,14 @@ export async function syncSources(params: {
           if (entry.platform) merged.platforms.add(entry.platform);
           if (entry.gogId && !merged.gogId) merged.gogId = entry.gogId;
           if (entry.gogUrl && !merged.gogUrl) merged.gogUrl = entry.gogUrl;
+          if (entry.developer && !merged.developer) merged.developer = entry.developer;
+          if (entry.releaseDate && !merged.releaseDate) merged.releaseDate = entry.releaseDate;
+          if (entry.rating && !merged.rating) merged.rating = entry.rating;
+          if (entry.genres?.length) {
+            const have = new Set((merged.genres || []).map((g) => g.toLowerCase()));
+            const fresh = entry.genres.filter((g) => !have.has(g.toLowerCase()));
+            if (fresh.length) merged.genres = [...(merged.genres || []), ...fresh].slice(0, 12);
+          }
         } else {
           const merged = {
             cleanTitle: entry.cleanTitle,
@@ -1557,6 +1592,10 @@ export async function syncSources(params: {
             platforms: new Set<string>(entry.platform ? [entry.platform] : []),
             gogId: entry.gogId,
             gogUrl: entry.gogUrl,
+            developer: entry.developer,
+            genres: entry.genres,
+            rating: entry.rating,
+            releaseDate: entry.releaseDate,
           };
           index.set(entry.normalizedTitle, merged);
           addedHere++;
@@ -1614,10 +1653,12 @@ export async function syncSources(params: {
         ...(existing.stats || { downloads: 0, views: 0, updatedAt: "" }),
         updatedAt: merged.uploadDate > (existing.releaseDate || "") ? merged.uploadDate : existing.stats?.updatedAt || existing.releaseDate || "",
       },
-      releaseDate: existing.releaseDate || merged.uploadDate,
+      releaseDate: existing.releaseDate || merged.releaseDate || merged.uploadDate,
       downloadSources: Array.from(merged.sources.values()),
       gogId: existing.gogId || merged.gogId,
       gogUrl: existing.gogUrl || merged.gogUrl,
+      developer: (merged.developer && devIsPlaceholder(existing.developer)) ? merged.developer : existing.developer,
+      rating: existing.rating || merged.rating || existing.rating,
     };
     if (merged.isClassic) {
       mergedGame.classic = true;
@@ -1630,18 +1671,25 @@ export async function syncSources(params: {
       ];
     }
     const preInferGenres = mergedGame.genres || [];
-    const inferred = matchGenres(mergedGame.title || "", preInferGenres);
+    if (merged.genres?.length) {
+      const have = new Set(preInferGenres.map((g) => g.toLowerCase()));
+      const fresh = merged.genres.filter((g) => !have.has(g.toLowerCase()));
+      if (fresh.length) mergedGame.genres = [...preInferGenres, ...fresh].slice(0, 12);
+    }
+    const inferred = matchGenres(mergedGame.title || "", mergedGame.genres || []);
     const fromSummary = matchGenres(
       mergedGame.summary || "",
-      [...preInferGenres, ...inferred]
+      [...(mergedGame.genres || []), ...inferred]
     );
-    mergedGame.genres = [...preInferGenres, ...inferred, ...fromSummary];
+    mergedGame.genres = [...(mergedGame.genres || []), ...inferred, ...fromSummary];
 
     const changed =
       existing.classic !== mergedGame.classic ||
       existing.publisher !== mergedGame.publisher ||
       existing.fileSize !== mergedGame.fileSize ||
       existing.magnetLink !== mergedGame.magnetLink ||
+      existing.developer !== mergedGame.developer ||
+      existing.rating !== mergedGame.rating ||
       (existing.downloadSources?.length ?? 0) !== mergedGame.downloadSources?.length ||
       JSON.stringify(existing.downloadSources) !== JSON.stringify(mergedGame.downloadSources) ||
       JSON.stringify(existing.genres || []) !== JSON.stringify(mergedGame.genres || []);
