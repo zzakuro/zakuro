@@ -309,6 +309,8 @@ function toCardGame(g: Game) {
     coverImage: g.coverImage,
     screenshot: g.screenshot,
     steamId: g.steamId,
+    gogId: g.gogId,
+    gogUrl: g.gogUrl,
     igdbId: g.igdbId,
     reviewCount: g.reviewCount,
     popularityScore: g.popularityScore,

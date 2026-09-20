@@ -50,6 +50,8 @@ interface ParsedEntry {
   repacker: string;
   platform: string;
   downloads: DownloadSource[];
+  gogId?: string;
+  gogUrl?: string;
 }
 
 interface MergedKey {
@@ -60,6 +62,8 @@ interface MergedKey {
   isClassic: boolean;
   hasSteamId: boolean;
   platforms: Set<string>;
+  gogId?: string;
+  gogUrl?: string;
 }
 
 const PLATFORM_GENRES: Record<string, string> = {
@@ -327,25 +331,32 @@ function parseSourcePayload(data: unknown, repackerName: string): ParsedEntry[] 
   const rawEntries: ParsedEntry[] = [];
   for (const item of downloads) {
     if (!item || typeof item !== "object") continue;
-    const entry = item as { title?: unknown; fileSize?: unknown; uploadDate?: unknown; uris?: unknown[]; platform?: unknown };
+    const entry = item as { title?: unknown; fileSize?: unknown; uploadDate?: unknown; uris?: unknown[]; platform?: unknown; gogId?: unknown; gogUrl?: unknown };
     const rawTitle = String(entry.title || "").trim();
     if (!rawTitle) continue;
 
     const fileSize = String(entry.fileSize || "").trim();
     const uploadDate = String(entry.uploadDate || "").slice(0, 10);
     const platform = String(entry.platform || "").trim().toLowerCase();
+    const gogId = entry.gogId ? String(entry.gogId).trim() : undefined;
+    const gogUrl = entry.gogUrl ? String(entry.gogUrl).trim() : undefined;
 
     const sources: DownloadSource[] = [];
     for (const uri of Array.isArray(entry.uris) ? entry.uris : []) {
-      const url = String(uri || "").trim();
+      // A uri may be a plain URL string or an object { url, name, type, fileSize }
+      // (used by sources like gog-games.to to keep a per-mirror label).
+      const url = uri && typeof uri === "object"
+        ? String((uri as any).url || "").trim()
+        : String(uri || "").trim();
       if (!url) continue;
       const isTorrent = url.startsWith("magnet:") || url.endsWith(".torrent");
+      const uriName = uri && typeof uri === "object" ? String((uri as any).name || "") : "";
       sources.push({
-        name: `${repackerName} ${isTorrent ? "Magnet" : "Direct"}`,
+        name: uriName || `${repackerName} ${isTorrent ? "Magnet" : "Direct"}`,
         url,
-        type: isTorrent ? "torrent" : "direct",
+        type: uri && typeof uri === "object" && (uri as any).type ? String((uri as any).type) : isTorrent ? "torrent" : "direct",
         repacker: repackerName,
-        fileSize,
+        fileSize: uri && typeof uri === "object" && (uri as any).fileSize ? String((uri as any).fileSize) : fileSize,
         uploadDate,
       });
     }
@@ -364,6 +375,8 @@ function parseSourcePayload(data: unknown, repackerName: string): ParsedEntry[] 
       repacker: repackerName,
       platform,
       downloads: sources,
+      gogId,
+      gogUrl,
     });
   }
 
@@ -557,6 +570,8 @@ function buildGame(merged: MergedKey, repackers: string[]): Game {
       updatedAt: merged.uploadDate,
     },
     downloadSources: Array.from(merged.sources.values()),
+    gogId: merged.gogId,
+    gogUrl: merged.gogUrl,
     classic: merged.isClassic,
   };
 }
@@ -593,6 +608,8 @@ function foldInto(winner: Game, other: Game): void {
   if (!winner.screenshot && other.screenshot) winner.screenshot = other.screenshot;
   if (!winner.screenshots?.length && other.screenshots?.length) winner.screenshots = other.screenshots;
   if (typeof winner.steamId !== "number" && typeof other.steamId === "number") winner.steamId = other.steamId;
+  if (!winner.gogId && other.gogId) winner.gogId = other.gogId;
+  if (!winner.gogUrl && other.gogUrl) winner.gogUrl = other.gogUrl;
   if (!winner.developer && other.developer) winner.developer = other.developer;
   if (!winner.publisher && other.publisher) winner.publisher = other.publisher;
   if (other.summary && (!winner.summary || winner.summary.length < other.summary.length)) winner.summary = other.summary;
@@ -768,7 +785,7 @@ export function stabilizeCatalog(games: Game[]): { games: Game[]; merged: number
 // with nothing to show. Kept out-of-catalog on every write so a source sync
 // can't re-introduce it. Games that acquire metadata (steamId/cover) are kept.
 export function isForeignFiller(g: Game): boolean {
-  if (g.classic || g.steamId || g.coverImage) return false;
+  if (g.classic || g.steamId || g.gogId || g.coverImage) return false;
   const t = g.title || "";
   if (!t) return false;
   if (/[\u0400-\u04ff]/.test(t)) return true;
@@ -1492,6 +1509,8 @@ export async function syncSources(params: {
       isClassic: !!game.classic,
       hasSteamId: typeof game.steamId === "number",
       platforms: new Set(),
+      gogId: game.gogId,
+      gogUrl: game.gogUrl,
     });
   }
 
@@ -1525,6 +1544,8 @@ export async function syncSources(params: {
           // native PC (Steam) release as classic.
           if (source.category === "classic" && !merged.hasSteamId) merged.isClassic = true;
           if (entry.platform) merged.platforms.add(entry.platform);
+          if (entry.gogId && !merged.gogId) merged.gogId = entry.gogId;
+          if (entry.gogUrl && !merged.gogUrl) merged.gogUrl = entry.gogUrl;
         } else {
           const merged = {
             cleanTitle: entry.cleanTitle,
@@ -1534,6 +1555,8 @@ export async function syncSources(params: {
             isClassic: source.category === "classic",
             hasSteamId: false,
             platforms: new Set<string>(entry.platform ? [entry.platform] : []),
+            gogId: entry.gogId,
+            gogUrl: entry.gogUrl,
           };
           index.set(entry.normalizedTitle, merged);
           addedHere++;
@@ -1593,6 +1616,8 @@ export async function syncSources(params: {
       },
       releaseDate: existing.releaseDate || merged.uploadDate,
       downloadSources: Array.from(merged.sources.values()),
+      gogId: existing.gogId || merged.gogId,
+      gogUrl: existing.gogUrl || merged.gogUrl,
     };
     if (merged.isClassic) {
       mergedGame.classic = true;

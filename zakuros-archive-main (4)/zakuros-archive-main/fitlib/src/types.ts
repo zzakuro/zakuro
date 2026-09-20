@@ -70,6 +70,8 @@ export interface Game {
   systemRequirements: GameRequirements;
   stats: GameStats;
   steamId?: number;
+  gogId?: string; // gog.com product id (e.g. from the gog-games.to database)
+  gogUrl?: string; // official GOG store page e.g. https://www.gog.com/game/<slug>
   igdbId?: number;
   vndbId?: number; // Visual Novel Database id (adult/doujin metadata source)
   reviewCount?: number;
