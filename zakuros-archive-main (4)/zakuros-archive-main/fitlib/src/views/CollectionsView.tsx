@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
-import { ArrowRight, Layers3, Search } from "lucide-react";
-import { PageHero, Reveal } from "../components/PageHero";
+import { ArrowRight, Search } from "lucide-react";
+import { PageHero } from "../components/PageHero";
 import { PlaceholderCover } from "../components/GameCard";
 import { useGame } from "../lib/gameContext";
 import { SeriesSummary } from "../types";
@@ -119,7 +119,7 @@ export const CollectionsView: React.FC = () => {
   const formatCount = (n: number) => n.toLocaleString();
 
   return (
-    <div id="collections_view" className="mx-auto max-w-7xl space-y-12 px-4 py-12 sm:px-6 lg:px-8">
+    <div id="collections_view" className="mx-auto max-w-7xl space-y-8 px-4 py-10 sm:px-6 lg:px-8">
       <PageHero
         eyebrow="🎮 Series & Collections"
         title={
@@ -190,9 +190,9 @@ export const CollectionsView: React.FC = () => {
       {!loading && visible.length > 0 && (
         <div id="series_grid" className="grid grid-cols-2 gap-4 sm:grid-cols-3 xl:grid-cols-4">
           {visible.map((s, i) => (
-            <Reveal key={s.id} delay={(i % 8) * 25} className="h-full">
+            <div key={s.id} className="card-enter h-full" style={{ animationDelay: `${(i % 8) * 28}ms` }}>
               <SeriesCard s={s} />
-            </Reveal>
+            </div>
           ))}
 
           <div ref={sentinelRef} id="series_sentinel" className="h-1" aria-hidden="true" />
