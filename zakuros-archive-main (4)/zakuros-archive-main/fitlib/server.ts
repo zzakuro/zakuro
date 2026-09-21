@@ -97,10 +97,28 @@ let catalogSaving: Promise<void> | null = null;
 // long-lived gamesCatalog reference valid for every request handler.
 function stabilizeInPlace(): void {
   const { filler, bilingual, merged, covers } = selfHealCatalog(gamesCatalog);
+  // One heal pass can leave residual duplicates (a merged row's survivor may
+  // itself collide downstream); iterate until a pass reports nothing.
+  let extraPasses = 0;
+  let residual = selfHealCatalog(gamesCatalog);
+  while (
+    residual.bilingual > 0 ||
+    residual.merged > 0 ||
+    residual.classic > 0 ||
+    residual.covers > 0
+  ) {
+    extraPasses++;
+    if (extraPasses > 10) {
+      console.warn("[DB] stabilize-on-persist did not converge after 10 passes.");
+      break;
+    }
+    residual = selfHealCatalog(gamesCatalog);
+  }
   if (filler > 0) console.log(`[DB] prune-on-persist dropped ${filler} foreign filler rows.`);
   if (bilingual > 0) console.log(`[DB] bilingual-merge-on-persist folded ${bilingual} duplicate rows.`);
   if (merged > 0) console.log(`[DB] stabilize-on-persist merged ${merged} duplicate rows.`);
   if (covers > 0) console.log(`[DB] cover-realign-on-persist fixed ${covers} mismatched covers.`);
+  if (extraPasses > 0) console.log(`[DB] stabilize-on-persist converged after +${extraPasses} extra pass(es).`);
 }
 
 function persistCatalogSync(): void {
