@@ -1557,7 +1557,10 @@ export async function syncSources(params: {
         const merged = index.get(entry.normalizedTitle);
         if (merged) {
           for (const src of entry.downloads) {
-            if (!merged.sources.has(src.url)) merged.sources.set(src.url, src);
+            // Upsert by URL so a fresh parse (e.g. refreshed gog-games.json with
+            // per-link `kind`) refreshes the existing persisted entry too.
+            if (!src?.url) continue;
+            merged.sources.set(src.url, src);
           }
           if (entry.uploadDateParsed > merged.uploadDateParsed) {
             merged.uploadDate = entry.uploadDate;
