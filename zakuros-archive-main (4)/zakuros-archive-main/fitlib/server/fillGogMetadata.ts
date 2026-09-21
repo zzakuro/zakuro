@@ -102,11 +102,13 @@ function parseGogDump(file: string): Map<string, GogDumpRec> {
     if (gogUrl) rec.gogUrl = gogUrl[1];
     // First two 60-hex quoted tokens are the image and background asset hashes.
     const hex = tail.match(/'([0-9a-f]{60})'/g) ?? [];
-    if (hex.length > 0) rec.image = hex[0].slice(1, -1);
-    if (hex.length > 1 && !rec.image) rec.image = hex[1].slice(1, -1);
+    const hexFirst = hex[0];
+    if (hex.length > 0 && hexFirst) rec.image = hexFirst.slice(1, -1);
+    const hexSecond = hex[1];
+    if (hex.length > 1 && !rec.image && hexSecond) rec.image = hexSecond.slice(1, -1);
     // genres/tags are the only quoted tokens that start with '['.
     const jsonArr = tail.match(/'\[((?:\\.|[^'\\])*)\]'/g) ?? [];
-    const rawGenres = jsonArr.length > 0 ? jsonArr[0].slice(1, -1) : "";
+    const rawGenres = jsonArr.length > 0 && jsonArr[0] ? jsonArr[0].slice(1, -1) : "";
     if (rawGenres) {
       try {
         rec.genres = JSON.parse(rawGenres.replace(/\\(["\\])/g, "$1"));
