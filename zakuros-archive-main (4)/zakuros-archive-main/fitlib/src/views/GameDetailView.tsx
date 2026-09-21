@@ -35,6 +35,7 @@ export const GameDetailView: React.FC = () => {
 
   const [reqOs, setReqOs] = useState<"windows" | "linux" | "mac">("windows");
   const [showDownloadMenu, setShowDownloadMenu] = useState<boolean>(false);
+  const [downloadTab, setDownloadTab] = useState<"mirrors" | "patches" | "extras">("mirrors");
   const [enriching, setEnriching] = useState<boolean>(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [shotIdx, setShotIdx] = useState<number>(0);
@@ -59,6 +60,30 @@ export const GameDetailView: React.FC = () => {
             : [];
     return s;
   }, [game]);
+
+  // Partition download sources by gog-games.to link category so installers
+  // (mirrors), patches/fixes, and extra goodies render in their own tabs.
+  const sourcePartitions = useMemo(() => {
+    const sources = game?.downloadSources || [];
+    const mirrors: typeof sources = [];
+    const patches: typeof sources = [];
+    const goodies: typeof sources = [];
+    for (const s of sources) {
+      if (s.kind === "patch") patches.push(s);
+      else if (s.kind === "goodie") goodies.push(s);
+      else mirrors.push(s);
+    }
+    return { mirrors, patches, goodies };
+  }, [game?.downloadSources]);
+
+  const hasPatchesTab = sourcePartitions.patches.length > 0;
+  const hasGoodiesTab = sourcePartitions.goodies.length > 0;
+  const activeSources =
+    downloadTab === "patches"
+      ? sourcePartitions.patches
+      : downloadTab === "extras"
+        ? sourcePartitions.goodies
+        : sourcePartitions.mirrors;
 
   // Reset per-game UI state when navigating between game pages.
   useEffect(() => {

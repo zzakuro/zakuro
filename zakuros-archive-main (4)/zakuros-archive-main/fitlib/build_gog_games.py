@@ -14,7 +14,10 @@ writes one downloads[] entry per game carrying:
   - rating   GOG 0-5 rating scaled to 0-100
   - infohash / torrent name for magnet links
   - uris     every download link (game/goodie/patch across all hosters),
-             each with its label so the site can name mirrors properly
+             each with its label so the site can name mirrors properly, and a
+             kind field ("game" | "patch" | "goodie") mirroring the dump's
+             links.type column so the UI can split installers vs patches/fixes
+             vs extra goodies
 
 Regenerate with:
     python build_gog_games.py
@@ -282,7 +285,13 @@ def build_source(hosters, games, files_by_game, links_by_game):
             label = (link.get("label") or "").strip()
             hoster = hosters.get(link.get("hoster_id")) or link.get("hoster_id") or "Mirror"
             name = label + f" · {hoster}" if label else hoster
-            uris.append({"url": url, "name": name, "type": "direct"})
+            kind = (link.get("type") or "").strip().lower()
+            uris.append({
+                "url": url,
+                "name": name,
+                "type": "direct",
+                "kind": kind if kind in ("game", "patch", "goodie") else "game",
+            })
 
         if infohash or torrent_name:
             magnet = magnet_from_infohash(infohash, torrent_name)
@@ -293,12 +302,14 @@ def build_source(hosters, games, files_by_game, links_by_game):
                         "url": magnet,
                         "name": f"{torrent_name} · Torrent" if torrent_name else "GOG Torrent",
                         "type": "torrent",
+                        "kind": "game",
                     })
                 else:
                     uris.append({
                         "url": magnet,
                         "name": f"{torrent_name} · Torrent" if torrent_name else "GOG Torrent",
                         "type": "torrent",
+                        "kind": "game",
                     })
 
         # file size: prefer the GOG installer size, else the torrent size

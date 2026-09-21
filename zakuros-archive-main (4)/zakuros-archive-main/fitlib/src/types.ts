@@ -44,6 +44,7 @@ export interface DownloadSource {
   repacker?: string;   // e.g. "FitGirl", "DODI", "ElAmigos"
   fileSize?: string;   // repacker-specific size
   uploadDate?: string; // ISO date string
+  kind?: "game" | "patch" | "goodie"; // gog-games.to link category (installer / patch & fixes / extra goodies)
 }
 
 export interface Game {

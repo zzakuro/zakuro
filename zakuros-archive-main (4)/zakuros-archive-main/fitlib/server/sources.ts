@@ -369,6 +369,7 @@ function parseSourcePayload(data: unknown, repackerName: string): ParsedEntry[] 
       if (!url) continue;
       const isTorrent = url.startsWith("magnet:") || url.endsWith(".torrent");
       const uriName = uri && typeof uri === "object" ? String((uri as any).name || "") : "";
+      const uriKind = uri && typeof uri === "object" ? String((uri as any).kind || "").trim() : "";
       sources.push({
         name: uriName || `${repackerName} ${isTorrent ? "Magnet" : "Direct"}`,
         url,
@@ -376,6 +377,7 @@ function parseSourcePayload(data: unknown, repackerName: string): ParsedEntry[] 
         repacker: repackerName,
         fileSize: uri && typeof uri === "object" && (uri as any).fileSize ? String((uri as any).fileSize) : fileSize,
         uploadDate,
+        kind: uriKind && (uriKind === "game" || uriKind === "patch" || uriKind === "goodie") ? uriKind : undefined,
       });
     }
     if (!sources.length) continue;
