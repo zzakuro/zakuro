@@ -50,7 +50,9 @@ function resolveDumpPath(): string {
   const candidates = [
     DUMP_ARG,
     process.env.GOG_DUMP || "",
+    path.join(process.cwd(), "..", "..", "..", "gog-games.to-database.sql"),
     path.join(process.cwd(), "..", "..", "gog-games.to-database.sql"),
+    path.join(process.cwd(), "..", "gog-games.to-database.sql"),
     path.join(process.cwd(), "gog-games.to-database.sql"),
   ].filter(Boolean);
   return candidates.find((c) => {
