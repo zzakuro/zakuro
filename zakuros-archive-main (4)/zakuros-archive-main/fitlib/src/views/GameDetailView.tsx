@@ -701,49 +701,83 @@ export const GameDetailView: React.FC = () => {
 
               {(game.downloadSources || []).length > 0 && (
                 <div className="mt-4 overflow-hidden rounded-2xl bg-[#0d0d10] ring-1 ring-white/[0.06]">
-                  {[...new Map((game.downloadSources || []).map((s) => [`${s.repacker}-${s.name}`, s])).values()]
-                    .slice(0, 6)
-                    .map((src, idx) => {
-                      const isMagnet = src.type === "torrent" || (src.url || "").startsWith("magnet:");
-                      return (
-                        <button
-                          key={idx}
-                          onClick={() => handleMirrorClick({ ...src, isMagnet })}
-                          className="group flex w-full cursor-pointer items-center gap-3 border-b border-white/[0.05] px-4 py-3 text-left transition last:border-0 hover:bg-white/[0.03]"
-                        >
-                          <div
-                            className={`shrink-0 rounded-lg p-2 ring-1 ${
-                              isMagnet
-                                ? "bg-violet-500/10 text-violet-400 ring-violet-500/20"
-                                : "bg-emerald-500/10 text-emerald-400 ring-emerald-500/20"
+                  {(hasPatchesTab || hasGoodiesTab) && (
+                    <div className="flex gap-1 border-b border-white/[0.06] p-1.5">
+                      {(
+                        [
+                          ["mirrors", "Mirrors", sourcePartitions.mirrors.length],
+                          ["patches", "Patches & Fixes", sourcePartitions.patches.length],
+                          ["extras", "Extras", sourcePartitions.goodies.length],
+                        ] as const
+                      )
+                        .filter(([key, , count]) => count > 0 || key === "mirrors")
+                        .map(([key, label, count]) => (
+                          <button
+                            key={key}
+                            onClick={() => setDownloadTab(key)}
+                            className={`flex-1 cursor-pointer rounded-lg px-3 py-1.5 font-mono text-[10px] font-bold uppercase tracking-widest transition ${
+                              downloadTab === key
+                                ? "bg-rose-500/15 text-rose-400 ring-1 ring-rose-500/25"
+                                : "text-zinc-500 hover:bg-white/[0.04] hover:text-zinc-300"
                             }`}
                           >
-                            {isMagnet ? <Database className="h-4 w-4" /> : <Server className="h-4 w-4" />}
-                          </div>
-                          <span className="min-w-0 flex-1">
-                            <span className="block truncate text-xs font-medium text-zinc-200">
-                              {src.name}
-                              {src.fileSize ? (
-                                <span className="ml-2 rounded bg-white/[0.05] px-1.5 py-0.5 font-mono text-[9px] font-bold text-zinc-300 ring-1 ring-white/10">
-                                  {src.fileSize}
+                            {label} {count > 0 && <span className="ml-1 tabular-nums text-zinc-500">{count}</span>}
+                          </button>
+                        ))}
+                    </div>
+                  )}
+
+                  {activeSources.length > 0 ? (
+                    <>
+                      {[...new Map(activeSources.map((s) => [`${s.repacker}-${s.name}`, s])).values()]
+                        .slice(0, 6)
+                        .map((src, idx) => {
+                          const isMagnet = src.type === "torrent" || (src.url || "").startsWith("magnet:");
+                          return (
+                            <button
+                              key={idx}
+                              onClick={() => handleMirrorClick({ ...src, isMagnet })}
+                              className="group flex w-full cursor-pointer items-center gap-3 border-b border-white/[0.05] px-4 py-3 text-left transition last:border-0 hover:bg-white/[0.03]"
+                            >
+                              <div
+                                className={`shrink-0 rounded-lg p-2 ring-1 ${
+                                  isMagnet
+                                    ? "bg-violet-500/10 text-violet-400 ring-violet-500/20"
+                                    : "bg-emerald-500/10 text-emerald-400 ring-emerald-500/20"
+                                }`}
+                              >
+                                {isMagnet ? <Database className="h-4 w-4" /> : <Server className="h-4 w-4" />}
+                              </div>
+                              <span className="min-w-0 flex-1">
+                                <span className="block truncate text-xs font-medium text-zinc-200">
+                                  {src.name}
+                                  {src.fileSize ? (
+                                    <span className="ml-2 rounded bg-white/[0.05] px-1.5 py-0.5 font-mono text-[9px] font-bold text-zinc-300 ring-1 ring-white/10">
+                                      {src.fileSize}
+                                    </span>
+                                  ) : null}
                                 </span>
-                              ) : null}
-                            </span>
-                            <span className="mt-0.5 block truncate font-mono text-[10px] text-zinc-600">
-                              {src.repacker || "Source"} · {(src.url || "").slice(0, 44)}…
-                            </span>
-                          </span>
-                          <span className="shrink-0 text-zinc-600 transition group-hover:text-rose-400">→</span>
+                                <span className="mt-0.5 block truncate font-mono text-[10px] text-zinc-600">
+                                  {src.repacker || "Source"} · {(src.url || "").slice(0, 44)}…
+                                </span>
+                              </span>
+                              <span className="shrink-0 text-zinc-600 transition group-hover:text-rose-400">→</span>
+                            </button>
+                          );
+                        })}
+                      {activeSources.length > 6 && (
+                        <button
+                          onClick={() => setShowDownloadMenu(true)}
+                          className="w-full px-4 py-3 text-center font-mono text-[11px] font-bold uppercase tracking-widest text-zinc-500 transition hover:text-rose-400"
+                        >
+                          + {activeSources.length - 6} more {downloadTab === "patches" ? "patches" : downloadTab === "extras" ? "extras" : "mirrors"}
                         </button>
-                      );
-                    })}
-                  {(game.downloadSources || []).length > 6 && (
-                    <button
-                      onClick={() => setShowDownloadMenu(true)}
-                      className="w-full px-4 py-3 text-center font-mono text-[11px] font-bold uppercase tracking-widest text-zinc-500 transition hover:text-rose-400"
-                    >
-                      + {(game.downloadSources || []).length - 6} more mirrors
-                    </button>
+                      )}
+                    </>
+                  ) : (
+                    <p className="px-4 py-3 text-xs text-zinc-500">
+                      No {downloadTab === "patches" ? "patches or fixes" : downloadTab === "extras" ? "extras" : "mirrors"} listed for this title.
+                    </p>
                   )}
                 </div>
               )}
@@ -1132,8 +1166,8 @@ export const GameDetailView: React.FC = () => {
 
               {(() => {
                 const sources =
-                  game.downloadSources && game.downloadSources.length > 0
-                    ? game.downloadSources
+                  activeSources && activeSources.length > 0
+                    ? activeSources
                     : [{ name: "Main Magnet", url: game.magnetLink, type: "torrent", repacker: "Unknown", fileSize: game.fileSize }];
 
                 const grouped: Record<string, typeof sources> = {};
@@ -1146,6 +1180,31 @@ export const GameDetailView: React.FC = () => {
 
                 return (
                   <div className="max-h-[380px] space-y-4 overflow-y-auto pr-1">
+                    {(hasPatchesTab || hasGoodiesTab) && (
+                      <div className="flex gap-1 rounded-xl bg-white/[0.03] p-1 ring-1 ring-white/5">
+                        {(
+                          [
+                            ["mirrors", "Mirrors", sourcePartitions.mirrors.length],
+                            ["patches", "Patches & Fixes", sourcePartitions.patches.length],
+                            ["extras", "Extras", sourcePartitions.goodies.length],
+                          ] as const
+                        )
+                          .filter(([key, , count]) => count > 0 || key === "mirrors")
+                          .map(([key, label, count]) => (
+                            <button
+                              key={key}
+                              onClick={() => setDownloadTab(key)}
+                              className={`flex-1 cursor-pointer rounded-lg px-2.5 py-1.5 font-mono text-[9px] font-bold uppercase tracking-widest transition ${
+                                downloadTab === key
+                                  ? "bg-rose-500/15 text-rose-400 ring-1 ring-rose-500/25"
+                                  : "text-zinc-500 hover:bg-white/[0.04] hover:text-zinc-300"
+                              }`}
+                            >
+                              {label} {count > 0 && <span className="ml-1 tabular-nums text-zinc-500">{count}</span>}
+                            </button>
+                          ))}
+                      </div>
+                    )}
                     {repackers.map((repacker) => (
                       <div key={repacker}>
                         <div className="mb-2 flex items-center gap-2">
