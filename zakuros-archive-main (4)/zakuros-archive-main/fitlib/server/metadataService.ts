@@ -406,7 +406,7 @@ function gogScreenshotUrl(screen: any): string {
 }
 
 export async function fetchGogDetails(gogId: string): Promise<Partial<GameMetadataExtended>> {
-  const url = `https://api.gog.com/products/${encodeURIComponent(gogId)}?expand=description,screenshots`;
+  const url = `https://api.gog.com/products/${encodeURIComponent(gogId)}?expand=description,screenshots,images`;
   try {
     const response = await fetch(url, {
       headers: { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) ZakurosArchive/1.0" },
@@ -423,12 +423,15 @@ export async function fetchGogDetails(gogId: string): Promise<Partial<GameMetada
       .filter(Boolean);
     const full = cleanSteamDescription(data.description && data.description.full);
     const releaseDateRaw = typeof data.release_date === "string" ? data.release_date : "";
+    // Product "hero" art (protocol-relative like //images-1.gog-statics.com/...).
+    const bg = data.images && (data.images.background || data.images.logo);
     return {
       title: String(data.title || ""),
       summary: (data.description && data.description.lead) || full || "",
       rating: undefined,
       releaseDate: releaseDateRaw ? new Date(releaseDateRaw).toISOString().slice(0, 10) : undefined,
       screenshots,
+      coverImage: bg ? `https:${bg}` : undefined,
       linuxNative: !!(data.content_system_compatibility && data.content_system_compatibility.linux),
     };
   } catch (error: any) {
@@ -552,7 +555,7 @@ export async function getGameMetadata(
       genres: steamData.genres || finalMetadata.genres,
       trailers: steamData.trailers || finalMetadata.trailers,
       steamDetails: steamData.steamDetails,
-      coverImage: steamData.coverImage || igdbData.coverImage || finalMetadata.coverImage,
+      coverImage: steamData.coverImage || igdbData.coverImage || gogData.coverImage || finalMetadata.coverImage,
       igdbDetails: igdbData.igdbDetails,
       _ratingReal: steamData.rating !== undefined || igdbData.rating !== undefined,
       linux: { native: linuxNative, ...(proton || {}) },

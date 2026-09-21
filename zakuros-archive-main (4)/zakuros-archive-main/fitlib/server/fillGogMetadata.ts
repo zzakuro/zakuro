@@ -210,7 +210,7 @@ async function applyApi(g: Game): Promise<{ status: "ok" | "miss" | "transient";
     if (!g.screenshot) g.screenshot = data.screenshots[0];
     n++;
   }
-  return { status: n >= 0 ? "ok" : "ok", filled: n };
+  return { status: "ok", filled: n };
 }
 
 async function main() {
@@ -235,8 +235,8 @@ async function main() {
   const tried = loadTried();
   const isMissing = (g: Game) => !g.coverImage && !g.classic && !!g.title;
 
-  let targets = games.filter((g) => isMissing(g) && has(g.gogId) && !tried.has(g.id));
-  const total = games.filter((g) => isMissing(g) && has(g.gogId)).length;
+  let targets = games.filter((g) => isMissing(g) && (has(g.gogId) || has(g.gogUrl)) && !tried.has(g.id));
+  const total = games.filter((g) => isMissing(g) && (has(g.gogId) || has(g.gogUrl))).length;
   if (LIMIT) targets = targets.slice(0, LIMIT);
 
   console.log(`gog-tagged cover-less=${total} | this run=${targets.length} | already tried=${tried.size}`);
@@ -264,20 +264,18 @@ async function main() {
       bySlug.get(norm(slug.replace(/-/g, " "))) ||
       byTitle.get(norm(g.title || ""));
 
-    const before = n;
     if (rec) {
+      const before = n;
       n += applyDump(g, rec);
       if (n > before) offlineHit++;
     }
-    const stillMissingCover = !g.coverImage;
-    if (stillMissingCover) {
+
+    if (!g.coverImage) {
+      if (!g.gogId && rec) g.gogId = rec.gogId;
       const api = await applyApi(g);
-      fields += n;
       if (api.status === "ok") {
-        if (n > before) apiHit++;
-        n = 0; // count via fields below instead
-        fields += api.filled;
-        if (n !== 0) {} // noop to keep structure clear
+        if (api.filled > 0) apiHit++;
+        n += api.filled;
       } else if (api.status === "transient") {
         transient++;
         await sleep(2000);
@@ -285,18 +283,12 @@ async function main() {
       } else {
         miss++;
       }
-    } else {
-      fields += n;
     }
 
+    fields += n;
+    if (n > 0 && samples.length < 15) samples.push(`${String(g.title).slice(0, 40)} -> gogId ${gogId} (+${n})`);
     tried.add(g.id);
     done++;
-    if (samples.length < 20 /* per-direction logging */ || (offlineHit && fields > 0 && samples.length < 12)) {
-      // only meaningful after a hit
-    }
-    if (offlineHit + apiHit - (before === 0 && n > 0 ? 0 : 0) >= 0) {
-      // nothing
-    }
 
     if (done % 25 === 0) {
       console.log(
