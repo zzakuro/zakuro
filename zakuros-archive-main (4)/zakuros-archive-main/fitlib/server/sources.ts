@@ -779,7 +779,17 @@ export function stabilizeCatalog(games: Game[]): { games: Game[]; merged: number
     for (const c of clusters) processGroup(c);
   }
 
-  const out = games.filter((g) => !doomed.has(g));
+  // Build output: drop doomed rows AND aliased rows (the same object reference
+  // appearing more than once — the array holds one entry per title, so a
+  // repeated reference is the same game serialized twice; processGroup's
+  // `g === best` guard can't fold identical references, so we dedupe here).
+  const out: Game[] = [];
+  const outRefs = new Set<Game>();
+  for (const g of games) {
+    if (doomed.has(g) || outRefs.has(g)) continue;
+    outRefs.add(g);
+    out.push(g);
+  }
   merged = games.length - out.length;
 
   // 3) deterministic unique ids (idempotent: stable order + content-derived suffixes)
