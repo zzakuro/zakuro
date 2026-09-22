@@ -1684,13 +1684,44 @@ export async function syncSources(params: {
   let unchanged = 0;
   let newTitles: Game[] = [];
 
+  // Track rare dual-era titles (same normalized title in both the classic and
+  // the modern bucket) so each twin gets a distinct, stable id.
+  const dualEraNorms = new Set<string>();
+  {
+    const seenEra = new Map<string, Set<string>>();
+    for (const key of index.keys()) {
+      const era = eraByKey.get(key) ?? ERA_MODERN;
+      const norm = baseNormOf(key, era);
+      const s = seenEra.get(norm) ?? new Set<string>();
+      s.add(era);
+      seenEra.set(norm, s);
+    }
+    for (const [norm, eras] of seenEra) {
+      if (eras.size > 1) dualEraNorms.add(norm);
+    }
+  }
+  const existingClassicOfId = new Map<string, boolean>();
+  for (const game of catalog) existingClassicOfId.set(game.id, !!game.classic);
+
   for (const [key, merged] of index.entries()) {
+    const era = eraByKey.get(key) ?? ERA_MODERN;
     const repackers = Array.from(new Set(
       Array.from(merged.sources.values()).map((s) => s.repacker || "Unknown").filter(Boolean)
     ));
-    const rebuiltGame = buildGame(merged, repackers);
-
-    const existing = existingById.get(rebuiltGame.id);
+    const base = makeId(merged.cleanTitle);
+    // Dual-era twins share the same base title, so they must get different ids.
+    // The persisted game's classic flag decides which twin keeps the bare id
+    // (existing links stay pointing at that entry); the other gets a stable
+    // content-derived suffix.
+    let id = base;
+    if (dualEraNorms.has(baseNormOf(key, era)) && !merged.isClassic) {
+      const existing = existingById.get(base);
+      const bareEra = existing ? (existing.classic ? ERA_CLASSIC : ERA_MODERN) : ERA_MODERN;
+      if (era !== bareEra) id = `${base}-${HASH_BASE36(merged.cleanTitle || base)}`;
+    }
+    const rebuiltGame = buildGame(merged, repackers, id);
+    const allExisting = existingById.get(rebuiltGame.id);
+    const existing = allExisting && !!allExisting.classic === !!merged.isClassic ? allExisting : undefined;
     if (!existing) {
       newTitles.push(rebuiltGame);
       rebuilt.push(rebuiltGame);
