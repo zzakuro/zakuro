@@ -40,6 +40,9 @@ export interface SyncResult {
   };
 }
 
+const ERA_CLASSIC = "classic";
+const ERA_MODERN = "modern";
+
 interface ParsedEntry {
   rawTitle: string;
   cleanTitle: string;
@@ -1527,31 +1530,67 @@ export async function syncSources(params: {
 
   const catalog = [...params.getCatalog()];
 
+  // A title can be BOTH a retro console dump AND a modern PC release ("God of
+  // War" = 2005 PS2 + 2018 PC). The merge index is keyed by era so those two
+  // are kept apart: classic-category sources (Redump/No-Intro/RT PS/PSX ROMs)
+  // feed the classic bucket, repacker sources the modern bucket. A title with
+  // downloads in both buckets yields two separate catalog entries — the retro
+  // one stays `classic`, the modern one gets a Steam id/cover like any PC game.
+  const categoryOfRepacker = new Map<string, SourceConfig["category"]>();
+  for (const s of params.sources) categoryOfRepacker.set(s.name, s.category);
+  const eraOfCategory = (cat: string | undefined) =>
+    cat === "classic" ? ERA_CLASSIC : ERA_MODERN;
+  const eraOfRepacker = (repacker: string | undefined, defaultClassic: boolean) => {
+    if (!repacker) return defaultClassic ? ERA_CLASSIC : ERA_MODERN;
+    return eraOfCategory(categoryOfRepacker.get(repacker));
+  };
+  const eraKeyOf = (norm: string, era: string) => `${norm}::${era}`;
+  const baseNormOf = (key: string, era: string) => key.slice(0, key.length - 2 - era.length);
+
   // Seed the merge index with the existing catalog (preserves existing sources,
-  // e.g. from an older build). Key: normalizedTitle → merged blob.
+  // e.g. from an older build). Key: normalizedTitle + era → merged blob.
   const index = new Map<string, MergedKey>();
+  const eraByKey = new Map<string, string>();
+  const mkMerged = (era: string, game: Game): MergedKey => ({
+    cleanTitle: game.title || "",
+    sources: new Map<string, DownloadSource>(),
+    uploadDate: game.releaseDate || "",
+    uploadDateParsed: parseDateToMs(game.releaseDate || ""),
+    isClassic: era === ERA_CLASSIC,
+    hasSteamId: era === ERA_MODERN && typeof game.steamId === "number",
+    platforms: new Set(),
+    gogId: game.gogId,
+    gogUrl: game.gogUrl,
+    developer: game.developer,
+    genres: game.genres,
+    rating: game.rating,
+    releaseDate: game.releaseDate,
+  });
   for (const game of catalog) {
-    const key = normalizeForMatch(game.title || "");
-    if (!key) continue;
-    const sources = new Map<string, DownloadSource>();
+    const norm = normalizeForMatch(game.title || "");
+    if (!norm) continue;
+    const classicSrc: DownloadSource[] = [];
+    const modernSrc: DownloadSource[] = [];
     for (const s of game.downloadSources || []) {
-      if (s?.url) sources.set(s.url, s);
+      if (!s?.url) continue;
+      const era = eraOfRepacker(s.repacker, !!game.classic);
+      (era === ERA_CLASSIC ? classicSrc : modernSrc).push(s);
     }
-    index.set(key, {
-      cleanTitle: game.title || "",
-      sources,
-      uploadDate: game.releaseDate || "",
-      uploadDateParsed: parseDateToMs(game.releaseDate || ""),
-      isClassic: !!game.classic,
-      hasSteamId: typeof game.steamId === "number",
-      platforms: new Set(),
-      gogId: game.gogId,
-      gogUrl: game.gogUrl,
-      developer: game.developer,
-      genres: game.genres,
-      rating: game.rating,
-      releaseDate: game.releaseDate,
-    });
+    // Orphan row (no downloads): keep it in its declared era so it survives.
+    if (!classicSrc.length && !modernSrc.length) {
+      (game.classic ? classicSrc : modernSrc).push(...(game.downloadSources || []));
+    }
+    for (const [era, srcs] of [
+      [ERA_CLASSIC, classicSrc],
+      [ERA_MODERN, modernSrc],
+    ] as const) {
+      if (!srcs.length) continue;
+      const key = eraKeyOf(norm, era);
+      const merged = index.get(key) ?? mkMerged(era, game);
+      for (const s of srcs) merged.sources.set(s.url, s);
+      index.set(key, merged);
+      eraByKey.set(key, era);
+    }
   }
 
   // Track games that already exist (id → Game) so we can rebuild + compare.
@@ -1565,7 +1604,8 @@ export async function syncSources(params: {
       const entries = parseSourcePayload(payload, source.name);
       let addedHere = 0;
       for (const entry of entries) {
-        const merged = index.get(entry.normalizedTitle);
+        const era = eraOfCategory(source.category);
+        const merged = index.get(eraKeyOf(entry.normalizedTitle, era));
         if (merged) {
           for (const src of entry.downloads) {
             // Upsert by URL so a fresh parse (e.g. refreshed gog-games.json with
@@ -1613,7 +1653,8 @@ export async function syncSources(params: {
             rating: entry.rating,
             releaseDate: entry.releaseDate,
           };
-          index.set(entry.normalizedTitle, merged);
+          index.set(eraKeyOf(entry.normalizedTitle, era), merged);
+          eraByKey.set(eraKeyOf(entry.normalizedTitle, era), era);
           addedHere++;
         }
       }
