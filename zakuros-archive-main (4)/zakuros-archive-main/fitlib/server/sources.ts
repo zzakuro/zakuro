@@ -750,14 +750,17 @@ export function stabilizeCatalog(games: Game[]): { games: Game[]; merged: number
     }
   };
 
-  // 1) exact title duplicates (normalized key)
+  // 1) exact title duplicates (normalized key, era-aware: a retro console dump
+  //    and the modern PC release of the same name are DIFFERENT games and must
+  //    never be folded together)
   const byKey = new Map<string, Game[]>();
   for (const g of games) {
     const k = normalizeForMatch(g.title || "");
     if (!k) continue;
-    const arr = byKey.get(k) ?? [];
+    const era = g.classic ? ERA_CLASSIC : ERA_MODERN;
+    const arr = byKey.get(`${k}::${era}`) ?? [];
     arr.push(g);
-    byKey.set(k, arr);
+    byKey.set(`${k}::${era}`, arr);
   }
   for (const [, group] of byKey) processGroup(group);
 
@@ -915,7 +918,7 @@ export function mergeBilingualDuplicates(games: Game[]): number {
     if (g.classic || BILINGUAL_BUNDLE.test(g.title || "")) continue;
     const key = normalizeForMatch(latinSegment(g.title || ""));
     if (!keyLooksSubstantial(key)) continue;
-    const keeper = (byKey.get(key) || []).find((h) => !targetSet.has(h) && !doomed.has(h));
+    const keeper = (byKey.get(key) || []).find((h) => !targetSet.has(h) && !doomed.has(h) && !h.classic);
     if (!keeper) continue;
     if (
       typeof keeper.steamId === "number" &&
