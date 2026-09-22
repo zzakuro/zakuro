@@ -553,7 +553,7 @@ function inferExtraGenres(title: string, existing: string[]): string[] {
   return matchGenres(title, existing);
 }
 
-function buildGame(merged: MergedKey, repackers: string[]): Game {
+function buildGame(merged: MergedKey, repackers: string[], id?: string): Game {
   const sortedSources = Array.from(merged.sources.values()).sort(
     (a, b) => parseDateToMs(b.uploadDate || "") - parseDateToMs(a.uploadDate || "")
   );
@@ -569,7 +569,7 @@ function buildGame(merged: MergedKey, repackers: string[]): Game {
   const sourceGenres = (merged.genres || []).filter((g) => !baseGenres.includes(g));
 
   return {
-    id: makeId(merged.cleanTitle),
+    id: id || makeId(merged.cleanTitle),
     title: merged.cleanTitle,
     developer: merged.developer || "",
     publisher: repackers.join(", "),
