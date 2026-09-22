@@ -1710,13 +1710,13 @@ export async function syncSources(params: {
     ));
     const base = makeId(merged.cleanTitle);
     // Dual-era twins share the same base title, so they must get different ids.
-    // The persisted game's classic flag decides which twin keeps the bare id
-    // (existing links stay pointing at that entry); the other gets a stable
-    // content-derived suffix.
+    // The era of the persisted game (if any) keeps the bare id so existing links
+    // keep pointing at that entry; the other twin gets a stable content-derived
+    // suffix. Generic new dual-era titles default the classic twin to the bare id.
     let id = base;
-    if (dualEraNorms.has(baseNormOf(key, era)) && !merged.isClassic) {
-      const existing = existingById.get(base);
-      const bareEra = existing ? (existing.classic ? ERA_CLASSIC : ERA_MODERN) : ERA_MODERN;
+    if (dualEraNorms.has(baseNormOf(key, era))) {
+      const prior = existingById.get(base);
+      const bareEra = prior ? (prior.classic ? ERA_CLASSIC : ERA_MODERN) : ERA_CLASSIC;
       if (era !== bareEra) id = `${base}-${HASH_BASE36(merged.cleanTitle || base)}`;
     }
     const rebuiltGame = buildGame(merged, repackers, id);
