@@ -797,8 +797,13 @@ async function startServer() {
       // IGDB is skipped for Steam-tagged games that already carry a cover: Steam
       // supplies every textual field and the cover is derived from the appid, so
       // consulting IGDB there would only burn quota to re-prove a known title.
-      const skipIgdb = Boolean(game.steamId && game.coverImage && !(game.coverImage.includes("placeholder") || game.coverImage.includes("coming-soon")));
-      const metadata = await getGameMetadata(game.id, game.title, game.steamId, game.gogId, skipIgdb);
+      // Retro rows (classic PS2/SNES-era) go to IGDB in "retro" mode so an
+      // exact-title tie picks the original-era entry, never a same-named modern
+      // sequel (e.g. "God of War" PS2 vs the 2018 Norse game).
+      const rowEra = game.classic ? "retro" : classifyEra(game).era;
+      const preferRetro = rowEra === "retro";
+      const skipIgdb = Boolean(!preferRetro && game.steamId && game.coverImage && !(game.coverImage.includes("placeholder") || game.coverImage.includes("coming-soon")));
+      const metadata = await getGameMetadata(game.id, game.title, game.steamId, game.gogId, { skipIgdb, preferRetro });
 
       // Persist newly-pulled metadata back into the catalog so a single visit
       // makes the enrichment permanent instead of re-fetching it forever.

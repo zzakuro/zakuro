@@ -1,6 +1,6 @@
 import Redis from "ioredis";
 import { GameMetadataExtended, GameSystemRequirements, LinuxSupportInfo, PlatformRequirements } from "../src/types";
-import { igdbBestMatch, normalizeSearchTitle } from "./igdbMatch";
+import { normalizeSearchTitle, titleMatchScore } from "./igdbMatch";
 
 // In-Memory Fallback Cache if Redis is unavailable
 const memoryCache = new Map<string, { value: GameMetadataExtended; expires: number }>();
@@ -335,7 +335,7 @@ async function getIGDBAccessToken(): Promise<string | null> {
   }
 }
 
-export async function fetchIGDBDetails(title: string): Promise<Partial<GameMetadataExtended>> {
+export async function fetchIGDBDetails(title: string, preferRetro = false): Promise<Partial<GameMetadataExtended>> {
   const clientId = process.env.IGDB_CLIENT_ID;
   const token = await getIGDBAccessToken();
 
@@ -348,7 +348,7 @@ export async function fetchIGDBDetails(title: string): Promise<Partial<GameMetad
   // trip per normalized title for the process lifetime so re-visits to the same
   // game don't burn quota; a null entry means "no strong IGDB match, don't ask
   // again this boot".
-  const key = normalizeSearchTitle(title);
+  const key = `${preferRetro ? "r:" : "m:"}${normalizeSearchTitle(title)}`;
   const cached = igdbCache.get(key);
   if (cached) {
     if (Date.now() - cached.fetchedAt < IGDB_CACHE_TTL_MS) return cached.value || {};
@@ -367,7 +367,7 @@ export async function fetchIGDBDetails(title: string): Promise<Partial<GameMetad
         "Authorization": `Bearer ${token}`,
         "Content-Type": "text/plain",
       },
-      body: `search "${title}"; fields name, summary, storyline, rating, release_dates.human, cover.url, screenshots.url; limit 8;`,
+      body: `search "${title}"; fields name, summary, storyline, rating, first_release_date, cover.url, screenshots.url; limit 8;`,
     });
 
     if (response.status === 429) {
@@ -384,11 +384,34 @@ export async function fetchIGDBDetails(title: string): Promise<Partial<GameMetad
     }
 
     // IGDB `search` is relevance-ranked and frequently returns the wrong game
-    // for a repack-style title. Accept only a hit the strict title matcher
-    // confirms; a wrong cover/summary is worse than leaving the field blank.
-    const best = igdbBestMatch(title, games);
-    if (!best) return recordCache(null);
-    const game = best as any;
+    // for a repack-style title (or a same-named modern sequel for a retro
+    // entry, e.g. "God of War" PS2 vs the 2018 Norse game). Accept only a hit
+    // the strict title matcher confirms AND, among exact-title ties, prefer the
+    // candidate whose release era matches the catalog row (retro → oldest,
+    // modern → newest). A wrong cover/summary is worse than leaving the field
+    // blank.
+    const scored = (games || [])
+      .map((g) => ({ g, t: (g && g.name) || "" }))
+      .map((x) => ({ x, score: titleMatchScore(title, x.t) }))
+      .filter((s) => s.score >= 0.75);
+    if (scored.length === 0) return recordCache(null);
+    const yearOf = (g: any): number | undefined => {
+      const ts = g && g.first_release_date;
+      return typeof ts === "number" && ts > 0 ? new Date(ts * 1000).getUTCFullYear() : undefined;
+    };
+    let best = scored[0];
+    for (const s of scored) {
+      if (s.score > best.score) {
+        best = s;
+        continue;
+      }
+      if (s.score < best.score) continue;
+      const cY = yearOf(s.x.g);
+      const bY = yearOf(best.x.g);
+      if (cY === undefined || bY === undefined) continue;
+      if (preferRetro ? cY < bY : cY > bY) best = s;
+    }
+    const game = best.x.g;
     const rating = game.rating ? Math.round(game.rating) : undefined;
     const storyline = game.storyline || "";
     let coverImage: string | undefined;
@@ -477,7 +500,7 @@ export async function getGameMetadata(
   title: string,
   steamId?: number,
   gogId?: string,
-  skipIgdb = false
+  opts: { skipIgdb?: boolean; preferRetro?: boolean } = {}
 ): Promise<GameMetadataExtended> {
   const cacheKey = `game:metadata:${gameId}`;
   // Metadata is stable enough that a day-old cached envelope beats re-hitting
@@ -546,8 +569,8 @@ export async function getGameMetadata(
     // supplies every field below except a cover, and verified Steam covers are
     // derived straight from the appid). Skipping it for fully-covered Steam
     // games cuts the largest quotastic backend pressure in the hot path.
-    if (process.env.IGDB_CLIENT_ID && !skipIgdb) {
-      fetchers.push(fetchIGDBDetails(title).then(res => { igdbData = res; }).catch((e) => {
+    if (process.env.IGDB_CLIENT_ID && !opts.skipIgdb) {
+      fetchers.push(fetchIGDBDetails(title, opts.preferRetro).then(res => { igdbData = res; }).catch((e) => {
         console.warn(`[IGDB API Error] ${title}:`, e.message);
         fetchFailed = fetchFailed || e;
       }));
@@ -559,9 +582,13 @@ export async function getGameMetadata(
     const hasIgdbMeta = !!(igdbData.summary || igdbData.developer || (igdbData.screenshots && igdbData.screenshots.length > 0) || igdbData.coverImage);
 
     // GOG is a strict last resort — used only when neither Steam nor IGDB
-    // produced usable metadata (missing/dead appid, API down, rate-limited).
+    // produced usable metadata (missing/dead appid, API down, rate-limited) —
+    // and never for retro rows: GOG products are modern-PC releases, so a
+    // gogId on a retro row is a same-name mapping artifact (e.g. "God of War"
+    // PS2 carrying the 2018 product id), and GOG data would re-leak modern
+    // metadata into the retro entry.
     let gogData: Partial<GameMetadataExtended> = {};
-    if (gogId && !hasSteamMeta && !hasIgdbMeta) {
+    if (gogId && !hasSteamMeta && !hasIgdbMeta && !opts.preferRetro) {
       console.log(`[GOG Fallback] Steam/IGDB produced nothing for "${title}", trying gogId ${gogId}...`);
       try {
         gogData = await fetchGogDetails(gogId);
