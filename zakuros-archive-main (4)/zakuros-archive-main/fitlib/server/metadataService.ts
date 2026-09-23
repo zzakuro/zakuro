@@ -1,5 +1,6 @@
 import Redis from "ioredis";
 import { GameMetadataExtended, GameSystemRequirements, LinuxSupportInfo, PlatformRequirements } from "../src/types";
+import { igdbBestMatch, normalizeSearchTitle } from "./igdbMatch";
 
 // In-Memory Fallback Cache if Redis is unavailable
 const memoryCache = new Map<string, { value: GameMetadataExtended; expires: number }>();
