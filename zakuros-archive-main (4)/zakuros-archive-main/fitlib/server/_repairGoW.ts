@@ -28,7 +28,11 @@ async function igdbSearch(title: string, reretro: boolean): Promise<any> {
     headers: { "Client-ID": id, Authorization: `Bearer ${tok.access_token}`, "Content-Type": "text/plain" },
     body: `search "${title}"; fields name, summary, rating, first_release_date, cover.url; limit 8;`,
   });
-  const games = (await res.json() as any[]).map((g) => ({
+  const raw = await res.json();
+  if (!Array.isArray(raw)) {
+    console.log("IGDB non-array response status", res.status, ":", JSON.stringify(raw).slice(0, 300));
+  }
+  const games = ((raw as any[] | undefined) || []).map((g) => ({
     ...g,
     year: typeof g.first_release_date === "number" ? new Date(g.first_release_date * 1000).getUTCFullYear() : undefined,
   }));
