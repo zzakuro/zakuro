@@ -1126,7 +1126,11 @@ async function startServer() {
   app.listen(PORT, "0.0.0.0", () => {
     console.log(`[Server] Zakuro's Archive App running on http://0.0.0.0:${PORT}`);
     console.log(`[Sync] Background source sync scheduled every ${SOURCE_SYNC_INTERVAL_MS / 60000} minutes.`);
-    void runSourceSync();
+    if (process.env.SKIP_BOOT_SYNC === "1") {
+      console.log("[Sync] SKIP_BOOT_SYNC=1 — skipping boot-time source sync.");
+    } else {
+      void runSourceSync();
+    }
     setInterval(() => {
       void runSourceSync();
     }, SOURCE_SYNC_INTERVAL_MS);
