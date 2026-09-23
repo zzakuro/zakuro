@@ -174,6 +174,18 @@ export const GameCard: React.FC<GameCardProps> = ({ game, badge }) => {
           </span>
         )}
 
+        {/* Era chip: Retro vs New + platform, so same-named titles read apart */}
+        <span
+          className={`absolute left-2 top-2 rounded-md px-1.5 py-0.5 text-[9px] font-black uppercase tracking-widest ring-1 backdrop-blur-sm ${
+            game.classic
+              ? "bg-amber-950/85 text-amber-300 ring-amber-500/40"
+              : "bg-sky-950/85 text-sky-300 ring-sky-500/40"
+          }`}
+        >
+          {game.classic ? "Retro" : "New"}
+          {game.eraPlatform ? ` · ${game.eraPlatform}` : ""}
+        </span>
+
         {/* Size chip */}
         {game.fileSize && (
           <div className="absolute bottom-2 right-2 rounded-md bg-black/75 px-1.5 py-0.5 font-mono text-[10px] font-bold text-zinc-200 ring-1 ring-white/10 backdrop-blur-sm">
