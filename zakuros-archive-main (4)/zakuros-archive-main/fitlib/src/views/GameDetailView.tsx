@@ -980,20 +980,22 @@ export const GameDetailView: React.FC = () => {
               >
                 <ExternalLink className="h-4 w-4 text-rose-400" />
               </ActionBtn>
-              <ActionBtn
-                active={false}
-                activeCls=""
-                onClick={() => {
-                  const gogUrl = game.gogUrl
-                    ? game.gogUrl
-                    : `https://www.gog.com/en/games?search=${encodeURIComponent(game.title)}`;
-                  window.open(gogUrl, "_blank", "noopener,noreferrer");
-                  showToast(`Opening GOG page for ${game.title}...`);
-                }}
-                label="GOG"
-              >
-                <ExternalLink className="h-4 w-4 text-emerald-400" />
-              </ActionBtn>
+              {game.gogId && (
+                <ActionBtn
+                  active={false}
+                  activeCls=""
+                  onClick={() => {
+                    const gogUrl = game.gogUrl
+                      ? game.gogUrl
+                      : `https://www.gog.com/en/games?search=${encodeURIComponent(game.title)}`;
+                    window.open(gogUrl, "_blank", "noopener,noreferrer");
+                    showToast(`Opening GOG page for ${game.title}...`);
+                  }}
+                  label="GOG"
+                >
+                  <ExternalLink className="h-4 w-4 text-emerald-400" />
+                </ActionBtn>
+              )}
             </div>
 
             <div className="flex gap-1.5 rounded-2xl border border-amber-500/20 bg-amber-500/[0.06] p-4 text-[11px] leading-relaxed text-amber-500/90">

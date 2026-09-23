@@ -1,6 +1,7 @@
 // Fill GOG-derived metadata (covers, genres, rating, developer, release date,
-// summary, screenshots) for catalog games that carry a gogId/gogUrl but still
-// lack artwork. Two tiers:
+// summary, screenshots) for catalog games that carry a gogId but still lack
+// artwork. Games without a gogId are never matched, enriched, or assigned one.
+// Two tiers:
 //   1. Offline — the gog-games.to SQL dump (repo-root/gog-games.to-database.sql)
 //      maps its 60-hex asset hashes straight to https://images.gog.com/{hash}.png
 //      with zero API traffic, and throws in genres/rating/release-date for free.
@@ -239,8 +240,8 @@ async function main() {
   const tried = loadTried();
   const isMissing = (g: Game) => !g.coverImage && !g.classic && !!g.title;
 
-  let targets = games.filter((g) => isMissing(g) && (has(g.gogId) || has(g.gogUrl)) && !tried.has(g.id));
-  const total = games.filter((g) => isMissing(g) && (has(g.gogId) || has(g.gogUrl))).length;
+  let targets = games.filter((g) => isMissing(g) && has(g.gogId) && !tried.has(g.id));
+  const total = games.filter((g) => isMissing(g) && has(g.gogId)).length;
   if (LIMIT) targets = targets.slice(0, LIMIT);
 
   console.log(`gog-tagged cover-less=${total} | this run=${targets.length} | already tried=${tried.size}`);
@@ -275,7 +276,6 @@ async function main() {
     }
 
     if (!g.coverImage) {
-      if (!g.gogId && rec) g.gogId = rec.gogId;
       const api = await applyApi(g);
       if (api.status === "ok") {
         if (api.filled > 0) apiHit++;
