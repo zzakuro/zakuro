@@ -84,9 +84,9 @@ const SearchOverlay: React.FC<{ open: boolean; onClose: () => void }> = ({ open,
     return games
       .filter(
         (g) =>
-          g.title.toLowerCase().includes(q) ||
-          g.developer.toLowerCase().includes(q) ||
-          g.genres.some((x) => x.toLowerCase().includes(q))
+          (g.title || "").toLowerCase().includes(q) ||
+          (g.developer || "").toLowerCase().includes(q) ||
+          (g.genres || []).some((x) => x.toLowerCase().includes(q))
       )
       .slice(0, 8);
   }, [query, games, serverBrowse, serverResults, showNSFW]);

@@ -189,7 +189,7 @@ export const BrowseView: React.FC = () => {
     if (serverBrowse && facets) return facets.years;
     return Array.from(new Set(
       games
-        .map((g) => g.releaseDate.match(/(19|20)\d{2}/)?.[0])
+        .map((g) => (g.releaseDate || "").match(/(19|20)\d{2}/)?.[0])
         .filter((y): y is string => !!y)
     )).sort((a, b) => Number(b) - Number(a));
   }, [games, serverBrowse, facets]);
@@ -210,12 +210,12 @@ export const BrowseView: React.FC = () => {
   const filteredGames = useMemo(() => games.filter((game) => {
     const q = searchQuery.toLowerCase();
     const matchesSearch = searchQuery
-      ? game.title.toLowerCase().includes(q) ||
-        game.developer.toLowerCase().includes(q) ||
-        game.genres.some((g) => g.toLowerCase().includes(q))
+      ? (game.title || "").toLowerCase().includes(q) ||
+        (game.developer || "").toLowerCase().includes(q) ||
+        (game.genres || []).some((g) => g.toLowerCase().includes(q))
       : true;
     const matchesGenre = selectedGenre
-      ? game.genres.some((g) => g.toLowerCase() === selectedGenre.toLowerCase())
+      ? (game.genres || []).some((g) => g.toLowerCase() === selectedGenre.toLowerCase())
       : true;
     const matchesDeveloper = selectedDeveloper ? game.developer === selectedDeveloper : true;
     const matchesYear = selectedYear

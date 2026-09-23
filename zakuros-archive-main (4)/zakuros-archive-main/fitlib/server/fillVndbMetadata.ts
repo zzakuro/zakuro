@@ -30,10 +30,13 @@ const srcNames = (g: Game) =>
   (g.downloadSources || []).map((s) => s.repacker || s.name || "").filter(Boolean);
 const isEro = (g: Game) => srcNames(g).some((n) => /erotorrent/i.test(n));
 const isNsfw = (g: Game) => (g.genres || []).some((x) => NSFW_GENRE.test(x));
+const isVN = (g: Game) => (g.genres || []).some((x) => /visual novel/i.test(x));
 
-// Only titles no Steam/IGDB-derived data can reach, and only adult/doujin ones.
+// Adult / doujin / visual-novel rows no Steam/IGDB/GOG pass can reach, that
+// still miss a summary or a cover — VNDB is their canonical source.
 const isTarget = (g: Game) =>
-  !g.steamId && !g.coverImage && !!g.title && (isEro(g) || isNsfw(g));
+  !g.steamId && !!g.title && (isEro(g) || isNsfw(g) || isVN(g)) &&
+  (!g.coverImage || !g.summary || summaryIsPlaceholder(g.summary));
 
 let gamesRef: Game[] = [];
 function persist(): void {

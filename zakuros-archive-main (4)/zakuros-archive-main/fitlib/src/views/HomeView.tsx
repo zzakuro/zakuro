@@ -135,7 +135,7 @@ export const HomeView: React.FC = () => {
     const key = (g: Game) =>
       typeof g.steamId === "number"
         ? `steam:${g.steamId}`
-        : `title:${g.title.toLowerCase().replace(/[^a-z0-9]+/g, "").trim()}`;
+        : `title:${(g.title || "").toLowerCase().replace(/[^a-z0-9]+/g, "").trim()}`;
     const score = (g: Game) =>
       (g.rating || 0) +
       (g.sourceCount ?? g.downloadSources?.length ?? 0) * 0.01 +

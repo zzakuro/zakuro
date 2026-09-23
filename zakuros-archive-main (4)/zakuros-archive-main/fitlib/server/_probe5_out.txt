@@ -1,0 +1,98 @@
+=== A) modern+steamId, placeholder summary: first 25 ===
+    1867040 | !Ω Factorial Omega: My Dystopian Robot Girlfriend | cov=true date=31 окт. 20
+    2158440 | 0 A.D. (2010, RTS) (Alpha 26: Zhuangzi | cov=true date=2023-10-13
+    2166080 | 100 Rooms | cov=true date=2024-03-25
+    2728070 | 171 Game | cov=true date=2025-07-02
+    1158590 | 30km survival zone: Chernobyl | cov=true date=2019-12-03
+    4571460 | 70s-style Robot Anime Geppy-X | cov=true date=2026-08-07
+    3916440 | 771 (2026, Horror | cov=true date=2026-09-18
+    1136080 | 8 Eyes | cov=true date=1988-09-26
+    370300 | 8-Bit Adventures 1: The Forgotten Journey Remastered Edition | cov=true date=2015-03-30
+    287860 | 8-Bit Commando | cov=true date=2021-12-15
+    1147360 | A Boy and His Blob Retro Collection | cov=true date=2024-01-12
+    2810730 | A Building Full of Cats 2 | cov=true date=2025-06-15
+    515010 | A Duel Hand Disaster Trackher | cov=true date=2024-09-25
+    2756390 | A Fascinating Story | cov=true date=2024-09-25
+    2736210 | A fascinating story Wedding Night | cov=true date=2024-03-25
+    1914740 | A HERO AND A GARDEN | cov=true date=2022-05-04
+    202050 | A Kingdom For Keflings (NinjaBee | cov=true date=2010-03-28
+    766540 | A Kiss For The Petals - Maidens of Michael | cov=true date=2024-02-27
+    397270 | A Kiss For The Petals - Remembering How We Met | cov=true date=2015-09-25
+    3305540 | A Night Duty | cov=true date=2024-11-24
+    2610090 | A Park Full of Cats | cov=true date=2024-09-08
+    3355100 | A Planet Full of Cats (2026, Quest | cov=true date=2026-04-09
+    3391740 | A Planet of Mine MasterMine Edition (2025, Simulation | cov=true date=2025-12-05
+    1425800 | A Tale of Synapse: The Chaos Theories | cov=true date=2022-04-24
+    3700370 | A Tragedy in Elvish | cov=true date=2026-04-20
+total: 2429
+
+=== F) most-shared long summaries (identical text, >=5 rows) ===
+  [x65] Available via: Rutracker (all categories), Rutracker Linux, Rutracker Linux Native
+      → A Summer Story
+      → AstroMenace
+      → Ben Jordan: Paranormal Investigator
+  [x11] Путь героя - масштабная мультиплеерная RPG-тайкун игра в уникальной вселенной, где каждый игрок строит свой пу
+      → 2000 лучших игр
+      → Авиасимуляторы 2000
+      → Бизнес игры 2000
+  [x10] Available via: Rutracker (all categories), Rutor, Rutracker Linux, Rutracker Linux Native
+      → Aliens Versus Predator
+      → Blood
+      → Dyson
+  [x8] Available via: Rutracker (all categories), Rutracker Linux, Rutracker Linux Native, Rutor
+      → AR-K: Episode 1
+      → Awesomenauts
+      → Critical Strike
+  [x8] The Forgotten Realm Archives - Collection Two brings a healthy mix of “Gold Box” and nostalgia goodness to you
+      → Curse of the Azure Bonds
+      → Forgotten Realms - Unlimited Adventures
+      → Gateway to the Savage Frontier
+  [x8] Eight titles featuring the gameplay you know and love from Heroes of Might and Magic III. Eight chapters that 
+      → Heroes Chronicles - Clash of the Dragons
+      → Heroes Chronicles - Conquest of the Underworld
+      → Heroes Chronicles - Masters of the Elements
+  [x6] You’re on the threshold of a whole new experience, for ahead of you is the extraordinary anthology of the Grea
+      → Beyond Zork - The Coconut of Quendor
+      → Planetfall
+      → Zork - The Great Underground Empire
+  [x6] From the deepest dungeons to the intrigues of the royal court, lead a band of adventurers on a dangerous journ
+      → Might and Magic - Swords of Xeen
+      → Might and Magic 1 - Book I
+      → Might and Magic 2 - Gates to Another World
+
+=== B) modern+steamId, no date ===
+    371550 | A Knight's Tale
+    790560 | A.I.D.A
+    1605010 | Adorable Witch
+    2016370 | Adorable Witch 4: Lust
+    2271980 | Adorable Witch5: Lingering
+    2862430 | Brainwashing with Tentacles R
+    421030 | Catch Me
+    1399370 | Cute Honey 2
+    1543080 | Cute Honey 3
+    958260 | DEAD OR ALIVE Xtreme Venus Vacation
+    749920 | Eternal Dread
+    2818410 | Factory Tower
+    1967320 | Fairy Biography
+    2172510 | Fairy Biography2: Confidante
+    2387590 | Fairy Biography4: Affair
+    1549930 | Fantasy 5D: An Erotic Quest
+    699550 | Forest Guardian
+    1076520 | Give an Imp a Chance
+    2317430 | Golden Legend～Harald Quest～
+    1778320 | Harem of Nurses
+    1319780 | Holy Sisters
+    2206150 | Hot And Lovely ：Charm
+    2403270 | Hot And Lovely ：Violet
+    2078120 | Hot And Lovely 5
+    1742180 | Idol Project: NTR
+    2497280 | Joy Life
+    3172200 | Lust lady friends
+    2627460 | Magical Monstergirls Academy
+    2355050 | Save District 3
+    921980 | Save The Girl
+    1750160 | Sexaroid Assembly
+    3190460 | Sinful Vampires
+    1717060 | Space Detective Sara
+    2332660 | Sweet Beach Holidays
+    1607280 | YUME 2: Sleepless Night

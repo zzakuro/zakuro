@@ -70,7 +70,7 @@ export const SeriesDetailView: React.FC = () => {
     const filtered = q
       ? list.filter(
           (g) =>
-            g.title.toLowerCase().includes(q) ||
+            (g.title || "").toLowerCase().includes(q) ||
             (g.developer || "").toLowerCase().includes(q) ||
             (g.genres || []).some((x) => x.toLowerCase().includes(q))
         )

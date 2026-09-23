@@ -326,10 +326,10 @@ const SUMMARY_CARD_CAP = 220;
 function toCardGame(g: Game) {
   return {
     id: g.id,
-    title: g.title,
-    developer: g.developer,
-    publisher: g.publisher,
-    genres: g.genres,
+    title: g.title || "",
+    developer: g.developer || "",
+    publisher: g.publisher || "",
+    genres: Array.isArray(g.genres) ? g.genres : [],
     releaseDate: g.releaseDate,
     rating: g.rating,
     fileSize: g.fileSize,

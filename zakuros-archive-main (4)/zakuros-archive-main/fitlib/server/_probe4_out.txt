@@ -1,0 +1,45 @@
+A) modern+steamId rows with placeholder/missing summary: 2429
+B) modern+steamId rows with no release date: 35
+C) junk/unparseable dates total: 2568
+    !Ω Factorial Omega: My Dystopian Robot Girlfriend | 31 окт. 20
+    #Lucia, a backstage girl, set! | 23 дек. 20
+    10 days I want to have sex with my favorite mom! | 2 сен. 202
+    1room -Runaway Girl | 10 авг. 20
+    2000 лучших игр | To be announced
+    30 Days of Work | 13 апр. 20
+    3D Girlz | 9 апр. 201
+    3DXChat | Coming soon
+    40 Years A Virgin | 22 дек. 20
+    4P Ecchi VR On Your Back | 17 янв. 20
+    7 Sins | To be announced
+    9-nine-:Episode 1 | 1 фев. 201
+    9-nine-:Episode 2 | 17 авг. 20
+    9-nine-:Episode 3 | 1 сен. 202
+    90 Seconds Slave | v0.8.3
+    A Camp with Mom Extend | 1.0 Extend
+    A Certain Shop in the Capital | 24 окт. 20
+    A Clockwork Ley-Line: The Borderline of Dusk | 27 июл. 20
+    A Family Venture | 22 окт. 20
+    A Father's Sins | Ch. 7 Eng
+    A Fortnight at Frenni Fazclaire's | Coming soon
+    A game where you defeat the strongest princess knigh | 16 мар. 20
+    A Happy Marriage | 1.13
+    A Home in the Desert | 17 июл. 20
+D) canonical-title groups with >1 row: 814
+    "102 Dalmatians: Puppies to the Rescu" -> C·102 Dalmatians: Puppies to t | M·102 Dalmatians: Puppies to t
+    "25 To Life" -> C·25 To Life | M·25 To Life
+    "40 Winks" -> C·40 Winks | M·40 Winks
+    "7 Sins" -> C·7 Sins | M·7 Sins
+    "7 Sins (Germany" -> C·7 Sins (Germany | M·7 Sins (Germany
+    "7 Wonders of the Ancient World" -> C·7 Wonders of the Ancient Wor | M·7 Wonders of the Ancient Wor
+    "Ace Lightning" -> C·Ace Lightning | M·Ace Lightning
+    "Age of Empires II: The Age of Kings" -> C·Age of Empires II: The Age o | M·Age of Empires II: The Age o
+    "Agent Hugo: Roborumble" -> C·Agent Hugo: Roborumble | M·Agent Hugo: Roborumble
+    "Airborne Troops: Countdown to D-Day" -> C·Airborne Troops: Countdown t | M·Airborne Troops: Countdown t
+    "Alias" -> C·Alias | M·Alias
+    "Alien Trilogy" -> C·Alien Trilogy | M·Alien Trilogy
+    "Alone in the Dark" -> C·Alone in the Dark | M·Alone in the Dark
+    "Alone in the Dark: The New Nightmare" -> C·Alone in the Dark: The New N | M·Alone in the Dark: The New N
+    "American Chopper 2: Full Throttle" -> C·American Chopper 2: Full Thr | M·American Chopper 2: Full Thr
+E) classic total 36988 · classic no date 16375
+F) rows sharing one identical long summary with >=5 others: 132
