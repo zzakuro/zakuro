@@ -704,6 +704,7 @@ export function roughTitleKey(title: string): string {
     .normalize("NFKD")
     .replace(/[\u0300-\u036f]/g, "")
     .replace(/['’‘`]/g, "") // possessive apostrophes must not split "hero's" → "hero s"
+    .replace(/([a-z])[.:&\u2252](?=[a-z])/gi, "$1") // "Q.U.B.E." → "qube", "Re:Fresh" → "refresh", "s&box" → "sbox"
     .replace(/[^a-z0-9\s]/g, " ")
     .replace(
       /\b(repack|repacks|fitgirl|dodi|xatab|codex|elamigos|steamrip|onlinefix|gog|tenoke|rune|scene|build|updated|multi\d*|multilang|v\d[\d.]*|goty|deluxe|edition|definitive|complete|ultimate|remastered|remake|collector|collectors)\b/g,
