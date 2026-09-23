@@ -38,12 +38,17 @@ export function normalizedReleaseDate(d: string | undefined): string | undefined
   return normalizeSteamDate(d);
 }
 
-// A Steam appid means a native PC release, so the game is not a ROM/emulated
-// "classic". The console-dump sources (Redump, No-Intro, RT PS) match by title
-// and otherwise mis-tag same-named 7th-gen/PC titles (e.g. Alien: Isolation,
-// Batman: Arkham City) as classic. Idempotent.
+// A Steam appid, a 7th-gen+ console platform or a PC genre means the game is
+// not a ROM/emulated "classic" — the console-dump sources (Redump, No-Intro,
+// RT PS) match by title and otherwise mis-tag same-named 7th-gen/PC titles
+// (e.g. Alien: Isolation, Batman: Arkham City, Battlefield 3, Dishonored) as
+// classic. Genes: 7th-gen+ console or Steam/PC → modern; retro-generation
+// console (NES..PS2, PSP/DS, Dreamcast...) → stays classic; no evidence →
+// keep the existing label. Idempotent.
 export function normalizeClassicFlag(g: Game): boolean {
-  if (!g.classic || typeof g.steamId !== "number") return false;
+  if (!g.classic) return false;
+  const era = classifyEra(g).era;
+  if (era !== "modern") return false;
   g.classic = false;
   if (g.genres?.length) {
     const next = g.genres.filter((x) => x !== "Classic" && x !== "Retro");
