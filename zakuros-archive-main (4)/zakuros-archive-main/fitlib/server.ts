@@ -16,7 +16,7 @@ import {
 } from "./server/sources";
 import { Game } from "./src/types";
 import { buildSeriesCatalog, readCuratedCollections, SeriesSummary, SeriesGroup } from "./server/series";
-import { platformOfGame } from "./server/eraClassify";
+import { platformOfGame, classifyEra } from "./server/eraClassify";
 
 // Housed under data/ (not public/) so Vite's public-dir watcher doesn't force
 // a full browser page reload every time the debounced catalog write fires.
@@ -343,6 +343,7 @@ function toCardGame(g: Game) {
     popularityScore: g.popularityScore,
     linux: g.linux,
     classic: g.classic,
+    era: classifyEra(g).era,
     eraPlatform: platformOfGame(g, true),
     stats: g.stats,
     hasSummary: !!g.summary,

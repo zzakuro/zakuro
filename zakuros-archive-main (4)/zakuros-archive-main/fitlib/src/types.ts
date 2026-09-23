@@ -81,6 +81,7 @@ export interface Game {
   downloadSources?: DownloadSource[];
   trailers?: GameTrailer[];
   classic?: boolean; // retro/classic titles (e.g. PSX ROMs) — used by the Classic filter
+  era?: "retro" | "modern"; // era chip label on cards (from classifyEra)
   eraPlatform?: string; // era chip: platform label shown on cards (classifyEra)
 }
 
