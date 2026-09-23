@@ -99,8 +99,9 @@ async function main() {
   }
 
   const target = ps2Era[0];
+  console.log(`  raw cover.url (${target.cover?.url})`);
   const cover = target.cover?.url
-    ? ("https:" + target.cover.url)
+    ? target.cover.url
         .replace("//images.igdb.com/", "https://images.igdb.com/")
         .replace("t_thumb", "t_cover_big_2x")
     : "";
