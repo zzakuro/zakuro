@@ -258,6 +258,7 @@ export function normalizeForMatch(title: string): string {
     .toLowerCase()
     .normalize("NFKD")
     .replace(/[\u0300-\u036f]/g, "")
+    .replace(/['’‘`]/g, "") // possessive apostrophes must not split "hero's" → "hero s"
     .replace(/[^\p{L}\p{N}\s]/gu, " ")
     .replace(/\s+/g, " ")
     .trim();
@@ -702,6 +703,7 @@ export function roughTitleKey(title: string): string {
     .toLowerCase()
     .normalize("NFKD")
     .replace(/[\u0300-\u036f]/g, "")
+    .replace(/['’‘`]/g, "") // possessive apostrophes must not split "hero's" → "hero s"
     .replace(/[^a-z0-9\s]/g, " ")
     .replace(
       /\b(repack|repacks|fitgirl|dodi|xatab|codex|elamigos|steamrip|onlinefix|gog|tenoke|rune|scene|build|updated|multi\d*|multilang|v\d[\d.]*|goty|deluxe|edition|definitive|complete|ultimate|remastered|remake|collector|collectors)\b/g,
