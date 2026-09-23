@@ -20,7 +20,6 @@ const daysSince = (iso: string): number => {
   const t = Date.parse(iso);
   return Number.isNaN(t) ? Infinity : (Date.now() - t) / 86_400_000;
 };
-const isNew = (g: Game) => daysSince(g.releaseDate) <= 120;
 const isUpdated = (g: Game) => daysSince(g.stats.updatedAt) <= 30;
 const NSFW_GENRES = ["nsfw", "porn", "hentai", "adult", "eroge", "erotic"];
 const hideNsfw = (list: Game[], showNSFW: boolean): Game[] =>
@@ -560,7 +559,7 @@ export const HomeView: React.FC = () => {
             <Rail>
               {latestGames.map((g) => (
                 <div key={g.id} className="w-48 shrink-0 sm:w-52">
-                  <GameCard game={g} badge={isNew(g) ? "NEW" : isUpdated(g) ? "UPDATED" : undefined} />
+                  <GameCard game={g} />
                 </div>
               ))}
             </Rail>
@@ -577,7 +576,7 @@ export const HomeView: React.FC = () => {
             />
             <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
               {popularGames.map((g) => (
-                <GameCard key={g.id} game={g} badge="HOT" />
+                <GameCard key={g.id} game={g} />
               ))}
             </div>
           </section>
@@ -689,7 +688,7 @@ export const HomeView: React.FC = () => {
             <Rail>
               {newReleases.map((g) => (
                 <div key={g.id} className="w-48 shrink-0 sm:w-52">
-                  <GameCard game={g} badge={isNew(g) ? "NEW" : undefined} />
+                  <GameCard game={g} />
                 </div>
               ))}
             </Rail>

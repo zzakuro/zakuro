@@ -6,19 +6,9 @@ import { formatDistanceToNow, parseISO } from "date-fns";
 import { LinuxBadge } from "./LinuxBadge";
 import { useGame } from "../lib/gameContext";
 
-type CardBadge = "NEW" | "HOT" | "UPDATED" | "VR";
-
 interface GameCardProps {
   game: Game;
-  badge?: CardBadge;
 }
-
-const BADGE_STYLES: Record<CardBadge, string> = {
-  NEW: "bg-emerald-500/90 text-emerald-50",
-  HOT: "bg-amber-500/90 text-amber-50",
-  UPDATED: "bg-sky-500/90 text-sky-50",
-  VR: "bg-violet-500/90 text-violet-50",
-};
 
 function hashHue(s: string): number {
   let h = 0;
@@ -55,7 +45,7 @@ export const PlaceholderCover: React.FC<{ title: string; className?: string }> =
   );
 };
 
-export const GameCard: React.FC<GameCardProps> = ({ game, badge }) => {
+export const GameCard: React.FC<GameCardProps> = ({ game }) => {
   const [imgFailed, setImgFailed] = useState(false);
   const { getGameSummary } = useGame();
   const tiltRef = useRef<HTMLDivElement>(null);
@@ -164,29 +154,6 @@ export const GameCard: React.FC<GameCardProps> = ({ game, badge }) => {
 
         {/* Shine sweep on hover */}
         <div className="pointer-events-none absolute left-[-75%] top-0 h-full w-1/2 -skew-x-[20deg] bg-gradient-to-r from-transparent via-white/15 to-transparent opacity-0 transition-all duration-700 ease-out group-hover:left-full group-hover:opacity-100" />
-
-        {/* NEW / HOT / UPDATED badge */}
-        {badge && (
-          <span
-            className={`absolute right-2 top-2 rounded-md px-1.5 py-0.5 text-[9px] font-black uppercase tracking-widest ring-1 ring-black/20 ${BADGE_STYLES[badge]}`}
-          >
-            {badge}
-          </span>
-        )}
-
-        {/* Era chip: Retro vs New + platform, so same-named titles read apart */}
-        {(game.era || game.classic) && (
-          <span
-            className={`absolute left-2 top-2 rounded-md px-1.5 py-0.5 text-[9px] font-black uppercase tracking-widest ring-1 backdrop-blur-sm ${
-              game.era === "retro"
-                ? "bg-amber-950/85 text-amber-300 ring-amber-500/40"
-                : "bg-sky-950/85 text-sky-300 ring-sky-500/40"
-            }`}
-          >
-            {game.era === "retro" ? "Retro" : "New"}
-            {game.eraPlatform ? ` · ${game.eraPlatform}` : ""}
-          </span>
-        )}
 
         {/* Size chip */}
         {game.fileSize && (
