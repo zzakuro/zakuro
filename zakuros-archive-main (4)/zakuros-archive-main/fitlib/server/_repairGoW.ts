@@ -4,7 +4,7 @@ import { readGames, writeGames } from "./catalogIO";
 import { titleMatchScore, normalizeSearchTitle } from "./igdbMatch";
 
 function loadCreds(): { id: string; secret: string } {
-  const envPath = path.join(process.cwd(), "..", ".env");
+  const envPath = path.join(process.cwd(), ".env");
   let id = "", secret = "";
   try {
     for (const line of fs.readFileSync(envPath, "utf8").split(/\r?\n/)) {
