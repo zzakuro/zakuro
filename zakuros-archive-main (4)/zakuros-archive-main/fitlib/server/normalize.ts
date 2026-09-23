@@ -5,6 +5,7 @@
 // catalog write.
 import { Game } from "../src/types";
 import { normalizeSteamDate } from "./metadataService";
+import { classifyEra } from "./eraClassify";
 
 // Distinct repacking groups for a game (same logic the build's
 // backfill_popularity.py uses): repacker label when present, else source name,
