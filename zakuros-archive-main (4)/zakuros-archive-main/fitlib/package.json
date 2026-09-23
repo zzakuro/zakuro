@@ -12,6 +12,7 @@
     "test": "tsx server/test_cleanup.ts",
     "check:catalog": "tsx server/checkCatalog.ts",
     "retro:audit": "tsx server/retroAudit.ts",
+    "stabilize": "tsx server/stabilize.ts",
     "fix:appids": "tsx server/fixAppidIssues.ts",
     "fill:vndb": "tsx server/fillVndbMetadata.ts",
     "fill:gog": "tsx server/fillGogMetadata.ts"
