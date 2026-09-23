@@ -25,7 +25,7 @@ console.log(`count: ${n}`);
 // Classic rows: date plausibility per console generation end (last commercial releases)
 const ERA_END: Record<string, number> = {
   PS1: 2004, PSX: 2004, PS2: 2013, NES: 1995, SNES: 1999, "Mega Drive": 1998, Genesis: 1998,
-  Game Gear: 1997, GB: 2001, GBC: 2001, GBA: 2011, "Neo Geo": 2004, Saturn: 1998,
+  "Game Gear": 1997, GB: 2001, GBC: 2001, GBA: 2011, "Neo Geo": 2004, Saturn: 1998,
   Dreamcast: 2002, PCE: 1995, MSX: 1995, DS: 2014, PSP: 2015, GameCube: 2008, Xbox: 2009, N64: 2003, "PC Engine": 1995,
 };
 function platformOf(g: Game): string | undefined {
