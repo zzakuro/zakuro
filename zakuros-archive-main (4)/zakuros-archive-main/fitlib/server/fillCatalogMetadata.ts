@@ -57,6 +57,16 @@ const argLimit = Number(process.argv.find((a) => a.startsWith("--limit="))?.spli
 const noOnline = process.argv.includes("--no-online");
 const skipStageA = process.argv.includes("--skip-stage-a");
 
+// "YYYY", "YYYY-MM", "YYYY-MM-DD" (or slash/underscore variants) → integer for
+// ordering. 0 when unparseable, so placeholder/missing dates lose to any real one.
+function dateStamp(d: string | undefined): number {
+  if (!d) return 0;
+  const m = String(d).replace(/[_/]/g, "-").match(/^(\d{4})(?:-(\d{1,2}))?(?:-(\d{1,2}))?/);
+  if (!m) return 0;
+  const [, y, mo, dd] = m;
+  return Number(`${y}${(mo || "01").padStart(2, "0")}${(dd || "01").padStart(2, "0")}`);
+}
+
 interface GrindState {
   attemptedMatch: string[]; // game ids already online-searched
   protonDone: number[]; // steam appids already resolved against ProtonDB
@@ -206,13 +216,24 @@ async function main() {
         continue;
       }
 
-      if (details.title) {
-        // Fill any still-missing OR placeholder fields (incomplete/mis-marked
-        // entries plus repack placeholders like "Available via: ...").
-        if (details.summary && shouldUpgradeSummary(game.summary, details.summary)) game.summary = details.summary;
-        if (details.releaseDate && (!game.releaseDate || game.releaseDate.includes("Unknown"))) {
-          game.releaseDate = details.releaseDate;
-        }
+if (details.title) {
+          // Fill any still-missing OR placeholder fields (incomplete/mis-marked
+          // entries plus repack placeholders like "Available via: ...").
+          if (details.summary && shouldUpgradeSummary(game.summary, details.summary)) game.summary = details.summary;
+          // Steam's date is authoritative for VERIFIED appids. A stored date
+          // that is later than Steam's is almost always the archive-upload date
+          // (rows ingested "2026-08-09" for a 2011 game), so replace it; an
+          // earlier stored date (re-release/edition variant) is kept.
+          if (
+            !steamTitleMismatch(game.title, details.title) &&
+            details.releaseDate
+          ) {
+            const st = dateStamp(details.releaseDate);
+            const cur = dateStamp(game.releaseDate || "");
+            if (st > 0 && (cur === 0 || cur > st || /unknown|coming soon/i.test(game.releaseDate || ""))) {
+              game.releaseDate = details.releaseDate;
+            }
+          }
         if (details.developer && devIsPlaceholder(game.developer)) game.developer = details.developer;
         if (details.publisher && devIsPlaceholder(game.publisher)) game.publisher = details.publisher;
         if (details.rating !== undefined && (game.rating === 0 || !game.rating)) {

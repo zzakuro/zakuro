@@ -943,12 +943,48 @@ export function mergeBilingualDuplicates(games: Game[]): number {
 // One entry point for every persist path (dev server, grind, IGDB filler) so a
 // single call keeps the catalog clean: drop re-imported filler, fold bilingual
 // dupes, collapse same-appid/edition dupes, then re-align mismatched covers.
+// Collapse case/whitespace duplicate genre tags ("Sci-fi" vs "Sci-Fi",
+// "Turn-based" vs "Turn-based ") introduced by later source merges. Keeps
+// order and the first spelling. Idempotent.
+function cleanGenres(g: Game): boolean {
+  const cur = g.genres || [];
+  if (cur.length === 0) return false;
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const raw of cur) {
+    const x = String(raw ?? "").trim();
+    const key = x.toLowerCase();
+    if (!key || seen.has(key)) continue;
+    seen.add(key);
+    out.push(x);
+  }
+  if (out.length === cur.length) return false;
+  g.genres = out;
+  return true;
+}
+
+// Drop header/page_bg placeholder screenshots from a game that also carries
+// real artwork (a stale mix arrives from old merges). All-placeholder games
+// are left alone — screenshotsArePlaceholder treats them as "not yet filled".
+const PLACEHOLDER_SHOT = /header\.jpg|page_bg|unsplash/;
+function cleanPlaceholderShots(g: Game): boolean {
+  const cur = g.screenshots || [];
+  if (cur.length === 0) return false;
+  const real = cur.filter((u) => u && !PLACEHOLDER_SHOT.test(u));
+  if (real.length === 0 || real.length === cur.length) return false;
+  g.screenshots = real;
+  if (g.screenshot && PLACEHOLDER_SHOT.test(g.screenshot)) g.screenshot = real[0];
+  return true;
+}
+
 export function selfHealCatalog(games: Game[]): {
   filler: number;
   bilingual: number;
   merged: number;
   covers: number;
   classic: number;
+  genres: number;
+  shots: number;
 } {
   const filler = pruneForeignFiller(games);
   const bilingual = mergeBilingualDuplicates(games);
@@ -962,7 +998,15 @@ export function selfHealCatalog(games: Game[]): {
   let classic = 0;
   for (const g of games) if (normalizeClassicFlag(g)) classic++;
   const covers = alignCoverAppids(games);
-  return { filler, bilingual, merged, covers, classic };
+  // Payload hygiene: no duplicate genres, no placeholder frames mixed into
+  // real screenshot sets. Both idempotent (second pass reports 0).
+  let genres = 0;
+  let shots = 0;
+  for (const g of games) {
+    if (cleanGenres(g)) genres++;
+    if (cleanPlaceholderShots(g)) shots++;
+  }
+  return { filler, bilingual, merged, covers, classic, genres, shots };
 }
 
 // ── Steam enrichment for newly added PC titles ───────────────────────────────
@@ -1107,7 +1151,6 @@ export function titlesCompatible(gameTitle: string, steamTitle: string | undefin
 // Replace any current screenshots that are pure placeholders (single header
 // banner, page_bg fallback, unsplash curated image) with real Steam
 // screenshots. Returns true when something changed.
-const PLACEHOLDER_SHOT = /header\.jpg|page_bg|unsplash/;
 export function screenshotsArePlaceholder(game: Game): boolean {
   const cur = game.screenshots || [];
   return cur.length === 0 || cur.every((u) => PLACEHOLDER_SHOT.test(u));

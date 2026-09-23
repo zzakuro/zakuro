@@ -298,6 +298,12 @@ export async function fetchProtonSummary(appid: number): Promise<LinuxSupportInf
 // 2. IGDB API fetcher (Using Twitch Developer OAuth Credentials if available)
 let igdbToken: { token: string; expires: number } | null = null;
 
+// Process-lifetime IGDB result cache. Values are null when IGDB returned no
+// strongly-matching title (don't re-ask this boot); TTL refreshes the cache on
+// an interval so long-lived processes still see metadata fixes.
+const igdbCache = new Map<string, { value: Partial<GameMetadataExtended> | null; fetchedAt: number }>();
+const IGDB_CACHE_TTL_MS = 24 * 3600 * 1000;
+
 async function getIGDBAccessToken(): Promise<string | null> {
   const clientId = process.env.IGDB_CLIENT_ID;
   const clientSecret = process.env.IGDB_CLIENT_SECRET;
@@ -338,6 +344,21 @@ export async function fetchIGDBDetails(title: string): Promise<Partial<GameMetad
     return {};
   }
 
+  // IGDB metadata is long-lived (reviews/covers don't shuffle daily). Cache the
+  // trip per normalized title for the process lifetime so re-visits to the same
+  // game don't burn quota; a null entry means "no strong IGDB match, don't ask
+  // again this boot".
+  const key = normalizeSearchTitle(title);
+  const cached = igdbCache.get(key);
+  if (cached) {
+    if (Date.now() - cached.fetchedAt < IGDB_CACHE_TTL_MS) return cached.value || {};
+    igdbCache.delete(key);
+  }
+  const recordCache = (value: Partial<GameMetadataExtended> | null) => {
+    igdbCache.set(key, { value, fetchedAt: Date.now() });
+    return value || {};
+  };
+
   try {
     const response = await fetch("https://api.igdb.com/v4/games", {
       method: "POST",
@@ -346,7 +367,7 @@ export async function fetchIGDBDetails(title: string): Promise<Partial<GameMetad
         "Authorization": `Bearer ${token}`,
         "Content-Type": "text/plain",
       },
-      body: `search "${title}"; fields name, summary, storyline, rating, release_dates.human, cover.url, screenshots.url; limit 1;`,
+      body: `search "${title}"; fields name, summary, storyline, rating, release_dates.human, cover.url, screenshots.url; limit 8;`,
     });
 
     if (response.status === 429) {
@@ -359,10 +380,15 @@ export async function fetchIGDBDetails(title: string): Promise<Partial<GameMetad
 
     const games = await response.json() as any[];
     if (!games || games.length === 0) {
-      return {};
+      return recordCache(null);
     }
 
-    const game = games[0];
+    // IGDB `search` is relevance-ranked and frequently returns the wrong game
+    // for a repack-style title. Accept only a hit the strict title matcher
+    // confirms; a wrong cover/summary is worse than leaving the field blank.
+    const best = igdbBestMatch(title, games);
+    if (!best) return recordCache(null);
+    const game = best as any;
     const rating = game.rating ? Math.round(game.rating) : undefined;
     const storyline = game.storyline || "";
     let coverImage: string | undefined;
@@ -372,15 +398,16 @@ export async function fetchIGDBDetails(title: string): Promise<Partial<GameMetad
         .replace("t_thumb", "t_cover_big_2x");
     }
 
-    return {
+    const res = {
       summary: game.summary,
       rating,
       coverImage,
       igdbDetails: {
         storyline,
         videos: [],
-      }
+      },
     };
+    return recordCache(res);
   } catch (error: any) {
     console.error(`[IGDB API Error] Failed querying metadata for "${title}":`, error.message);
     if (error.message === "RATE_LIMIT_EXCEEDED") {
@@ -449,10 +476,13 @@ export async function getGameMetadata(
   gameId: string,
   title: string,
   steamId?: number,
-  gogId?: string
+  gogId?: string,
+  skipIgdb = false
 ): Promise<GameMetadataExtended> {
   const cacheKey = `game:metadata:${gameId}`;
-  const ttl = 3600; // 1 hour caching TTL
+  // Metadata is stable enough that a day-old cached envelope beats re-hitting
+  // Steam/IGDB/GOG on every view of an already-known game.
+  const ttl = 86400; // 24 hours caching TTL
 
   // A. Check Redis or Memory Cache
   try {
@@ -511,7 +541,12 @@ export async function getGameMetadata(
       }));
       fetchers.push(fetchProtonSummary(steamId).then(p => { proton = p; }).catch(() => {}));
     }
-    if (process.env.IGDB_CLIENT_ID) {
+    // IGDB is gated: consulted only when the caller says so (server.ts only
+    // sends non-Steam or coverless games there — Steam appdetails already
+    // supplies every field below except a cover, and verified Steam covers are
+    // derived straight from the appid). Skipping it for fully-covered Steam
+    // games cuts the largest quotastic backend pressure in the hot path.
+    if (process.env.IGDB_CLIENT_ID && !skipIgdb) {
       fetchers.push(fetchIGDBDetails(title).then(res => { igdbData = res; }).catch((e) => {
         console.warn(`[IGDB API Error] ${title}:`, e.message);
         fetchFailed = fetchFailed || e;

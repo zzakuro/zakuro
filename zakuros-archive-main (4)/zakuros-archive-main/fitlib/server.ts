@@ -793,8 +793,12 @@ async function startServer() {
     }
 
     try {
-      // Fetch dynamic metadata asynchronously via Steam Store App Details or IGDB API
-      const metadata = await getGameMetadata(game.id, game.title, game.steamId, game.gogId);
+      // Fetch dynamic metadata asynchronously via Steam Store App Details or IGDB API.
+      // IGDB is skipped for Steam-tagged games that already carry a cover: Steam
+      // supplies every textual field and the cover is derived from the appid, so
+      // consulting IGDB there would only burn quota to re-prove a known title.
+      const skipIgdb = Boolean(game.steamId && game.coverImage && !(game.coverImage.includes("placeholder") || game.coverImage.includes("coming-soon")));
+      const metadata = await getGameMetadata(game.id, game.title, game.steamId, game.gogId, skipIgdb);
 
       // Persist newly-pulled metadata back into the catalog so a single visit
       // makes the enrichment permanent instead of re-fetching it forever.

@@ -92,7 +92,7 @@ if (unknownAppIds.length) {
 // ── Self-heal dry run on a clone ─────────────────────────────────────────────
 const clone = JSON.parse(JSON.stringify(games)) as Game[];
 const heal = selfHealCatalog(clone);
-if (heal.filler || heal.bilingual || heal.merged || heal.covers || heal.classic) {
+if (heal.filler || heal.bilingual || heal.merged || heal.covers || heal.classic || heal.genres || heal.shots) {
   problems.push(`self-heal would still change the catalog: ${JSON.stringify(heal)}`);
 }
 
