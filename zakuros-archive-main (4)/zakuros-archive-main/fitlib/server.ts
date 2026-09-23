@@ -803,7 +803,7 @@ async function startServer() {
       const rowEra = game.classic ? "retro" : classifyEra(game).era;
       const preferRetro = rowEra === "retro";
       const skipIgdb = Boolean(!preferRetro && game.steamId && game.coverImage && !(game.coverImage.includes("placeholder") || game.coverImage.includes("coming-soon")));
-      const metadata = await getGameMetadata(game.id, game.title, game.steamId, game.gogId, { skipIgdb, preferRetro });
+      const metadata = await getGameMetadata(game.id, game.title, game.steamId, game.gogId, { skipIgdb, preferRetro, igdbId: game.igdbId });
 
       // Persist newly-pulled metadata back into the catalog so a single visit
       // makes the enrichment permanent instead of re-fetching it forever.

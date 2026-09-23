@@ -48,26 +48,53 @@ async function igdbSearch(title: string, reretro: boolean): Promise<any> {
   return { chosen: best.g, candidates: scored.map((s) => ({ name: s.g.name, year: s.g.year, score: s.score })) };
 }
 
+async function igdbById(igdbId: number): Promise<any> {
+  const { id, secret } = loadCreds();
+  const tok = await (await fetch(
+    `https://id.twitch.tv/oauth2/token?client_id=${id}&client_secret=${secret}&grant_type=client_credentials`,
+    { method: "POST" }
+  )).json();
+  const res = await fetch("https://api.igdb.com/v4/games", {
+    method: "POST",
+    headers: { "Client-ID": id, Authorization: `Bearer ${tok.access_token}`, "Content-Type": "text/plain" },
+    body: `fields name, summary, rating, first_release_date, cover.url, involved_companies.company.name; where id = ${igdbId}; limit 1;`,
+  });
+  return (await res.json() as any[])[0];
+}
+
 async function main() {
-  const retro = await igdbSearch("God of War", true);
-  console.log("RETRO pick:", JSON.stringify(retro.chosen ? { name: retro.chosen.name, year: retro.chosen.year, cover: retro.chosen.cover && retro.chosen.cover.url } : null, null, 2));
-  console.log("RETRO candidates:", JSON.stringify(retro.candidates, null, 2));
-  console.log("RETRO summary head:", String((retro.chosen && retro.chosen.summary) || "").slice(0, 120));
+  const game2005 = await igdbById(549);
+  console.log("IGDB#549:", JSON.stringify({
+    name: game2005.name,
+    year: game2005.first_release_date ? new Date(game2005.first_release_date * 1000).getUTCFullYear() : undefined,
+    rating: game2005.rating,
+    cover: game2005.cover && game2005.cover.url,
+    companies: (game2005.involved_companies || []).map((c: any) => c.company && c.company.name),
+  }, null, 2));
 
   const games = readGames<{ id: string }>();
   const g: any = games.find((x: any) => x.id === "god-of-war");
   if (!g) { console.log("row missing"); return; }
-  if (retro.chosen) {
-    g.summary = retro.chosen.summary || g.summary;
-    if (typeof retro.chosen.rating === "number") g.rating = Math.round(retro.chosen.rating);
-    if (retro.chosen.year) g.releaseDate = `${retro.chosen.year}-03-22`;
+  if (game2005 && game2005.name && !/ragnar/i.test(game2005.name)) {
+    g.igdbId = 549;
+    if (game2005.summary) g.summary = game2005.summary;
+    if (typeof game2005.rating === "number") g.rating = Math.round(game2005.rating);
+    if (game2005.first_release_date) {
+      const d = new Date(game2005.first_release_date * 1000);
+      g.releaseDate = `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}-${String(d.getUTCDate()).padStart(2, "0")}`;
+    }
+    const dev = (game2005.involved_companies || []).map((c: any) => c.company && c.company.name).find(Boolean);
+    if (dev) g.developer = dev;
     const keep = ["Classic", "Retro", "PS2", "Action", "Adventure"];
     g.genres = (g.genres || []).filter((x: string) => keep.includes(x));
     g.gogId = undefined;
     g.gogUrl = undefined;
-    console.log("patched:", JSON.stringify({ summary: g.summary.slice(0, 60), rating: g.rating, releaseDate: g.releaseDate, genres: g.genres, gogId: g.gogId }));
+    console.log("patched:", JSON.stringify({
+      igdbId: g.igdbId, summary: g.summary.slice(0, 70), rating: g.rating, releaseDate: g.releaseDate,
+      developer: g.developer, genres: g.genres, gogId: g.gogId,
+    }, null, 2));
   } else {
-    console.log("NO retro candidate — not patching");
+    console.log("IGDB#549 did not resolve to God of War — NOT patching");
   }
   writeGames(games as any);
   console.log("written");

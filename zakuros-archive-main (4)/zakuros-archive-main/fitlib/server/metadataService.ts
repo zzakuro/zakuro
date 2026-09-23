@@ -304,6 +304,67 @@ let igdbToken: { token: string; expires: number } | null = null;
 const igdbCache = new Map<string, { value: Partial<GameMetadataExtended> | null; fetchedAt: number }>();
 const IGDB_CACHE_TTL_MS = 24 * 3600 * 1000;
 
+function parseIgdbGame(game: any): Partial<GameMetadataExtended> {
+  const rating = game.rating ? Math.round(game.rating) : undefined;
+  const storyline = game.storyline || "";
+  let coverImage: string | undefined;
+  if (typeof game.cover?.url === "string") {
+    coverImage = game.cover.url
+      .replace("//images.igdb.com/", "https://images.igdb.com/")
+      .replace("t_thumb", "t_cover_big_2x");
+  }
+  return {
+    summary: game.summary,
+    rating,
+    coverImage,
+    igdbDetails: {
+      storyline,
+      videos: [],
+    },
+  };
+}
+
+// Exact-by-id IGDB lookup. Used when the catalog already pins a game's IGDB id
+// (e.g. a hand-baked retro cover) — a search for a bare same-name title can
+// never surface the correct original-era entry, so the pin is authoritative.
+export async function fetchIGDBGameById(igdbId: number): Promise<Partial<GameMetadataExtended>> {
+  const clientId = process.env.IGDB_CLIENT_ID;
+  const token = await getIGDBAccessToken();
+  if (!clientId || !token) return {};
+
+  const key = `id:${igdbId}`;
+  const cached = igdbCache.get(key);
+  if (cached) {
+    if (Date.now() - cached.fetchedAt < IGDB_CACHE_TTL_MS) return cached.value || {};
+    igdbCache.delete(key);
+  }
+  const recordCache = (value: Partial<GameMetadataExtended> | null) => {
+    igdbCache.set(key, { value, fetchedAt: Date.now() });
+    return value || {};
+  };
+
+  try {
+    const response = await fetch("https://api.igdb.com/v4/games", {
+      method: "POST",
+      headers: {
+        "Client-ID": clientId,
+        "Authorization": `Bearer ${token}`,
+        "Content-Type": "text/plain",
+      },
+      body: `fields name, summary, storyline, rating, first_release_date, cover.url, screenshots.url; where id = ${igdbId}; limit 1;`,
+    });
+    if (response.status === 429) throw new Error("RATE_LIMIT_EXCEEDED");
+    if (!response.ok) throw new Error(`IGDB API responded with code: ${response.status}`);
+    const games = await response.json() as any[];
+    if (!games || games.length === 0) return recordCache(null);
+    return recordCache(parseIgdbGame(games[0]));
+  } catch (error: any) {
+    console.error(`[IGDB API Error] Failed querying metadata for IGDB id ${igdbId}:`, error.message);
+    if (error.message === "RATE_LIMIT_EXCEEDED") throw error;
+    return {};
+  }
+}
+
 async function getIGDBAccessToken(): Promise<string | null> {
   const clientId = process.env.IGDB_CLIENT_ID;
   const clientSecret = process.env.IGDB_CLIENT_SECRET;
@@ -412,24 +473,7 @@ export async function fetchIGDBDetails(title: string, preferRetro = false): Prom
       if (preferRetro ? cY < bY : cY > bY) best = s;
     }
     const game = best.x.g;
-    const rating = game.rating ? Math.round(game.rating) : undefined;
-    const storyline = game.storyline || "";
-    let coverImage: string | undefined;
-    if (typeof game.cover?.url === "string") {
-      coverImage = game.cover.url
-        .replace("//images.igdb.com/", "https://images.igdb.com/")
-        .replace("t_thumb", "t_cover_big_2x");
-    }
-
-    const res = {
-      summary: game.summary,
-      rating,
-      coverImage,
-      igdbDetails: {
-        storyline,
-        videos: [],
-      },
-    };
+    const res = parseIgdbGame(game);
     return recordCache(res);
   } catch (error: any) {
     console.error(`[IGDB API Error] Failed querying metadata for "${title}":`, error.message);
@@ -500,7 +544,7 @@ export async function getGameMetadata(
   title: string,
   steamId?: number,
   gogId?: string,
-  opts: { skipIgdb?: boolean; preferRetro?: boolean } = {}
+  opts: { skipIgdb?: boolean; preferRetro?: boolean; igdbId?: number } = {}
 ): Promise<GameMetadataExtended> {
   const cacheKey = `game:metadata:${gameId}`;
   // Metadata is stable enough that a day-old cached envelope beats re-hitting
@@ -569,7 +613,13 @@ export async function getGameMetadata(
     // supplies every field below except a cover, and verified Steam covers are
     // derived straight from the appid). Skipping it for fully-covered Steam
     // games cuts the largest quotastic backend pressure in the hot path.
-    if (process.env.IGDB_CLIENT_ID && !opts.skipIgdb) {
+    // A catalog-pinned igdbId is authoritative over any title search.
+    if (opts.igdbId) {
+      fetchers.push(fetchIGDBGameById(opts.igdbId).then(res => { igdbData = res; }).catch((e) => {
+        console.warn(`[IGDB API Error] ${title}:`, e.message);
+        fetchFailed = fetchFailed || e;
+      }));
+    } else if (process.env.IGDB_CLIENT_ID && !opts.skipIgdb) {
       fetchers.push(fetchIGDBDetails(title, opts.preferRetro).then(res => { igdbData = res; }).catch((e) => {
         console.warn(`[IGDB API Error] ${title}:`, e.message);
         fetchFailed = fetchFailed || e;
