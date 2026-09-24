@@ -33,10 +33,9 @@ from pathlib import Path
 
 DATA_DIR = Path("data")
 INPUT  = DATA_DIR / "merged_enriched.json.gz"
-BACKUP_DIR = Path("../..") / ("_backups/%s-silenthillfix" % time.strftime("%Y%m%d-%H%M%S"))
-# Repo-root _backups live one level above fitlib/ (zakuros-archive-main/{fitlib,..}),
-# but when run from the repo root the catalog is nested. Resolve robustly:
-BACKUP_DIR = Path(__file__).resolve().parent.parent.parent / "_backups" / (
+# Repo-root _backups live next to the archive folder (see the existing
+# 2026091*-preoptimize / prededup catalog snapshots there).
+BACKUP_DIR = Path(__file__).resolve().parents[3] / "_backups" / (
     time.strftime("%Y%m%d-%H%M%S") + "-silenthillfix"
 )
 
@@ -252,8 +251,9 @@ REMOVE = [
     "silent-hill-3-trial-version",
     "silent-hill-3-trial-version-428up9",
     "silent-hill-4-trial-version",
-    "silent-hill-4-the-room-trial-version-2004",
-    "silent-hill-ps2-collection",                                          # SH2+3+4 compilation
+"silent-hill-4-the-room-trial-version-2004",
+    "silent-hill-4-the-room-amd-rdna-fix",                                   # GPU patch pack, not a game
+    "silent-hill-ps2-collection",                                            # SH2+3+4 compilation
     "silent-hill-the-gallows",                                             # poisoned entry (bogus shared gogId, wrong metadata)
 ]
 
