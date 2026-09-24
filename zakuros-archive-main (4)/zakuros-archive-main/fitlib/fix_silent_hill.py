@@ -133,8 +133,9 @@ def main():
         print(f"  renamed: {old!r} -> {title!r}")
 
     # ── Pass 3: drop junk cards ──────────────────────────────────────────────
+    donors = {d for ds in MERGE_INTO.values() for d in ds}
     dropped = [i for i in REMOVE if i in by_id]
-    games = [g for g in games if g["id"] not in REMOVE and g["id"] not in MERGE_INTO]
+    games = [g for g in games if g["id"] not in REMOVE and g["id"] not in donors]
 
     # ── Pass 4: genre hygiene across every remaining Silent Hill card ────────
     touched = 0
@@ -153,11 +154,10 @@ def main():
         t = (g.get("title") or "").lower()
         i = (g.get("id") or "").lower()
         if "silent hill" in t or "silent-hill" in i or "townfall" in t or "alchemilla" in t or "play novel" in t:
-            print("  %-52s | classic=%s | steamId=%s | gogId=%s | sources=%3d | genres=%s" % (
-                (g.get("title") or "")[:52], g.get("classic"), g.get("steamId"),
-                g.get("gogId"), len(g.get("downloadSources", [])),
-                [x for x in g.get("genres", []) if x in {"Racing", "Fighting", "Sports", "Free To Play", "WINDOWS"}]
-            ))
+            print("  %-40s | %-55s | classic=%s | steamId=%s | gogId=%s | sources=%3d" % (
+                (g.get("title") or "")[:40], (g.get("id") or "")[:55],
+                g.get("classic"), g.get("steamId"), g.get("gogId"),
+                len(g.get("downloadSources", []))))
 
     # ── Backup + write ───────────────────────────────────────────────────────
     BACKUP_DIR.mkdir(parents=True, exist_ok=True)
@@ -166,7 +166,7 @@ def main():
 
     print(f"Removed {len(dropped)} junk card(s), merged {total_moved} sources.")
     save(games)
-    print(f"\nDone. {len(dropped) + len(MERGE_INTO)} cards dropped, "
+    print(f"\nDone. {len(dropped) + len(donors)} cards dropped, "
           f"{total_moved} duplicate sources folded in.")
 
 
