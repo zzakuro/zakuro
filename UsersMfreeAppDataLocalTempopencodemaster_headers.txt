@@ -1,0 +1,19 @@
+HTTP/1.1 200 OK
+Date: Thu, 24 Sep 2026 00:53:42 GMT
+Content-Type: application/vnd.apple.mpegurl
+Transfer-Encoding: chunked
+Connection: keep-alive
+Server: cloudflare
+Nel: {"report_to":"cf-nel","success_fraction":0.0,"max_age":604800}
+Access-Control-Allow-Origin: *
+Access-Control-Expose-Headers: Content-Length,Content-Range
+Cache-Control: no-store, no-cache, must-revalidate, max-age=0
+Pragma: no-cache
+Expires: 0
+Vary: CF-Connecting-IP
+cf-cache-status: DYNAMIC
+Report-To: {"group":"cf-nel","max_age":604800,"endpoints":[{"url":"https://a.nel.cloudflare.com/report/v4?s=VImAlLVUMzNCIlVyvVNv20uMd5MueV0kCVEmWapKFHrcbvX9lvLCsL3Dk0IU8vubUorKAdJiL7X71hpT9zNMpfHdpvgqAGFiaMpojqymv3FDDQ3xvZiCE1QJydqkrJcywT6y1vTm66urnhoXm1G%2FFKyf"}]}
+Content-Encoding: br
+CF-RAY: a3fdd0496c2af824-ORD
+alt-svc: h3=":443"; ma=86400
+
