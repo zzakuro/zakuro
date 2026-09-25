@@ -17,13 +17,19 @@ async function main() {
   log.setLevel(log.LEVELS.ERROR);
 
   const crawler = new PlaywrightCrawler({
-    headless: true,
+    headless: false,
     maxConcurrency: 1,
     maxRequestRetries: 1,
     retryOnBlocked: false,
     useSessionPool: false,
     navigationTimeoutSecs: 90,
     requestHandlerTimeoutSecs: 180,
+    launchContext: {
+      launchOptions: {
+        ignoreDefaultArgs: ["--enable-automation"],
+        args: ["--disable-blink-features=AutomationControlled"],
+      },
+    },
     async requestHandler({ page }) {
       let body = "";
       for (let i = 0; i < 20; i++) {
@@ -31,7 +37,7 @@ async function main() {
           (await page.evaluate(() => document.body && document.body.textContent)) ||
           "";
         const blocked =
-          /just a moment|checking your browser|cf-chl|attention required!/i.test(
+          /just a moment|checking your browser|performing security|security service|verifying you are human|attention required|cf-chl/i.test(
             raw.slice(0, 3000),
           );
         if (!blocked && raw.trim().length > 0) {

@@ -2,25 +2,25 @@
   "requestsFinished": 0,
   "requestsFailed": 1,
   "requestsRetries": 1,
-  "requestsFailedPerMinute": 37,
+  "requestsFailedPerMinute": 4,
   "requestsFinishedPerMinute": 0,
   "requestMinDurationMillis": null,
   "requestMaxDurationMillis": 0,
-  "requestTotalFailedDurationMillis": 225,
+  "requestTotalFailedDurationMillis": 5306,
   "requestTotalFinishedDurationMillis": 0,
-  "crawlerStartedAt": "2026-09-25T02:30:08.258Z",
-  "crawlerFinishedAt": "2026-09-25T02:30:09.710Z",
-  "statsPersistedAt": "2026-09-25T02:30:09.710Z",
-  "crawlerRuntimeMillis": 1600,
-  "crawlerLastStartTimestamp": 1790303408110,
+  "crawlerStartedAt": "2026-09-25T02:30:34.044Z",
+  "crawlerFinishedAt": "2026-09-25T02:30:47.099Z",
+  "statsPersistedAt": "2026-09-25T02:30:47.099Z",
+  "crawlerRuntimeMillis": 13214,
+  "crawlerLastStartTimestamp": 1790303433885,
   "requestRetryHistogram": [
     null,
     1
   ],
   "statsId": "0",
-  "requestAvgFailedDurationMillis": 225,
+  "requestAvgFailedDurationMillis": 5306,
   "requestAvgFinishedDurationMillis": null,
-  "requestTotalDurationMillis": 225,
+  "requestTotalDurationMillis": 5306,
   "requestsTotal": 1,
   "requestsWithStatusCode": {
     "403": 2
@@ -29,7 +29,7 @@
     "4": {
       "missing error code": {
         "Error": {
-          "Response is not JSON: hydralinks.cloudPerforming security verificationThis website uses a security service to protect against malicious bots. This page is displayed while the website": {
+          "Response is not JSON: <div class=\"h2\"><span id=\"challenge-error-text\">Enable JavaScript and cookies to continue</span></div>(function(){window._cf_chl_opt = {cFPWv: 'b',cH: 'x6pxXJX9": {
             "count": 1
           }
         }
@@ -40,7 +40,7 @@
     "4": {
       "missing error code": {
         "Error": {
-          "Response is not JSON: hydralinks.cloudPerforming security verificationThis website uses a security service to protect against malicious bots. This page is displayed while the website": {
+          "Response is not JSON: <div class=\"h2\"><span id=\"challenge-error-text\">Enable JavaScript and cookies to continue</span></div>(function(){window._cf_chl_opt = {cFPWv: 'b',cH: 'Dh.ysp.b": {
             "count": 1
           }
         }
