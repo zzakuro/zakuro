@@ -3,6 +3,7 @@ import path from "path";
 import { Game, DownloadSource, LinuxSupportInfo } from "../src/types";
 import { fetchSteamDetails, fetchProtonSummary } from "./metadataService";
 import { normalizeClassicFlag } from "./normalize";
+import { runScraper } from "./scrapers";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -10,6 +11,7 @@ export interface SourceConfig {
   name: string;
   url?: string;
   filePath?: string; // local JSON (e.g. manually downloaded) — read instead of fetch
+  scraper?: string; // origin-site scraper key (server/scrapers.ts) — run instead of fetch
   originalUrl?: string;
   category: "repacker" | "classic";
   enabled: boolean;
@@ -428,7 +430,7 @@ export function readSourcesConfig(configPath: string): SourceConfig[] {
     if (!fs.existsSync(configPath)) return [];
     const parsed = JSON.parse(fs.readFileSync(configPath, "utf-8")) as SourceConfig[];
     return Array.isArray(parsed)
-      ? parsed.filter((s) => s && (s.url || s.filePath))
+      ? parsed.filter((s) => s && (s.url || s.filePath || s.scraper))
       : [];
   } catch (e: any) {
     console.error(`[Sources] Failed to read ${configPath}:`, e.message);
@@ -1658,7 +1660,9 @@ export async function syncSources(params: {
   for (const source of params.sources) {
     if (!source.enabled) continue;
     try {
-      const payload = await fetchSourceJson(source);
+      const payload = source.scraper
+        ? await runScraper(source)
+        : await fetchSourceJson(source);
       const entries = parseSourcePayload(payload, source.name);
       let addedHere = 0;
       for (const entry of entries) {
