@@ -14,6 +14,7 @@
     "retro:audit": "tsx server/retroAudit.ts",
     "stabilize": "tsx server/stabilize.ts",
     "fix:appids": "tsx server/fixAppidIssues.ts",
+    "live:check": "tsx server/fetchLive.ts",
     "fill:vndb": "tsx server/fillVndbMetadata.ts",
     "fill:gog": "tsx server/fillGogMetadata.ts"
   },
