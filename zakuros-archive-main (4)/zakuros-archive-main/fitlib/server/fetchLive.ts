@@ -13,11 +13,11 @@ async function main() {
   const [slug = "fitgirl", query = ""] = process.argv.slice(2);
   const url = `https://hydralinks.cloud/sources/${slug}.json`;
 
-  Configuration.set?.({ persistStorage: false });
+  Configuration.set?.("persistStorage", false);
   log.setLevel(log.LEVELS.ERROR);
 
   const crawler = new PlaywrightCrawler({
-    headless: false,
+    headless: process.env.HEADED !== "1",
     maxConcurrency: 1,
     maxRequestRetries: 1,
     retryOnBlocked: false,
