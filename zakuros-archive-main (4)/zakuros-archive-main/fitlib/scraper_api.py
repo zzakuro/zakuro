@@ -17,7 +17,7 @@ import pathlib
 import re
 import sys
 import time
-from urllib.parse import urlparse
+from urllib.parse import urljoin, urlparse
 
 ROOT = pathlib.Path(__file__).resolve().parent
 SITES_FILE = ROOT / "data" / "scraper-sites.json"
@@ -106,6 +106,9 @@ def scrape_site(site: dict, key: str, max_posts: int) -> pathlib.Path:
     pattern = site.get("postLinkPattern", "")
     link_pat = site.get("linkPattern", "/")
     strip_re = site.get("titleStrip") or None
+    base = site.get("home", "")
+    if base and not base.endswith("/"):
+        base += "/"
 
     downloads: list = []
     with StealthySession(headless=True, solve_cloudflare=True) as session:
@@ -119,12 +122,10 @@ def scrape_site(site: dict, key: str, max_posts: int) -> pathlib.Path:
                 continue
             if h.startswith(("mailto:", "tel:", "javascript:")):
                 continue
-            if "://" in h and not h.startswith(site.get("home", "")):
-                continue
             if h in seen:
                 continue
             seen.add(h)
-            posts.append((h, get_text(inner)))
+            posts.append((urljoin(base, h), get_text(inner)))
 
         posts = posts[:max_posts]
         if not posts:
