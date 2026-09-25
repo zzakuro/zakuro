@@ -14,6 +14,7 @@ export interface SourceConfig {
   category: "repacker" | "classic";
   enabled: boolean;
   note?: string;
+  headers?: Record<string, string>; // per-source request headers, merged over the defaults
 }
 
 export interface SourceRunResult {
@@ -438,6 +439,15 @@ export function readSourcesConfig(configPath: string): SourceConfig[] {
 const FETCH_UA =
   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36 ZakurosArchive/1.0";
 
+// Default request headers for source feeds. hydralinks.cloud whitelists the
+// official Hydra client's UA (`Hydra/v1`) and 403s browser UAs, so that is the
+// default for every feed fetch. Per-source `headers` override these defaults.
+const SOURCE_FETCH_HEADERS: Record<string, string> = {
+  "User-Agent": "Hydra/v1",
+  Accept: "application/json",
+  "Accept-Encoding": "gzip",
+};
+
 async function fetchSourceJson(source: SourceConfig): Promise<unknown> {
   // Local file source (manually downloaded copy — re-download to update).
   if (source.filePath) {
@@ -463,9 +473,8 @@ async function fetchSourceJson(source: SourceConfig): Promise<unknown> {
     const response = await fetch(url, {
       signal: controller.signal,
       headers: {
-        Accept: "application/json",
-        "Accept-Language": "en-US,en;q=0.9",
-        "User-Agent": FETCH_UA,
+        ...SOURCE_FETCH_HEADERS,
+        ...(source.headers || {}),
       },
     });
     if (!response.ok) {
