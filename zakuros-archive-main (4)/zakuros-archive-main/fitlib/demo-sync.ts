@@ -11,7 +11,7 @@ async function main() {
     sources: [
       {
         name: "FitGirl",
-        url: "file:///C:/Users/Mfree/AppData/Local/Temp/opencode/fitgirl-snapshot.json",
+        filePath: "C:/Users/Mfree/AppData/Local/Temp/opencode/fitgirl-snapshot.json",
         category: "repacker",
         enabled: true,
       },
