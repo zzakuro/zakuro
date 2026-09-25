@@ -19,12 +19,14 @@ async function main() {
   const crawler = new PlaywrightCrawler({
     headless: true,
     maxConcurrency: 1,
-    maxRequestRetries: 2,
+    maxRequestRetries: 1,
+    retryOnBlocked: false,
+    useSessionPool: false,
     navigationTimeoutSecs: 90,
-    requestHandlerTimeoutSecs: 150,
+    requestHandlerTimeoutSecs: 180,
     async requestHandler({ page }) {
       let body = "";
-      for (let i = 0; i < 14; i++) {
+      for (let i = 0; i < 20; i++) {
         const raw =
           (await page.evaluate(() => document.body && document.body.textContent)) ||
           "";
@@ -42,7 +44,14 @@ async function main() {
           await page.waitForTimeout(2500);
         }
       }
-      if (!body) throw new Error("Blocked by challenge even in headless browser");
+      if (!body) {
+        const dump = await page.evaluate(
+          () => (document.body && document.body.textContent) || "",
+        );
+        throw new Error(
+          `Blocked even in headless browser. Page dump: ${dump.slice(0, 200)}`,
+        );
+      }
 
       let data: any;
       try {

@@ -2,35 +2,34 @@
   "requestsFinished": 0,
   "requestsFailed": 1,
   "requestsRetries": 1,
-  "requestsFailedPerMinute": 6,
+  "requestsFailedPerMinute": 37,
   "requestsFinishedPerMinute": 0,
   "requestMinDurationMillis": null,
   "requestMaxDurationMillis": 0,
-  "requestTotalFailedDurationMillis": 601,
+  "requestTotalFailedDurationMillis": 225,
   "requestTotalFinishedDurationMillis": 0,
-  "crawlerStartedAt": "2026-09-25T02:29:36.300Z",
-  "crawlerFinishedAt": "2026-09-25T02:29:45.805Z",
-  "statsPersistedAt": "2026-09-25T02:29:45.806Z",
-  "crawlerRuntimeMillis": 9679,
-  "crawlerLastStartTimestamp": 1790303376127,
+  "crawlerStartedAt": "2026-09-25T02:30:08.258Z",
+  "crawlerFinishedAt": "2026-09-25T02:30:09.710Z",
+  "statsPersistedAt": "2026-09-25T02:30:09.710Z",
+  "crawlerRuntimeMillis": 1600,
+  "crawlerLastStartTimestamp": 1790303408110,
   "requestRetryHistogram": [
-    null,
     null,
     1
   ],
   "statsId": "0",
-  "requestAvgFailedDurationMillis": 601,
+  "requestAvgFailedDurationMillis": 225,
   "requestAvgFinishedDurationMillis": null,
-  "requestTotalDurationMillis": 601,
+  "requestTotalDurationMillis": 225,
   "requestsTotal": 1,
   "requestsWithStatusCode": {
-    "403": 3
+    "403": 2
   },
   "errors": {
     "4": {
       "missing error code": {
         "Error": {
-          "Request blocked - received 403 status code.": {
+          "Response is not JSON: hydralinks.cloudPerforming security verificationThis website uses a security service to protect against malicious bots. This page is displayed while the website": {
             "count": 1
           }
         }
@@ -41,8 +40,8 @@
     "4": {
       "missing error code": {
         "Error": {
-          "Request blocked - received 403 status code.": {
-            "count": 2
+          "Response is not JSON: hydralinks.cloudPerforming security verificationThis website uses a security service to protect against malicious bots. This page is displayed while the website": {
+            "count": 1
           }
         }
       }
