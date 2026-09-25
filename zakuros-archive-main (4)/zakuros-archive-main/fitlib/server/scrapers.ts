@@ -1,5 +1,9 @@
 import fs from "fs";
 import path from "path";
+import { execFile } from "child_process";
+import { promisify } from "util";
+
+const execFileP = promisify(execFile);
 
 // ── Scraper framework ─────────────────────────────────────────────────────────
 // Origin-scraper sources ("sources.json" entries with a `scraper` field) fetch
@@ -149,10 +153,40 @@ export const SCRAPERS: Record<string, { home: string; run: OriginScraper }> = {
   fitgirl: { home: FITGIRL_HOME, run: scrapeFitGirl },
 };
 
+// ── Config-driven engine (data/scraper-sites.json) ────────────────────────────
+// Sources with `"scraper": "cfg:<key>"` are scraped by the Python/Scrapling
+// engine (scraper_api.py), which writes data/scraped/<key>.json in the same
+// { name, downloads[] } shape. Override the interpreter with SCRAPLING_PY.
+
+const SCRAPLING_PY =
+  process.env.SCRAPLING_PY ||
+  "C:\\Users\\Mfree\\AppData\\Local\\Temp\\opencode\\scr-venv\\Scripts\\python.exe";
+const ENGINE_SCRIPT = path.join(process.cwd(), "scraper_api.py");
+const SCRAPED_DIR = path.join(process.cwd(), "data", "scraped");
+
+async function runConfigScraper(key: string, maxPosts?: number): Promise<ScrapedPayload> {
+  const safeKey = key.replace(/[^a-z0-9_-]/gi, "");
+  if (!safeKey) throw new Error(`Invalid scraper config key: ${key}`);
+  const args = [ENGINE_SCRIPT, safeKey];
+  if (maxPosts && maxPosts > 0) args.push("--max-posts", String(maxPosts));
+  await execFileP(SCRAPLING_PY, args, {
+    cwd: process.cwd(),
+    timeout: 6 * 60 * 1000,
+    maxBuffer: 5 * 1024 * 1024,
+  });
+  const outPath = path.join(SCRAPED_DIR, `${safeKey}.json`);
+  if (!fs.existsSync(outPath)) throw new Error(`Engine produced no output for ${safeKey}`);
+  return JSON.parse(fs.readFileSync(outPath, "utf-8")) as ScrapedPayload;
+}
+
 export async function runScraper(source: {
   name: string;
-  scraper: string;
+  scraper?: string;
 }): Promise<unknown> {
+  if (!source.scraper) throw new Error(`No scraper configured for ${source.name}`);
+  if (source.scraper.startsWith("cfg:")) {
+    return runConfigScraper(source.scraper.slice(4));
+  }
   const impl = SCRAPERS[source.scraper];
   if (!impl) throw new Error(`No scraper registered: ${source.scraper}`);
   return impl.run({ name: source.name, httpGet });
@@ -161,14 +195,21 @@ export async function runScraper(source: {
 // ── CLI harness ───────────────────────────────────────────────────────────────
 
 async function main(): Promise<void> {
-  const key = process.argv[2] || "fitgirl";
-  const impl = SCRAPERS[key];
-  if (!impl) {
-    console.error(`Known scrapers: ${Object.keys(SCRAPERS).join(", ")}`);
-    process.exit(1);
-  }
+  const arg = process.argv[2] || "fitgirl";
   const started = Date.now();
-  const payload = await impl.run({ name: key, httpGet });
+  let key = arg;
+  let payload: ScrapedPayload;
+  if (arg.startsWith("cfg:")) {
+    key = arg.slice(4);
+    payload = await runConfigScraper(key);
+  } else {
+    const impl = SCRAPERS[key];
+    if (!impl) {
+      console.error(`Known scrapers: ${Object.keys(SCRAPERS).join(", ")}; also cfg:<key> from data/scraper-sites.json`);
+      process.exit(1);
+    }
+    payload = await impl.run({ name: key, httpGet });
+  }
   console.log(`${key}: ${payload.downloads.length} entries in ${Date.now() - started}ms`);
   for (const d of payload.downloads.slice(0, 8)) {
     const n = Array.isArray(d.uris) ? d.uris.length : 0;

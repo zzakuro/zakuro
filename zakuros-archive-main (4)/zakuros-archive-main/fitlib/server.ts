@@ -15,6 +15,7 @@ import {
   matchGenres,
 } from "./server/sources";
 import { Game } from "./src/types";
+import { scraperRouter } from "./server/scraperApi";
 import { buildSeriesCatalog, readCuratedCollections, SeriesSummary, SeriesGroup } from "./server/series";
 import { platformOfGame, classifyEra } from "./server/eraClassify";
 
@@ -458,6 +459,9 @@ async function startServer() {
 
   // Community layer: comments + ratings (persisted to data/)
   app.use("/api", communityRouter());
+
+  // Scraper API (config-driven site scraping via Python/Scrapling engine)
+  app.use("/api/scraper", scraperRouter());
 
   // Source sync control + status
   app.post("/api/admin/sync", async (_req, res) => {
