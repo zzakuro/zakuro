@@ -35,6 +35,7 @@ const SITE_FIELDS = [
   "linkPattern",
   "resolver",
   "titleStrip",
+  "partPattern",
 ] as const;
 
 function loadSites(): Record<string, Record<string, unknown>> {

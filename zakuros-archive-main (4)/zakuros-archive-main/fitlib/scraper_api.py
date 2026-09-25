@@ -79,9 +79,19 @@ def resolve_href(site: dict, href: str) -> str:
     return href
 
 
-def uri(name: str | None, url: str) -> dict:
+def part_label(url: str, pattern: str | None) -> str | None:
+    if not pattern:
+        return None
+    m = re.search(pattern, url, re.I)
+    return m.group(1) if m else None
+
+
+def uri(name: str | None, url: str, part: str | None = None) -> dict:
     host = urlparse(url).netloc
-    return {"url": url, "name": name or (host or "link")}
+    label = name or (host or "link")
+    if part:
+        label = f"{label} · Part {part}"
+    return {"url": url, "name": label}
 
 
 def load_sites() -> dict:
@@ -106,6 +116,7 @@ def scrape_site(site: dict, key: str, max_posts: int) -> pathlib.Path:
     pattern = site.get("postLinkPattern", "")
     link_pat = site.get("linkPattern", "/")
     strip_re = site.get("titleStrip") or None
+    part_pat = site.get("partPattern") or None
     base = site.get("home", "")
     if base and not base.endswith("/"):
         base += "/"
@@ -149,7 +160,7 @@ def scrape_site(site: dict, key: str, max_posts: int) -> pathlib.Path:
                     "title": title,
                     "fileSize": size,
                     "uploadDate": None,
-                    "uris": [uri(None, resolve_href(site, h)) for h in links],
+                    "uris": [uri(None, resolve_href(site, h), part_label(h, part_pat)) for h in links],
                 }
             )
 
