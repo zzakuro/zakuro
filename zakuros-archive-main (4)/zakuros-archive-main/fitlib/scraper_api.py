@@ -314,6 +314,17 @@ def write_payload(key: str, name: str, downloads: list) -> pathlib.Path:
     return out
 
 
+_emit_lock = threading.Lock()
+
+
+def emit(event: dict):
+    """Structured live-progress line (JSONL with a PROGRESS\t prefix). The Node
+    sideloader streams stdout to the live-scraping panel; CLI output is unchanged."""
+    line = "PROGRESS\t" + json.dumps(event, ensure_ascii=False)
+    with _emit_lock:
+        print(line, flush=True)
+
+
 def extract_size(text: str, size_pat: str | None) -> str | None:
     if size_pat:
         m = re.search(size_pat, text)
@@ -571,14 +582,35 @@ def scrape_site(site: dict, key: str, max_posts: int) -> pathlib.Path:
     if not posts:
         raise RuntimeError("no entries found (check postLinkPattern/entryPattern)")
 
+    emit({"event": "listing", "mode": mode, "posts": len(posts), "max": max_posts, "sitemap": bool(smap)})
+
+    def process_one(i: int, item):
+        t0 = time.time()
+        try:
+            d = process(item)
+        except Exception:
+            d = None
+        emit(
+            {
+                "event": "post",
+                "i": i,
+                "total": len(posts),
+                "title": d.get("title") if d else None,
+                "links": len(d.get("uris") or []) if d else 0,
+                "ms": int((time.time() - t0) * 1000),
+                "ok": bool(d),
+            }
+        )
+        return d
+
     if plain:
         workers = int(site.get("plainWorkers") or 12)
         with concurrent.futures.ThreadPoolExecutor(max_workers=workers) as ex:
-            downloads = [d for d in ex.map(process, posts) if d is not None]
+            downloads = [d for d in ex.map(lambda p: process_one(p[0], p[1]), enumerate(posts)) if d is not None]
     else:
         downloads = []
-        for item in posts:
-            d = process(item)
+        for i, item in enumerate(posts):
+            d = process_one(i, item)
             if d:
                 downloads.append(d)
 
@@ -586,6 +618,7 @@ def scrape_site(site: dict, key: str, max_posts: int) -> pathlib.Path:
         raise RuntimeError("no entries extracted from posts")
 
     out = write_payload(key, site.get("name") or key, downloads)
+    emit({"event": "done", "key": key, "total": len(downloads), "file": str(out)})
     return out
 
 
@@ -614,7 +647,11 @@ def scrape_url(url: str, name: str) -> pathlib.Path:
                 "uris": uris[:20],
             }
         )
-    return write_payload("_live", name or "live", downloads)
+        emit({"event": "listing", "mode": "single", "posts": 1, "max": 1})
+        emit({"event": "post", "i": 0, "total": 1, "title": title or url, "links": len(uris[:20]), "ms": 0, "ok": True})
+    out = write_payload("_live", name or "live", downloads)
+    emit({"event": "done", "key": "_live", "total": len(downloads), "file": str(out)})
+    return out
 
 
 def main() -> int:
