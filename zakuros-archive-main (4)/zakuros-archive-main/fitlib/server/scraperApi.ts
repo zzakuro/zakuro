@@ -42,6 +42,7 @@ const SITE_FIELDS = [
   "partPattern",
   "partLabelPattern",
   "skipLinkPatterns",
+  "linkSkipPatterns",
   "stripListNumbers",
   "linkSource",
   "linkAliases",

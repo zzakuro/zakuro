@@ -369,6 +369,8 @@ def post_links(html: str, site: dict) -> list[tuple[str, str, str | None]]:
             continue
         if h.startswith(("mailto:", "tel:", "javascript:", "#")):
             continue
+        if any(p in h for p in (site.get("linkSkipPatterns") or [])):
+            continue
         resolved = resolve_href(site, h)
         if resolved.startswith("//"):
             resolved = "https:" + resolved
