@@ -458,6 +458,7 @@ def scrape_site(site: dict, key: str, max_posts: int) -> pathlib.Path:
 
     mode = site.get("mode", "post")
     pattern = site.get("postLinkPattern", "")
+    page_pat = site.get("pageLinkPattern") or ""
     entry_pat = site.get("entryPattern") or None
     link_pat = site.get("linkPattern", "/")
     strip_re = site.get("titleStrip") or None
