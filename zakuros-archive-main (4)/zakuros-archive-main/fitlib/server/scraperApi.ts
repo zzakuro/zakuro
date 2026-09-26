@@ -45,6 +45,7 @@ const SITE_FIELDS = [
   "stripListNumbers",
   "linkSource",
   "linkAliases",
+  "titleSource",
 ] as const;
 
 function loadSites(): Record<string, Record<string, unknown>> {

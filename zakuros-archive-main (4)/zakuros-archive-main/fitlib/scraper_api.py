@@ -116,9 +116,9 @@ def glitch_seal_links(html: str) -> list[tuple[str, str, str | None]]:
         url = _unseal(a.group(1), key)
         if not url:
             continue
-        tail = html[a.end(): a.end() + 1500]
-        sm = re.search(r"download-size-badge[^>]*>([\s\S]{0,140}?)([\d.,]+\s*(?:GB|MB|TB))", tail)
-        size = sm.group(2) if sm else None
+        tail = html[a.end(): a.end() + 2500]
+        sm = re.search(r"download-size-badge[^>]*>[\s\S]{0,2500}?([\d.,]+\s*(?:GB|MB|TB))", tail)
+        size = sm.group(1) if sm else None
         fm = re.search(r"([A-Za-z0-9_ .'()\-]+\.(?:rar|zip|7z))", tail)
         label = host or urlparse(url).netloc
         if fm:
@@ -168,9 +168,17 @@ def link_label(site: dict, url: str, anchor_label: str | None) -> str:
     return s
 
 
-def default_title(html: str, strip_re: str | None = None) -> str:
-    m = DEFAULT_TITLE_RE.search(html)
-    t = get_text(m.group(1)) if m else ""
+def default_title(html: str, strip_re: str | None = None, title_source: str | None = None) -> str:
+    if title_source == "og":
+        m = re.search(r'property="og:title"\s+content="([^"]+)"', html) or re.search(
+            r'content="([^"]+)"\s+property="og:title"', html
+        )
+        t = get_text(m.group(1)) if m else ""
+    else:
+        h1s = re.findall(r"<h1[^>]*>([\s\S]*?)</h1>", html, re.I)
+        if title_source == "last" and h1s:
+            h1s = h1s[-1:]
+        t = get_text(h1s[0]) if h1s else ""
     if not t:
         m = FALLBACK_TITLE_RE.search(html)
         t = get_text(m.group(1)) if m else ""
@@ -434,7 +442,7 @@ def scrape_site(site: dict, key: str, max_posts: int) -> pathlib.Path:
                     html, extra = fetch_post(session, url, site)
                 except Exception:
                     continue
-                title = default_title(html, strip_re)
+                title = default_title(html, strip_re, site.get("titleSource"))
                 if not title:
                     continue
                 links = post_links(html, site)
