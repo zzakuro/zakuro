@@ -129,18 +129,21 @@ def glitch_seal_links(html: str) -> list[tuple[str, str, str | None]]:
 
 def text_links(html: str, link_pat: str) -> list[tuple[str, str | None, str | None]]:
     pat = link_pat.lower()
-    out: list[tuple[str, str | None, str | None]] = []
-    seen: set[str] = set()
+    best: dict[str, tuple[int, str | None, str | None]] = {}
     for m in re.finditer(r"https?://[^\s\"'<>\\]+", html):
         u = m.group(0).rstrip(".,;:})]\"'")
-        if pat not in u.lower() or u in seen:
+        if pat not in u.lower():
             continue
-        seen.add(u)
-        ctx = html[max(0, m.start() - 700):m.end()]
-        nm = re.search(r'"name"\s*:\s*"([^"]+)"', ctx)
-        sz = re.search(r'"size"\s*:\s*"([^"]+)"', ctx)
-        out.append((u, nm.group(1) if nm else None, sz.group(1) if sz else None))
-    return out
+        pre = html[max(0, m.start() - 3000):m.start()]
+        nm = re.findall(r'"name"\s*:\s*"([^"]+)"', pre)
+        sz = re.findall(r'"size"\s*:\s*"([^"]+)"', pre)
+        label = nm[-1] if nm else None
+        size = sz[-1] if sz else None
+        score = (1 if label else 0) + (1 if size else 0)
+        cur = best.get(u)
+        if cur is None or score > cur[0]:
+            best[u] = (score, label, size)
+    return [(u, v[1], v[2]) for u, v in best.items()]
 
 
 def magnet_parts(href: str) -> tuple[str, str | None]:
