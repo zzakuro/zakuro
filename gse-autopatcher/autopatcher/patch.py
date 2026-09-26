@@ -572,5 +572,8 @@ def patch_game(root: str | Path, options: PatchOptions | None = None) -> PatchRe
 
     facts = probe(root)
     result.detection = detect(facts)
+    if result.errors:
+        result.skipped.append("marker: not written because a step failed")
+        return result
     _marker(facts, options, result)
     return result

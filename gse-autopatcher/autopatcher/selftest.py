@@ -214,9 +214,18 @@ def build_pe(
     struct.pack_into("<I", file, opt + 60, header_size)
     struct.pack_into("<I", file, opt + 64, 0)
     struct.pack_into("<HH", file, opt + 68, 3, 0)  # subsystem: console
-    struct.pack_into("<III", file, opt + 72, 0x100000, 0x1000, 0x100000)
-    struct.pack_into("<II", file, opt + 84, 0x1000, 0)
-    struct.pack_into("<I", file, opt + 92, 16)
+    if bits == 64:
+        # PE32+ widens the stack/heap sizes to 64 bit, which shifts LoaderFlags
+        # and NumberOfRvaAndSizes.
+        struct.pack_into("<Q", file, opt + 72, 0x100000)
+        struct.pack_into("<Q", file, opt + 80, 0x1000)
+        struct.pack_into("<Q", file, opt + 88, 0x100000)
+        struct.pack_into("<Q", file, opt + 96, 0x1000)
+        struct.pack_into("<II", file, opt + 104, 0, 16)
+    else:
+        struct.pack_into("<III", file, opt + 72, 0x100000, 0x1000, 0x100000)
+        struct.pack_into("<II", file, opt + 84, 0x1000, 0)
+        struct.pack_into("<I", file, opt + 92, 16)
 
     # data directories: exports, imports, security
     struct.pack_into("<II", file, dd + 1 * 8, rva_for_rdata_offset(descriptor_offset),
@@ -375,7 +384,8 @@ def _run_checks(checks: Checks, fixture: dict, tmp: Path) -> None:
                  str(det32.missing))
     det64 = detect(probe(game64))
     checks.check("detect: 64-bit game is unpatched", det64.verdict == UNPATCHED, det64.verdict)
-    checks.check("detect: no SteamStub on the clean game", not det64.reasons[-1].startswith("conclusion"))
+    checks.check("detect: no SteamStub on the clean game",
+                 not any("SteamStub" in r for r in det64.reasons), str(det64.reasons))
 
     # ---- patch refuses to guess when Steamless is missing ---------
     blocked = patch_game(game32, PatchOptions(emu_source=None, settings_mode="minimal"))
@@ -399,8 +409,8 @@ def _run_checks(checks: Checks, fixture: dict, tmp: Path) -> None:
     )
     checks.check("patch: 64-bit game patches cleanly", result.ok, str(result.errors))
     checks.check("patch: emulator library installed",
-                 (game64 / "steam_api64.dll").is_file()
-                 and "steam_api64.dll" in result.performed, str(result.performed))
+                 (game64 / "steam_api64.dll").is_file() and "emu_dll" in result.performed,
+                 str(result.performed))
     checks.check("patch: 32-bit library not installed",
                  not (game64 / "steam_api.dll").is_file())
     checks.check("patch: steam_settings created",
@@ -512,24 +522,16 @@ def _emu_source(emu_dir: Path):
 
 def _strip_bind(src: Path, out: Path) -> None:
     """Rewrite a PE without its `.bind` section, like Steamless would."""
-    from .selftest import build_pe  # self reference keeps the helper together
-
-    data = src.read_bytes()
-    marker = b"STEAMSTUB-PAYLOAD"
-    start = data.find(marker)
-    if start == -1:
-        shutil.copyfile(src, out)
-        return
-    # Blank the section header name so nothing detects it any more.
+    data = bytearray(src.read_bytes())
     e_lfanew = struct.unpack_from("<I", data, 0x3C)[0]
     opt_size = struct.unpack_from("<H", data, e_lfanew + 20)[0]
     table = e_lfanew + 24 + opt_size
     count = struct.unpack_from("<H", data, e_lfanew + 6)[0]
     for index in range(count):
         offset = table + index * 40
-        if data[offset : offset + 8].rstrip(b"\x00") == b".bind":
+        if bytes(data[offset : offset + 6]).rstrip(b"\x00") == b".bind":
             data[offset : offset + 8] = b".stub\x00\x00\x00"
-    out.write_bytes(data)
+    out.write_bytes(bytes(data))
 
 
 def _list_archive(sevenzip: Path, archive: Path) -> list[str]:

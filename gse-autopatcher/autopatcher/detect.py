@@ -157,7 +157,7 @@ def detect(facts: GameFacts | str | Path, verify_hashes: bool = True) -> Detecti
         missing.append("emu_dll")
     if not facts.steam_settings or not settings_files:
         missing.append("steam_settings")
-    elif "steam_interfaces.txt" not in settings_files:
+    if "steam_interfaces.txt" not in settings_files:
         missing.append("interfaces")
     if facts.appid is None:
         missing.append("appid")

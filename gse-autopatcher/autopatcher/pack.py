@@ -64,6 +64,10 @@ class PackResult:
             return 0.0
         return self.archive_size / self.source_size
 
+    @property
+    def ok(self) -> bool:
+        return not self.errors
+
     def to_dict(self) -> dict:
         return {
             "root": str(self.root),
