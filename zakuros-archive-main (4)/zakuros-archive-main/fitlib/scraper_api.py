@@ -69,26 +69,32 @@ def _b64u_bytes(s: str) -> bytes:
 
 
 def _unseal(token: str, key: list[int]) -> str | None:
+    def rotl255(val: int, r: int) -> int:
+        r = r & 7
+        if r == 0:
+            return val & 255
+        return ((val >> r) | (val << (8 - r))) & 255
+
     try:
-        a = _b64u_bytes(token)
+        t = list(_b64u_bytes(token))
     except Exception:
         return None
-    if len(key) < 2:
+    if len(t) < 4 or t[0] != 1:
         return None
-    a = bytearray(a)
-    n = len(key)
-    q = a[-1] ^ key[len(a) % n]
-    if q == 0:
+    n = t[1]
+    a = 2 + n
+    if n < 8 or a >= len(t):
         return None
-    r = len(a) - q
-    if r <= 0:
-        return None
-    for i in range(r - 1, -1, -1):
-        b = key[i % n]
-        for j in range(len(a) - 1, i, -1):
-            a[j] = ((a[j] - b) & 0xFF) ^ a[i]
+    c = t[2:a]
+    s = t[a:]
+    o = bytearray(len(s))
+    for i in range(len(s)):
+        l = key[(i + c[i % len(c)]) % len(key)]
+        u = c[(i * 5 + 3) % len(c)]
+        f = (l + u + ((i * 31 + 17) & 255)) & 255
+        o[i] = rotl255(s[i] ^ f, i % 5 + 1)
     try:
-        out = bytes(a[:r]).decode("utf-8", "replace")
+        out = bytes(o).decode("utf-8", "replace")
     except Exception:
         return None
     if not out.startswith(("http://", "https://")):
