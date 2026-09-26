@@ -12,6 +12,7 @@ import {
   readSourcesConfig,
   syncSources,
   SyncResult,
+  SourceRunResult,
   matchGenres,
 } from "./server/sources";
 import { Game } from "./src/types";
@@ -359,6 +360,11 @@ let syncState: {
   running: boolean;
 } = { lastRun: null, running: false };
 
+// Track when the next scheduled (or boot) sync will actually fire, so the status
+// endpoint and the secret sources page can show a real countdown instead of the
+// previous "now + interval" guess.
+let nextSyncAtMs = Date.now() + SOURCE_SYNC_INTERVAL_MS;
+
 async function runSourceSync(): Promise<SyncResult> {
   if (grindActive()) {
     console.log("[Sync] Metadata grind active — skipping auto source sync.");
@@ -381,6 +387,7 @@ async function runSourceSync(): Promise<SyncResult> {
     };
   }
   syncState.running = true;
+  nextSyncAtMs = Date.now() + SOURCE_SYNC_INTERVAL_MS;
   const startedAt = new Date().toISOString();
   console.log(`[Sync] Starting remote source sync (${startedAt})...`);
   try {
@@ -436,6 +443,196 @@ async function runSourceSync(): Promise<SyncResult> {
   }
 }
 
+// ── Secret sources page ───────────────────────────────────────────────────────
+// Hidden admin page (no links anywhere in the UI) showing the state of every
+// configured source, the local scraped .json files we hold for them, when the
+// next sync fires, and last-run health. Deliberately plain HTML.
+function secEsc(s: unknown): string {
+  return String(s ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+function fmtBytes(n: number | undefined | null): string {
+  if (!n || n <= 0) return "—";
+  if (n < 1024) return `${n} B`;
+  if (n < 1048576) return `${(n / 1024).toFixed(1)} KB`;
+  if (n < 1073741824) return `${(n / 1048576).toFixed(2)} MB`;
+  return `${(n / 1073741824).toFixed(2)} GB`;
+}
+
+function fmtDur(ms: number): string {
+  ms = Math.max(0, ms);
+  const s = Math.floor(ms / 1000);
+  if (s < 60) return `${s}s`;
+  const m = Math.floor(s / 60);
+  if (m < 60) return `${m}m ${s % 60}s`;
+  const h = Math.floor(m / 60);
+  return `${h}h ${m % 60}m`;
+}
+
+function fmtAge(iso: string | undefined, nowMs: number): string {
+  if (!iso) return "—";
+  const t = Date.parse(iso);
+  if (isNaN(t)) return "—";
+  const diff = nowMs - t;
+  if (diff < 0) return "in the future";
+  if (diff < 60_000) return "just now";
+  if (diff < 3600_000) return `${Math.floor(diff / 60_000)} min ago`;
+  if (diff < 86400_000) return `${Math.floor(diff / 3600_000)}h ${Math.floor((diff % 3600_000) / 60_000)}m ago`;
+  return `${Math.floor(diff / 86400_000)}d ago`;
+}
+
+function localFileFor(s: { filePath?: string; scraper?: string }): string | null {
+  if (s.filePath) return s.filePath;
+  if (typeof s.scraper === "string" && s.scraper.startsWith("cfg:")) {
+    return path.join("data", "scraped", `${s.scraper.slice(4).replace(/\.json$/i, "")}.json`);
+  }
+  return null;
+}
+
+function readScrapedStats(rel: string): { count: number; uris: number; name?: string } {
+  const abs = path.join(process.cwd(), rel);
+  try {
+    if (!fs.existsSync(abs)) return { count: 0, uris: 0 };
+    const j = JSON.parse(fs.readFileSync(abs, "utf8")) as any;
+    const dl = Array.isArray(j?.downloads) ? j.downloads : [];
+    const uris = dl.reduce((n: number, x: any) => n + (Array.isArray(x?.uris) ? x.uris.length : 0), 0);
+    return { count: dl.length, uris, name: typeof j?.name === "string" ? j.name : undefined };
+  } catch {
+    return { count: -1, uris: 0 };
+  }
+}
+
+function renderSecretSources(): string {
+  const nowMs = Date.now();
+  const sources = readSourcesConfig(SOURCES_CONFIG_PATH);
+  const interval = SOURCE_SYNC_INTERVAL_MS;
+  const nextIn = Math.max(0, nextSyncAtMs - nowMs);
+  const sync = syncState.lastRun;
+
+  const lastByName = new Map<string, SourceRunResult>();
+  if (sync) for (const s of sync.sources) lastByName.set(s.name, s);
+
+  let snap: { generatedAt?: string; catalogBytes?: number; total?: number; placeholders?: Record<string, number> } = {};
+  try {
+    const p = path.join(process.cwd(), "data", "snapshots", "latest.json");
+    if (fs.existsSync(p)) snap = JSON.parse(fs.readFileSync(p, "utf8"));
+  } catch {
+    /* ignore snapshot failures */
+  }
+
+  const rows = sources.map((s) => {
+    const rel = localFileFor(s);
+    let info: { kind: "file"; rel: string; exists: boolean; sizeBytes?: number; mtime?: string; entries: number; uris: number } | { kind: "remote" } = { kind: "remote" };
+    if (rel) {
+      const abs = path.join(process.cwd(), rel);
+      if (!fs.existsSync(abs)) {
+        info = { kind: "file", rel, exists: false, entries: 0, uris: 0 };
+      } else {
+        const stats = readScrapedStats(rel);
+        const st = fs.statSync(abs);
+        info = {
+          kind: "file",
+          rel,
+          exists: true,
+          sizeBytes: st.size,
+          mtime: st.mtime.toISOString(),
+          entries: stats.count,
+          uris: stats.uris,
+        };
+      }
+    }
+    return { s, info, last: lastByName.get(s.name) };
+  });
+
+  const stale = (mtime?: string) => (mtime ? nowMs - Date.parse(mtime) > interval : false);
+
+  const part = `\
+<!doctype html>
+<html>
+<head><meta charset="utf-8"><title>secret sources</title>
+<style>
+ body{font-family:monospace;font-size:12px;background:#111;color:#ddd;padding:16px;}
+ h1,h2{color:#fff} table{border-collapse:collapse;width:100%;margin-top:8px}
+ th,td{text-align:left;padding:3px 8px;border:1px solid #333;vertical-align:top}
+ th{background:#222;color:#9cf} tr.bad{background:#3a1414} tr.remote{color:#888}
+ .ok{color:#6f6}.err{color:#f66}.dim{color:#888}.warn{color:#fa0}
+ .chip{display:inline-block;padding:0 5px;border-radius:3px;background:#222;border:1px solid #444;margin:2px 4px 2px 0}
+ a{color:#8cf}
+</style>
+</head>
+<body>
+<h1>secret sources</h1>
+<p class="chip">catalog: <b>${gamesCatalog.length}</b> games</p>
+<p class="chip">interval: every <b>${Math.round(interval / 3600_000)}h</b></p>
+<p class="chip">next sync in: <b class="${nextIn === 0 ? "warn" : "ok"}">${fmtDur(nextIn)}</b> (at ${new Date(nextSyncAtMs).toISOString()})</p>
+<p class="chip">sync running: <b>${syncState.running ? "YES" : "no"}</b></p>
+<p class="chip">config sources: <b>${sources.length}</b> (enabled: ${sources.filter((s) => s.enabled).length})</p>
+<h2>sync</h2>
+${
+  sync
+    ? `\
+<p>last run: <b class="${sync.ok ? "ok" : "err"}">${sync.ok ? "OK" : "FAILED"}</b> started ${fmtAge(sync.startedAt, nowMs)} — finished ${fmtAge(sync.finishedAt, nowMs)} (${fmtDur(Date.parse(sync.finishedAt) - Date.parse(sync.startedAt))})${sync.error ? ` <span class="err">error: ${secEsc(sync.error)}</span>` : ""}</p>
+<p>totals: <b>+${sync.totals.added}</b> added · <b>+${sync.totals.updated}</b> updated · <b>${sync.totals.unchanged}</b> unchanged · catalog now <b>${sync.totals.totalGames}</b> games · downloading sources <b>${sync.totals.downloadSourceCount}</b></p>`
+    : '<p class="dim">no sync run yet this boot.</p>'
+}
+<h2>health snapshot (data/snapshots/latest.json)</h2>
+${snap.total
+  ? `\
+<p class="chip">generated: ${fmtAge(snap.generatedAt, nowMs)}</p>
+<p class="chip">total: <b>${snap.total}</b></p>
+<p class="chip">catalog on disk: ${fmtBytes(snap.catalogBytes)}</p>
+<p class="chip">placeholder summaries: ${snap.placeholders?.summaries ?? "—"}</p>
+<p class="chip">placeholder developers: ${snap.placeholders?.developers ?? "—"}</p>
+<p class="chip">placeholder screenshots: ${snap.placeholders?.screenshots ?? "—"}</p>`
+  : '<p class="dim">no snapshot yet.</p>'}
+<h2>sources</h2>
+<table>
+<tr><th>name</th><th>cat</th><th>enabled</th><th>type</th><th>local file</th><th>file state</th><th>entries / links</th><th>last run</th><th>note</th></tr>
+${rows
+  .map(({ s, info, last }) => {
+    const isRemote = info.kind === "remote";
+    const missing = info.kind === "file" && !info.exists;
+    const isBad = missing || last?.ok === false;
+    const entries =
+      info.kind === "file" ? (info.entries < 0 ? '<span class="err">parse error</span>' : `${info.entries}`) : '<span class="dim">n/a</span>';
+    const links = info.kind === "file" ? (info.entries < 0 ? "—" : `${info.uris}`) : '<span class="dim">n/a</span>';
+    const fileCell = isRemote
+      ? '<span class="dim">remote fetch (no local file)</span>'
+      : `<code>${secEsc(info.rel)}</code>`;
+    const stateCell = isRemote
+      ? '<span class="dim">—</span>'
+      : info.exists
+        ? `exists · ${fmtBytes(info.sizeBytes)} · <span class="${stale(info.mtime) ? "warn" : "dim"}">${fmtAge(info.mtime, nowMs)}</span>${stale(info.mtime) ? ' <b class="warn">STALE</b>' : ""}`
+        : '<span class="err">MISSING FILE</span>';
+    const runCell = !last
+      ? '<span class="dim">no run this boot</span>'
+      : `${last.ok ? `<b class="ok">ok</b>` : `<b class="err">fail</b>`} · raw ${last.rawCount} · unique ${last.uniqueCount}${last.error ? ` <span class="err">${secEsc(last.error)}</span>` : ""}`;
+    const typeCell = isRemote ? `<span class="dim">${s.scraper ? `cfg:${secEsc(String(s.scraper))}` : "remote url"}</span>` : `<span>${secEsc(s.scraper || "file")}</span>`;
+    return `\
+<tr class="${isBad ? "bad" : isRemote ? "remote" : ""}">
+<td><b>${secEsc(s.name)}</b></td>
+<td>${secEsc(s.category)}</td>
+<td>${s.enabled ? '<span class="ok">yes</span>' : '<span class="err">no</span>'}</td>
+<td>${typeCell}</td>
+<td>${fileCell}</td>
+<td>${stateCell}</td>
+<td>${entries} / ${links}</td>
+<td>${runCell}</td>
+<td class="dim">${secEsc(s.note || "")}</td>
+</tr>`;
+  })
+  .join("\n")}
+</table>
+</body>
+</html>`;
+
+  return part;
+}
+
 async function startServer() {
   gamesCatalog = loadGames();
 
@@ -483,9 +680,15 @@ async function startServer() {
       lastRun: syncState.lastRun,
       sources,
       catalogSize: gamesCatalog.length,
-      nextRunAt: new Date(Date.now() + SOURCE_SYNC_INTERVAL_MS).toISOString(),
+      nextRunAt: new Date(nextSyncAtMs).toISOString(),
+      nextRunInMs: Math.max(0, nextSyncAtMs - Date.now()),
       intervalMs: SOURCE_SYNC_INTERVAL_MS,
     });
+  });
+
+  // Secret sources page — hidden admin view (no links anywhere in the UI).
+  app.get("/secret-sources", (_req, res) => {
+    res.type("text/html").send(renderSecretSources());
   });
 
   // Public list of indexed sources — names only (no URLs exposed).
