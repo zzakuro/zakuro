@@ -566,6 +566,7 @@ function renderSecretSources(): string {
 </head>
 <body>
 <h1>secret sources</h1>
+<p><a href="/secret-sources/file?rel=${encodeURIComponent("data/sources.json")}">view sources.json</a> · <a href="/secret-sources/file?rel=${encodeURIComponent("data/scraper-sites.json")}">view scraper-sites.json</a></p>
 <p class="chip">catalog: <b>${gamesCatalog.length}</b> games</p>
 <p class="chip">interval: every <b>${Math.round(interval / 3600_000)}h</b></p>
 <p class="chip">next sync in: <b class="${nextIn === 0 ? "warn" : "ok"}">${fmtDur(nextIn)}</b> (at ${new Date(nextSyncAtMs).toISOString()})</p>
@@ -600,9 +601,10 @@ ${rows
     const entries =
       info.kind === "file" ? (info.entries < 0 ? '<span class="err">parse error</span>' : `${info.entries}`) : '<span class="dim">n/a</span>';
     const links = info.kind === "file" ? (info.entries < 0 ? "—" : `${info.uris}`) : '<span class="dim">n/a</span>';
-    const fileCell = isRemote
-      ? '<span class="dim">remote fetch (no local file)</span>'
-      : `<code>${secEsc(info.rel)}</code>`;
+    const fileCell =
+      info.kind === "remote"
+        ? `<a href="/secret-sources/fetch?url=${encodeURIComponent(s.url || "")}">fetch remote</a>`
+        : `<code>${secEsc(info.rel)}</code> <a href="/secret-sources/file?rel=${encodeURIComponent(info.rel)}">view</a>`;
     const stateCell = isRemote
       ? '<span class="dim">—</span>'
       : info.exists
@@ -631,6 +633,54 @@ ${rows
 </html>`;
 
   return part;
+}
+
+// ── Secret JSON viewer ────────────────────────────────────────────────────────
+// Allow-list of local files that the secret page may display. Built from the
+// sources config (local filePath or cfg: scraper files) plus the two config
+// files the page links to. Nothing else may be read via ?rel=.
+function sourceLocalFiles(): Set<string> {
+  const set = new Set<string>();
+  for (const s of readSourcesConfig(SOURCES_CONFIG_PATH)) {
+    const lf = localFileFor(s);
+    if (lf) set.add(path.normalize(lf));
+  }
+  set.add(path.normalize("data/sources.json"));
+  set.add(path.normalize("data/scraper-sites.json"));
+  return set;
+}
+
+const JSON_VIEW_STYLES =
+  "body{font-family:monospace;font-size:12px;background:#111;color:#ddd;padding:16px;}h1{color:#fff}a{color:#8cf}" +
+  "pre{background:#0c0c0c;border:1px solid #333;padding:10px;overflow:auto;max-height:88vh;white-space:pre-wrap;word-break:break-all;}" +
+  ".chip{display:inline-block;padding:0 5px;border-radius:3px;background:#222;border:1px solid #444;margin:2px 4px 2px 0}" +
+  ".err{color:#f66}";
+
+function jsonViewShell(title: string, inner: string): string {
+  return `<!doctype html><html><head><meta charset="utf-8"><title>${title}</title>` +
+    `<style>${JSON_VIEW_STYLES}</style></head><body>${inner}</body></html>`;
+}
+
+function renderFileView(relNorm: string, st: fs.Stats, body: string): string {
+  return jsonViewShell(
+    `json: ${path.basename(relNorm)}`,
+    `<h1>json view</h1><p><a href="/secret-sources">&larr; secret sources</a></p>` +
+      `<p class="chip"><code>${secEsc(relNorm)}</code></p>` +
+      `<p class="chip">${fmtBytes(st.size)}</p>` +
+      `<p class="chip">modified ${fmtAge(st.mtime.toISOString(), Date.now())}</p>` +
+      `<p class="chip">${body.length.toLocaleString()} chars</p>` +
+      `<pre>${secEsc(body)}</pre>`,
+  );
+}
+
+function renderRemoteView(url: string, status: number, body: string): string {
+  return jsonViewShell(
+    `remote json: ${url.slice(0, 60)}`,
+    `<h1>remote json view</h1><p><a href="/secret-sources">&larr; secret sources</a></p>` +
+      `<p class="chip"><code>${secEsc(url)}</code></p>` +
+      `<p class="chip">status ${status}</p>` +
+      `<pre>${secEsc(body)}</pre>`,
+  );
 }
 
 async function startServer() {
@@ -689,6 +739,62 @@ async function startServer() {
   // Secret sources page — hidden admin view (no links anywhere in the UI).
   app.get("/secret-sources", (_req, res) => {
     res.type("text/html").send(renderSecretSources());
+  });
+
+  // JSON viewer for a local source file (allow-listed by sources config).
+  app.get("/secret-sources/file", (req, res) => {
+    const rel = typeof req.query.rel === "string" ? req.query.rel : "";
+    const norm = path.normalize(rel);
+    if (!sourceLocalFiles().has(norm)) {
+      return res.status(403).type("text/plain").send("Not an allowed source file.");
+    }
+    const abs = path.resolve(process.cwd(), norm);
+    if (!fs.existsSync(abs)) return res.status(404).type("text/plain").send("File not found.");
+    const st = fs.statSync(abs);
+    res.set("Content-Security-Policy", "default-src 'none'; style-src 'unsafe-inline'");
+    // Big files: serve the raw JSON inline (browser renders it natively) instead
+    // of pretty-printing many MB into HTML.
+    if (st.size > 1_500_000 || req.query.raw === "1") {
+      res.set("Content-Disposition", `inline; filename="${path.basename(norm)}"`);
+      res.type("application/json");
+      return res.send(fs.readFileSync(abs));
+    }
+    let body: string;
+    try {
+      body = JSON.stringify(JSON.parse(fs.readFileSync(abs, "utf8")), null, 2);
+    } catch {
+      body = fs.readFileSync(abs, "utf8");
+    }
+    res.type("text/html").send(renderFileView(norm, st, body));
+  });
+
+  // Live fetch of a remote (url-only) source, allow-listed by config.
+  app.get("/secret-sources/fetch", async (req, res) => {
+    const url = typeof req.query.url === "string" ? req.query.url : "";
+    const found = readSourcesConfig(SOURCES_CONFIG_PATH).find((s) => s.url === url);
+    if (!found) return res.status(403).type("text/plain").send("Not a configured source URL.");
+    const ac = new AbortController();
+    const timer = setTimeout(() => ac.abort(), 20000);
+    try {
+      const r = await fetch(url, {
+        headers: { "User-Agent": "Mozilla/5.0", Accept: "application/json", ...(found.headers ?? {}) },
+        signal: ac.signal,
+      });
+      const raw = await r.text();
+      res.set("Content-Security-Policy", "default-src 'none'; style-src 'unsafe-inline'");
+      let body: string;
+      try {
+        body = JSON.stringify(JSON.parse(raw), null, 2);
+      } catch {
+        body = raw;
+      }
+      res.type("text/html").send(renderRemoteView(url, r.status, body));
+    } catch (e: any) {
+      res.set("Content-Security-Policy", "default-src 'none'; style-src 'unsafe-inline'");
+      res.type("text/html").send(renderRemoteView(url, 0, `ERROR: ${e?.message ?? String(e)}`));
+    } finally {
+      clearTimeout(timer);
+    }
   });
 
   // Public list of indexed sources — names only (no URLs exposed).
