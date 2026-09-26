@@ -12,6 +12,7 @@ Usage:
 """
 import argparse
 import base64
+import html as _html
 import json
 import pathlib
 import re
@@ -31,7 +32,7 @@ TAG_RE = re.compile(r"<[^>]+>")
 
 
 def get_text(html: str) -> str:
-    return re.sub(r"\s+", " ", TAG_RE.sub("", html)).strip()
+    return _html.unescape(re.sub(r"\s+", " ", TAG_RE.sub("", html))).strip()
 
 
 def now_iso() -> str:
@@ -153,6 +154,7 @@ def discover_pages(home_html: str, base: str, page_pat: str | None, pages: int) 
         return []
     found: dict[str, int] = {}
     for h in find_hrefs(home_html):
+        h = _html.unescape(h)
         if page_pat not in h:
             continue
         u = urljoin(base, re.split(r"[#]", h)[0])
@@ -191,17 +193,17 @@ def scrape_site(site: dict, key: str, max_posts: int) -> pathlib.Path:
         for lu in listing_urls:
             html = home_html if lu == site["home"] else fetch_text(session, lu)
             for href, inner in re.findall(r'<a[^>]+href="([^"]+)"[^>]*>([\s\S]*?)</a>', html, re.I):
-                h = re.split(r"[#?]", href)[0]
-                if h.startswith(("mailto:", "tel:", "javascript:")):
+                raw = _html.unescape(href)
+                if raw.startswith(("mailto:", "tel:", "javascript:")):
                     continue
                 if mode == "direct":
-                    if entry_pat and entry_pat not in href:
+                    if entry_pat and entry_pat not in raw:
                         continue
-                elif pattern and pattern not in h:
+                elif pattern and pattern not in raw:
                     continue
-                if skip_pats and any(p in href for p in skip_pats):
+                if skip_pats and any(p in raw for p in skip_pats):
                     continue
-                u = urljoin(base, h)
+                u = urljoin(base, re.split(r"[#]", raw)[0])
                 if u in seen:
                     continue
                 seen.add(u)
