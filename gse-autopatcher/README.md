@@ -24,7 +24,7 @@ already have, which you point it at.
 ## Install
 
 ```bat
-python -m autopatcher selftest        :: 47 self checks, builds its own test game
+python -m autopatcher selftest        :: 73 self checks, builds its own test game
 python -m autopatcher tools           :: shows which external tools were found
 ```
 
@@ -120,12 +120,10 @@ A patched folder is skipped by `run` and `batch` unless you pass `--force`;
 `batch --only` accepts `all`, `unpatched`, `patched` and `stale` (patched but
 modified, or built with a different emulator).
 
-## Commands
+## How detection works
 
-## Detection
-
-`detect` never guesses from a single signal. It reports the verdict, a
-confidence value and the evidence list:
+`detect` never guesses from a single signal. Every claim in the `evidence:`
+list is a fact it read from the folder:
 
 * **`.bind` section in the game executable** — the marker every SteamStub
   variant (1.0 → 3.1) leaves behind, and the same one Steamless refuses to
@@ -140,14 +138,19 @@ confidence value and the evidence list:
   "half patched" folders are visible.
 * **`steam_settings/` content** — `steam_interfaces.txt`, `configs.*.ini`,
   `appinfo.vdf`, … each one is a required piece.
+* **which patcher** — the layout on disk identifies gbe_fork, pre-fork
+  Goldberg, RUNE, a bare Steamless run, or this tool (see above).
 * **the marker file** `.gse_autopatch.json` written by this tool, including
   SHA-256 hashes, so a re-run knows the folder is already done *and* has not
   been modified since.
+* **the configured emu build** — with `--emu-dir` the deployed library is
+  compared byte for byte, so "patched, but with last month's build" is visible.
 * **app id sources** — `steam_appid.txt`, `appinfo.vdf`, `configs.app.ini`,
   `appmanifest_*.acf` from a Steam library layout, or the marker.
 
-Verdicts: `patched`, `partial` (some pieces present), `unpatched`,
-`not-steam` (no Steam integration at all), `unknown` (no game executable).
+Verdicts (`state:` in the report, `verdict` in JSON): `patched`, `partial`
+(some pieces present), `unpatched`, `not-steam` (no Steam integration at all),
+`unknown` (no game executable).
 
 ## The patch steps
 
@@ -194,8 +197,9 @@ gse-autopatcher run "D:\Games\Hades" --profile high --delete-original -y
 * profiles: `store`, `fast`, `normal` (default, `-mx=6 d=128m`), `high`
   (`-mx=7 d=256m`), `max` (`-mx=9 d=384m`) — the LZMA2/dictionary layout
   mirrors gbe_fork's own `package_win.bat`.
-* `--threads`, `--mem-percent`, `--dict`, `--solid`, `-x PATTERN`, `-p PASSWORD`,
-  `--encrypt-names`, `--timeout` are all exposed.
+* `--threads`, `--mem-percent`, `--dict`, `--solid`, `-p PASSWORD`,
+  `--encrypt-names`, `--timeout` are all exposed, plus the selection flags
+  above.
 * the archive is tested with `7z t` before anything is deleted;
   `--no-test` turns that off and then deletion is refused.
 * the archive may not be written inside the source folder, and the source is
@@ -207,8 +211,11 @@ gse-autopatcher run "D:\Games\Hades" --profile high --delete-original -y
 ## Examples
 
 ```bat
-:: what state is this folder in?
-gse-autopatcher detect "D:\Games\Hades" -v
+:: what state is this folder in, and is it the emu build I configured?
+gse-autopatcher detect "D:\Games\Hades" --emu-dir "D:\tools\emu" -v
+
+:: what would go into the archive?
+gse-autopatcher files "D:\Games\Hades" --select crack-only
 
 :: patch only, no compression, from an emulator build folder
 gse-autopatcher patch "D:\Games\Hades" ^
@@ -245,16 +252,17 @@ id) asks the Steam store and fills in the id and name.
 autopatcher/
   pe.py          zero-dependency PE reader (sections, imports, signatures, overlay)
   probe.py       finds the game executable and collects every fact about a folder
-  detect.py      verdict + confidence + evidence, and the list of missing steps
+  detect.py      state + confidence + evidence, patcher fingerprint, missing steps
   patch.py       the patch steps, backups and the marker
   interfaces.py  port of gbe_fork's generate_interfaces
   extras.py      .txt templating and .lnk creation
-  pack.py        7-Zip command building, verification, safe deletion
+  select.py      presets, glob include/exclude, list files, the `files` inventory
+  pack.py        7-Zip command building, selection list file, verification, deletion
   pipeline.py    detect -> patch -> compress orchestration
   cli.py         argparse front end, config file, exit codes
   external.py    discovery of 7-Zip / Steamless / emulator / generator
   steamapi.py    optional store lookups
-  selftest.py    synthetic PE builder + 47 end-to-end checks
+  selftest.py    synthetic PE builder + 73 end-to-end checks
 ```
 
 ## Notes

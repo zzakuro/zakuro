@@ -481,7 +481,8 @@ def cmd_batch(args) -> int:
         if args.only == "stale":
             stale = det.marker_state == "modified" or det.emu_match == "mismatch"
             if not (stale or det.needs_patch):
-                log.info("skipping: patched and up to date")
+                log.info(f"skipping: {det.label.lower()}"
+                         + (f", marker {det.marker_state}" if det.marker_state != "absent" else ""))
                 continue
         options = PipelineOptions(
             patch=patch_options,
