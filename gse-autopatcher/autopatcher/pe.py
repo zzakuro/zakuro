@@ -313,8 +313,12 @@ class PEFile:
             if not name_off:
                 continue
             dll = self._read_cstring(name_off)
-            thunk_rva = int_rva or first_thunk
-            result[dll] = self._read_thunks(thunk_rva, is_64, sections)
+            funcs = self._read_thunks(int_rva, is_64, sections)
+            if not funcs and first_thunk != int_rva:
+                # A bound or clobbered INT is not unheard of; the IAT still has
+                # the names until the loader resolves them.
+                funcs = self._read_thunks(first_thunk, is_64, sections)
+            result[dll] = funcs
         return result
 
     def _read_delay_imports(

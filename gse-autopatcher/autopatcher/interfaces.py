@@ -52,18 +52,18 @@ INTERFACE_PATTERNS: tuple[str, ...] = (
     r"SteamMasterServerUpdater\d+",
 )
 
-_COMBINED = re.compile("|".join(f"(?:{p})".encode() for p in INTERFACE_PATTERNS))
-_BY_NAME = {p.encode().decode(): re.compile(p.encode()) for p in INTERFACE_PATTERNS}
+_COMBINED = re.compile(b"|".join(f"(?:{p})".encode() for p in INTERFACE_PATTERNS))
+_BY_NAME = {p: re.compile(p.encode()) for p in INTERFACE_PATTERNS}
 
 
 def extract_from_bytes(data: bytes) -> list[str]:
     """Return interface names, ordered by pattern then by first appearance."""
     found: dict[str, list[str]] = {}
     for match in _COMBINED.finditer(data):
-        token = match.group(0).decode("ascii", "replace")
+        token = match.group(0)
         for pattern, regex in _BY_NAME.items():
             if regex.fullmatch(token):
-                found.setdefault(pattern, []).append(token)
+                found.setdefault(pattern, []).append(token.decode("ascii", "replace"))
                 break
 
     # Newer SDKs keep only SteamClient017 among the legacy exports.
