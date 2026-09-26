@@ -560,6 +560,7 @@ def scrape_site(site: dict, key: str, max_posts: int) -> pathlib.Path:
 
             queue: deque = deque([site["home"]])
             seen_pg: set[str] = set()
+            queued: set[str] = {site["home"]}
             while queue and len(posts) < max_posts and len(seen_pg) < pages:
                 lu = queue.popleft()
                 html = home_html if lu == site["home"] else fetch(lu)
@@ -597,10 +598,10 @@ def scrape_site(site: dict, key: str, max_posts: int) -> pathlib.Path:
                         continue
                     u = urljoin(base, re.split(r"[#]", h)[0])
                     u = re.sub(r"\.html$", "", u)
-                    if not u or u in seen_pg or u.rstrip("/") == site["home"].rstrip("/"):
+                    if not u or u in seen_pg or u in queued or u.rstrip("/") == site["home"].rstrip("/"):
                         continue
                     queue.append(u)
-                    seen_pg.add(u)
+                    queued.add(u)
 
         posts = posts[:max_posts]
     if not posts:
