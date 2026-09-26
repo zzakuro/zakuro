@@ -22,6 +22,7 @@ import sys
 import threading
 import time
 from urllib.parse import unquote, urljoin, urlparse
+import urllib.request
 
 ROOT = pathlib.Path(__file__).resolve().parent
 SITES_FILE = ROOT / "data" / "scraper-sites.json"
