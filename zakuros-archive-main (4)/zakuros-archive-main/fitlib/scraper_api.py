@@ -155,12 +155,16 @@ def scrape_site(site: dict, key: str, max_posts: int) -> pathlib.Path:
                 continue
             m = DEFAULT_SIZE_RE.search(anchor_text)
             size = m.group(1).strip() if m else None
+            uris = []
+            for h in links:
+                resolved = resolve_href(site, h)
+                uris.append(uri(None, resolved, part_label(resolved, part_pat)))
             downloads.append(
                 {
                     "title": title,
                     "fileSize": size,
                     "uploadDate": None,
-                    "uris": [uri(None, resolve_href(site, h), part_label(h, part_pat)) for h in links],
+                    "uris": uris,
                 }
             )
 
