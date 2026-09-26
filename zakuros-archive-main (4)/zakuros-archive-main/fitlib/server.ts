@@ -835,7 +835,11 @@ async function startServer() {
   gamesCatalog = loadGames();
 
   const app = express();
-  app.use(compression());
+  app.use(compression({
+    // Never compress SSE streams (text/event-stream): compression buffers the
+    // whole response and events wouldn't flush until the run ends.
+    filter: (req, res) => !String(res.getHeader("Content-Type") || "").includes("text/event-stream"),
+  }));
   app.use(express.json({ limit: "50mb" }));
 
   // Static-catalog fallback: lets a static/offline build of the frontend load
