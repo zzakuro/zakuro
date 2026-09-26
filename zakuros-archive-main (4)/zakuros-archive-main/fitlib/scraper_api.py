@@ -86,6 +86,22 @@ def part_label(url: str, pattern: str | None) -> str | None:
     return m.group(1) if m else None
 
 
+def part_from_anchor_text(text: str, pattern: str | None) -> str | None:
+    if not text:
+        return None
+    m = re.search(pattern or r"Part\s*(\d+)", text, re.I)
+    return m.group(1) if m else None
+
+
+def anchor_links(html: str, link_pat: str) -> list[tuple[str, str]]:
+    """(href, visible text) pairs for anchors whose href contains link_pat."""
+    out = []
+    for href, inner in re.findall(r'<a[^>]+href="([^"]+)"[^>]*>([\s\S]*?)</a>', html, re.I):
+        if link_pat.lower() in href.lower():
+            out.append((href, get_text(inner)))
+    return out
+
+
 def uri(name: str | None, url: str, part: str | None = None) -> dict:
     host = urlparse(url).netloc
     label = name or (host or "link")
@@ -150,15 +166,22 @@ def scrape_site(site: dict, key: str, max_posts: int) -> pathlib.Path:
             title = default_title(html, strip_re)
             if not title:
                 continue
-            links = list(dict.fromkeys(h for h in find_hrefs(html) if link_pat.lower() in h.lower()))
+            links = anchor_links(html, link_pat)
             if not links:
                 continue
             m = DEFAULT_SIZE_RE.search(anchor_text)
             size = m.group(1).strip() if m else None
             uris = []
-            for h in links:
+            seen_hrefs: set[str] = set()
+            for h, label in links:
+                if h in seen_hrefs:
+                    continue
+                seen_hrefs.add(h)
                 resolved = resolve_href(site, h)
-                uris.append(uri(None, resolved, part_label(resolved, part_pat)))
+                part = part_from_anchor_text(label, site.get("partLabelPattern") or None) or part_label(
+                    resolved, part_pat
+                )
+                uris.append(uri(None, resolved, part))
             downloads.append(
                 {
                     "title": title,
@@ -182,21 +205,22 @@ def scrape_url(url: str, name: str) -> pathlib.Path:
     with StealthySession(headless=True, solve_cloudflare=True) as session:
         html = fetch_text(session, url)
         title = default_title(html)
-        links = list(
-            dict.fromkeys(
-                h
-                for h in find_hrefs(html)
-                if not h.startswith(("mailto:", "tel:", "javascript:", "#"))
-                and h != ""
-                and "/" in h.split("?", 1)[0]
-            )
-        )[:20]
+        uris = []
+        seen: set[str] = set()
+        for h, label in anchor_links(html, "/"):
+            if h in seen or h.startswith(("mailto:", "tel:", "javascript:", "#")) or h == "":
+                if h not in seen:
+                    seen.add(h)
+                continue
+            seen.add(h)
+            part = part_from_anchor_text(label, None)
+            uris.append(uri(label or None, resolve_href({"resolver": None}, h), part))
         downloads.append(
             {
                 "title": title or url,
                 "fileSize": None,
                 "uploadDate": None,
-                "uris": [uri(None, resolve_href({"resolver": None}, h)) for h in links],
+                "uris": uris[:20],
             }
         )
     return write_payload("_live", name or "live", downloads)
