@@ -110,7 +110,13 @@ def glitch_seal_links(html: str) -> list[tuple[str, str, str | None]]:
     am = re.search(r'linkPayloadAttribute\s*=\s*"([^"]+)"', html)
     attr = am.group(1) if am else "data-anl3cgehmr"
     out: list[tuple[str, str, str | None]] = []
-    for a in re.finditer(r'<a\b[^>]*' + re.escape(attr) + r'="([^"]+)"[^>]*>', html, re.I):
+    for a in re.finditer(
+        r'<a\b(?=[^>]*class="[^"]*format-download-btn[^"]*")[^>]*'
+        + re.escape(attr)
+        + r'="([^"]+)"[^>]*>',
+        html,
+        re.I,
+    ):
         hm = re.search(r'data-host="([^"]*)"', a.group(0))
         host = hm.group(1) if hm else ""
         url = _unseal(a.group(1), key)
@@ -426,31 +432,47 @@ def scrape_site(site: dict, key: str, max_posts: int) -> pathlib.Path:
         listing_urls = [site["home"]] + discover_pages(home_html, base, site.get("pageLinkPattern"), pages)
 
         seen, posts = set(), []
-        for lu in listing_urls:
-            html = home_html if lu == site["home"] else fetch_text(session, lu)
-            for href, inner in re.findall(r'<a[^>]+href="([^"]+)"[^>]*>([\s\S]*?)</a>', html, re.I):
-                raw = _html.unescape(href)
-                if raw.startswith(("mailto:", "tel:", "javascript:")):
+        smap = site.get("sitemapUrl")
+        if smap:
+            smap_html = fetch_text(session, smap)
+            for raw in re.findall(r"<loc>\s*([^<\s]+)\s*</loc>", smap_html):
+                u = raw.strip()
+                if pattern and pattern not in u:
                     continue
-                if mode == "direct":
-                    if entry_pat and entry_pat not in raw:
-                        continue
-                elif pattern and pattern not in raw:
+                if skip_pats and any(p in u for p in skip_pats):
                     continue
-                if skip_pats and any(p in raw for p in skip_pats):
-                    continue
-                u = urljoin(base, re.split(r"[#]", raw)[0])
-                if u in seen:
-                    continue
-                if u == base or u.rstrip("/") == site["home"].rstrip("/"):
+                if u in seen or u.rstrip("/") == site["home"].rstrip("/"):
                     continue
                 seen.add(u)
-                if mode == "direct":
-                    posts.append(("", get_text(inner), u))
-                else:
-                    posts.append((u, get_text(inner)))
-            if len(posts) >= max_posts:
-                break
+                posts.append((u, ""))
+                if len(posts) >= max_posts:
+                    break
+        else:
+            for lu in listing_urls:
+                html = home_html if lu == site["home"] else fetch_text(session, lu)
+                for href, inner in re.findall(r'<a[^>]+href="([^"]+)"[^>]*>([\s\S]*?)</a>', html, re.I):
+                    raw = _html.unescape(href)
+                    if raw.startswith(("mailto:", "tel:", "javascript:")):
+                        continue
+                    if mode == "direct":
+                        if entry_pat and entry_pat not in raw:
+                            continue
+                    elif pattern and pattern not in raw:
+                        continue
+                    if skip_pats and any(p in raw for p in skip_pats):
+                        continue
+                    u = urljoin(base, re.split(r"[#]", raw)[0])
+                    if u in seen:
+                        continue
+                    if u == base or u.rstrip("/") == site["home"].rstrip("/"):
+                        continue
+                    seen.add(u)
+                    if mode == "direct":
+                        posts.append(("", get_text(inner), u))
+                    else:
+                        posts.append((u, get_text(inner)))
+                if len(posts) >= max_posts:
+                    break
 
         posts = posts[:max_posts]
         if not posts:
