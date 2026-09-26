@@ -27,9 +27,7 @@ _COLOR = {
 class Log:
     def __init__(self, level: str = "info", color: bool | None = None):
         self.level = _LEVELS.get(level, 20)
-        if color is None:
-            color = sys.stdout.isatty() and os.name == "nt" or sys.stdout.isatty()
-        self.color = bool(color)
+        self.color = sys.stdout.isatty() if color is None else bool(color)
         self._quiet = False
 
     def _paint(self, text: str, key: str) -> str:
