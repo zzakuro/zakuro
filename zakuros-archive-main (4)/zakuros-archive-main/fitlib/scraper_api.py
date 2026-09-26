@@ -495,6 +495,9 @@ def scrape_site(site: dict, key: str, max_posts: int) -> pathlib.Path:
                     uris.append(uri(label, h, part))
                     if not size and lsize:
                         size = lsize
+                delay = site.get("interPostDelay")
+                if delay:
+                    time.sleep(delay)
             downloads.append(
                 {
                     "title": title,
