@@ -29,14 +29,20 @@ const KEY_RE = /^[a-z0-9][a-z0-9_-]*$/i;
 const SITE_FIELDS = [
   "name",
   "home",
+  "mode",
   "pages",
   "maxPosts",
   "postLinkPattern",
+  "entryPattern",
+  "pageLinkPattern",
   "linkPattern",
   "resolver",
   "titleStrip",
+  "sizePattern",
   "partPattern",
   "partLabelPattern",
+  "skipLinkPatterns",
+  "stripListNumbers",
 ] as const;
 
 function loadSites(): Record<string, Record<string, unknown>> {
@@ -88,11 +94,19 @@ export function scraperRouter(): express.Router {
       return res.status(400).json({ error: "'home' must be a valid http(s) URL" });
     }
     const site: Record<string, unknown> = { name: String(body.name ?? key), home };
+    const arrayFields = ["skipLinkPatterns"] as const;
+    const boolFields = ["stripListNumbers"] as const;
     for (const f of SITE_FIELDS) {
       if (f === "name" || f === "home") continue;
       const v = body[f];
       if (typeof v === "string" && v.length) site[f] = v;
       if (typeof v === "number") site[f] = v;
+      if (arrayFields.includes(f as (typeof arrayFields)[number]) && Array.isArray(v) && (v as unknown[]).every((x) => typeof x === "string")) {
+        site[f] = v;
+      }
+      if (boolFields.includes(f as (typeof boolFields)[number]) && typeof v === "boolean") {
+        site[f] = v;
+      }
     }
     const sites = loadSites();
     const existed = key in sites;

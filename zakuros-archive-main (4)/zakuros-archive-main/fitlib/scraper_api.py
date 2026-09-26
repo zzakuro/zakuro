@@ -126,13 +126,58 @@ def write_payload(key: str, name: str, downloads: list) -> pathlib.Path:
     return out
 
 
+def extract_size(text: str, size_pat: str | None) -> str | None:
+    if size_pat:
+        m = re.search(size_pat, text)
+        if m:
+            return m.group(1).strip()
+        return None
+    m = DEFAULT_SIZE_RE.search(text)
+    return m.group(1).strip() if m else None
+
+
+def direct_title(label: str, strip_re: str | None, strip_nums: bool, size_pat: str | None) -> str:
+    t = label
+    if strip_nums:
+        t = re.sub(r"^\s*\d+\s*[-.)]?\s+", "", t).strip()
+    if size_pat:
+        t = re.sub(r"\s*\[(?:From\s+)?[\d.,]+\s*(?:GB|MB|TB)\]\s*$", "", t).strip()
+    if strip_re:
+        t = re.sub(strip_re, "", t).strip()
+    return t
+
+
+def discover_pages(home_html: str, base: str, page_pat: str | None, pages: int) -> list[str]:
+    """Absolute URL list of listing pages beyond the home page (max `pages` total)."""
+    if not page_pat or pages <= 1:
+        return []
+    found: dict[str, int] = {}
+    for h in find_hrefs(home_html):
+        if page_pat not in h:
+            continue
+        u = urljoin(base, re.split(r"[#]", h)[0])
+        if not u or u in found:
+            continue
+        m = re.search(r"(\d+)(?:\.html)?$", u)
+        found[u] = int(m.group(1)) if m else 10**9
+    ordered = sorted(found, key=lambda u: found[u])
+    return ordered[: pages - 1]
+
+
 def scrape_site(site: dict, key: str, max_posts: int) -> pathlib.Path:
     from scrapling.fetchers import StealthySession
 
+    mode = site.get("mode", "post")
     pattern = site.get("postLinkPattern", "")
+    entry_pat = site.get("entryPattern") or None
     link_pat = site.get("linkPattern", "/")
     strip_re = site.get("titleStrip") or None
     part_pat = site.get("partPattern") or None
+    part_label_pat = site.get("partLabelPattern") or None
+    size_pat = site.get("sizePattern") or None
+    skip_pats = site.get("skipLinkPatterns") or None
+    strip_nums = bool(site.get("stripListNumbers"))
+    pages = int(site.get("pages") or 1)
     base = site.get("home", "")
     if base and not base.endswith("/"):
         base += "/"
@@ -140,48 +185,67 @@ def scrape_site(site: dict, key: str, max_posts: int) -> pathlib.Path:
     downloads: list = []
     with StealthySession(headless=True, solve_cloudflare=True) as session:
         home_html = fetch_text(session, site["home"])
-        anchors = re.findall(r'<a[^>]+href="([^"]+)"[^>]*>([\s\S]*?)</a>', home_html, re.I)
+        listing_urls = [site["home"]] + discover_pages(home_html, base, site.get("pageLinkPattern"), pages)
 
         seen, posts = set(), []
-        for href, inner in anchors:
-            h = re.split(r"[#?]", href)[0]
-            if pattern and pattern not in h:
-                continue
-            if h.startswith(("mailto:", "tel:", "javascript:")):
-                continue
-            if h in seen:
-                continue
-            seen.add(h)
-            posts.append((urljoin(base, h), get_text(inner)))
+        for lu in listing_urls:
+            html = home_html if lu == site["home"] else fetch_text(session, lu)
+            for href, inner in re.findall(r'<a[^>]+href="([^"]+)"[^>]*>([\s\S]*?)</a>', html, re.I):
+                h = re.split(r"[#?]", href)[0]
+                if h.startswith(("mailto:", "tel:", "javascript:")):
+                    continue
+                if mode == "direct":
+                    if entry_pat and entry_pat not in href:
+                        continue
+                elif pattern and pattern not in h:
+                    continue
+                if skip_pats and any(p in href for p in skip_pats):
+                    continue
+                u = urljoin(base, h)
+                if u in seen:
+                    continue
+                seen.add(u)
+                if mode == "direct":
+                    posts.append(("", get_text(inner), u))
+                else:
+                    posts.append((u, get_text(inner)))
+            if len(posts) >= max_posts:
+                break
 
         posts = posts[:max_posts]
         if not posts:
-            raise RuntimeError("no post links found (check postLinkPattern)")
+            raise RuntimeError("no entries found (check postLinkPattern/entryPattern)")
 
-        for url, anchor_text in posts:
-            try:
-                html = fetch_text(session, url)
-            except Exception:
-                continue
-            title = default_title(html, strip_re)
-            if not title:
-                continue
-            links = anchor_links(html, link_pat)
-            if not links:
-                continue
-            m = DEFAULT_SIZE_RE.search(anchor_text)
-            size = m.group(1).strip() if m else None
-            uris = []
-            seen_hrefs: set[str] = set()
-            for h, label in links:
-                if h in seen_hrefs:
+        for item in posts:
+            if mode == "direct":
+                _, anchor_text, url = item
+                title = direct_title(anchor_text, strip_re, strip_nums, size_pat)
+                if not title:
                     continue
-                seen_hrefs.add(h)
-                resolved = resolve_href(site, h)
-                part = part_from_anchor_text(label, site.get("partLabelPattern") or None) or part_label(
-                    resolved, part_pat
-                )
-                uris.append(uri(None, resolved, part))
+                uris = [uri(None, url, part_from_anchor_text(anchor_text, part_label_pat))]
+                size = extract_size(anchor_text, size_pat)
+            else:
+                url, anchor_text = item
+                try:
+                    html = fetch_text(session, url)
+                except Exception:
+                    continue
+                title = default_title(html, strip_re)
+                if not title:
+                    continue
+                links = anchor_links(html, link_pat)
+                if not links:
+                    continue
+                size = extract_size(anchor_text, size_pat)
+                uris = []
+                seen_hrefs: set[str] = set()
+                for h, label in links:
+                    if h in seen_hrefs:
+                        continue
+                    seen_hrefs.add(h)
+                    resolved = resolve_href(site, h)
+                    part = part_from_anchor_text(label, part_label_pat) or part_label(resolved, part_pat)
+                    uris.append(uri(None, resolved, part))
             downloads.append(
                 {
                     "title": title,
