@@ -59,7 +59,7 @@ def default_title(html: str, strip_re: str | None = None) -> str:
         m = FALLBACK_TITLE_RE.search(html)
         t = get_text(m.group(1)) if m else ""
     if t and strip_re:
-        t = re.sub(strip_re, "", t).strip()
+        t = re.sub(strip_re, "", t, flags=re.I).strip()
     return t
 
 
@@ -144,7 +144,7 @@ def direct_title(label: str, strip_re: str | None, strip_nums: bool, size_pat: s
     if size_pat:
         t = re.sub(r"\s*\[(?:From\s+)?[\d.,]+\s*(?:GB|MB|TB)\]\s*$", "", t).strip()
     if strip_re:
-        t = re.sub(strip_re, "", t).strip()
+        t = re.sub(strip_re, "", t, flags=re.I).strip()
     return t
 
 
