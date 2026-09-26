@@ -195,7 +195,10 @@ def fetch_text(session, url: str) -> str:
     page = session.fetch(url, google_search=False, timeout=90000)
     if page.status >= 400:
         raise RuntimeError(f"HTTP {page.status} for {url}")
-    return page.body.decode("utf-8", "replace")
+    try:
+        return page.body.decode("utf-8")
+    except UnicodeDecodeError:
+        return page.body.decode("latin-1", "replace")
 
 
 def resolve_href(site: dict, href: str) -> str:
@@ -338,7 +341,10 @@ def fetch_post(session, url: str, site: dict) -> tuple[str, list[str]]:
             except Exception:
                 pass
         page = session.fetch(url, google_search=False, timeout=90000, page_action=action)
-        return page.body.decode("utf-8", "replace"), held
+        try:
+            return page.body.decode("utf-8"), held
+        except UnicodeDecodeError:
+            return page.body.decode("latin-1", "replace"), held
     return fetch_text(session, url), []
 
 
