@@ -552,8 +552,19 @@ def scrape_site(site: dict, key: str, max_posts: int) -> pathlib.Path:
                 if len(posts) >= max_posts:
                     break
         else:
-            for lu in listing_urls:
+            # Pagination crawl: chain-walk listing pages (home -> page/2 -> page/3 ...)
+            # by following page-pattern links found on each page, until the archive is
+            # exhausted (`pages` is a safety ceiling on how many listing pages to fetch).
+            from collections import deque
+
+            queue: deque = deque([site["home"]])
+            seen_pg: set[str] = set()
+            while queue and len(posts) < max_posts and len(seen_pg) < pages:
+                lu = queue.popleft()
                 html = home_html if lu == site["home"] else fetch(lu)
+                if lu in seen_pg:
+                    continue
+                seen_pg.add(lu)
                 for href, inner in re.findall(r'<a[^>]+href="([^"]+)"[^>]*>([\s\S]*?)</a>', html, re.I):
                     raw = _html.unescape(href)
                     if raw.startswith(("mailto:", "tel:", "javascript:")):
@@ -565,18 +576,30 @@ def scrape_site(site: dict, key: str, max_posts: int) -> pathlib.Path:
                         continue
                     if skip_pats and any(p in raw for p in skip_pats):
                         continue
+                    if page_pat and page_pat in raw:
+                        continue  # a pagination URL, not a post
                     u = urljoin(base, re.split(r"[#]", raw)[0])
-                    if u in seen:
-                        continue
-                    if u == base or u.rstrip("/") == site["home"].rstrip("/"):
+                    if u in seen or u == base or u.rstrip("/") == site["home"].rstrip("/"):
                         continue
                     seen.add(u)
                     if mode == "direct":
                         posts.append(("", get_text(inner), u))
                     else:
                         posts.append((u, get_text(inner)))
-                if len(posts) >= max_posts:
+                    if len(posts) >= max_posts:
+                        break
+                if len(posts) >= max_posts or len(seen_pg) >= pages:
                     break
+                for h in find_hrefs(html):
+                    h = _html.unescape(h)
+                    if page_pat and page_pat not in h:
+                        continue
+                    u = urljoin(base, re.split(r"[#]", h)[0])
+                    u = re.sub(r"\.html$", "", u)
+                    if not u or u in seen_pg or u.rstrip("/") == site["home"].rstrip("/"):
+                        continue
+                    queue.append(u)
+                    seen_pg.add(u)
 
         posts = posts[:max_posts]
     if not posts:
