@@ -407,6 +407,8 @@ def scrape_site(site: dict, key: str, max_posts: int) -> pathlib.Path:
                 _, anchor_text, url = item
                 if url.startswith("magnet:"):
                     title, msize = magnet_parts(url)
+                    if strip_re:
+                        title = re.sub(strip_re, "", title, flags=re.I).strip()
                     part = None
                     links = [(url, "Magnet", msize)]
                 else:
@@ -416,7 +418,7 @@ def scrape_site(site: dict, key: str, max_posts: int) -> pathlib.Path:
                     links = [(url, None, None)]
                 if not title:
                     continue
-                uris = [uri(None, url, part) for _, _, _ in links]
+                uris = [uri(label, url, part) for label, _, _ in links]
                 size = msize or extract_size(anchor_text, size_pat)
             else:
                 url, anchor_text = item
