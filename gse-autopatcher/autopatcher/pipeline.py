@@ -112,25 +112,45 @@ def run_pipeline(root: str | Path, options: PipelineOptions | None = None) -> Pi
     return result
 
 
+def headline(result: PipelineResult) -> str:
+    before = result.before.verdict
+    after = result.after.verdict if result.after else before
+    parts = [f"{result.root.name}: {before} -> {after}"]
+    if result.patch and result.patch.performed:
+        parts.append(f"{len(result.patch.performed)} step(s) applied")
+    if result.pack and result.pack.archive:
+        parts.append(f"archived to {result.pack.archive.name}")
+        if result.pack.verified:
+            parts.append("verified")
+        if result.pack.deleted:
+            parts.append("source deleted")
+    if result.skipped_reason:
+        parts.append(f"skipped: {result.skipped_reason}")
+    if result.errors:
+        parts.append(f"{len(result.errors)} error(s)")
+    return " | ".join(parts)
+
+
 def report(result: PipelineResult, verbose: bool = False) -> str:
-    lines = [format_report(result.before, verbose=verbose)]
+    lines = [headline(result), ""]
+    if verbose:
+        lines.append("--- before " + "-" * 62)
+        lines.append(format_report(result.before, verbose=True))
     if result.patch:
         if result.patch.performed:
-            lines.append("steps run: " + ", ".join(result.patch.performed))
+            lines.append("steps run  : " + ", ".join(result.patch.performed))
         for skipped in result.patch.skipped:
-            lines.append(f"  skipped: {skipped}")
-    if result.after:
-        lines.append(f"after    : {result.after.verdict.upper()} "
-                     f"(confidence {result.after.confidence:.2f})")
+            lines.append(f"  skipped   : {skipped}")
     if result.pack and result.pack.archive:
-        lines.append(f"archive  : {result.pack.archive}")
+        lines.append(f"archive    : {result.pack.archive}")
         if result.pack.archive_size:
-            lines.append(f"size     : {result.pack.archive_size} bytes "
-                         f"({result.pack.ratio * 100:.1f}% of source)")
+            lines.append(
+                f"size       : {result.pack.archive_size} bytes "
+                f"({result.pack.ratio * 100:.1f}% of source)"
+            )
         if result.pack.verified:
-            lines.append("verified : yes")
-        if result.pack.deleted:
-            lines.append("source   : deleted")
+            lines.append("verified   : yes (7z t)")
+        lines.append(f"source     : {'deleted' if result.pack.deleted else 'kept'}")
     for error in result.errors:
-        lines.append(f"ERROR    : {error}")
+        lines.append(f"ERROR      : {error}")
     return "\n".join(lines)

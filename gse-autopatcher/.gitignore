@@ -1,0 +1,12 @@
+# Python bytecode
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+
+# local tool state
+.autopatch-backup/
+*.autopatch-backup/
+*.deleting-*/
+config.json

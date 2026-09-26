@@ -102,7 +102,14 @@ def detect(facts: GameFacts | str | Path, verify_hashes: bool = True) -> Detecti
 
     if not facts.primary:
         if facts.exes:
-            reasons.append("no .exe in the folder looks like a game binary")
+            reasons.append(
+                f"none of the {len(facts.exes)} executable(s) look like a game binary"
+            )
+            if not facts.steam_referencing_exes and not facts.emu_dlls and not facts.original_dlls:
+                det.verdict = NOT_STEAM
+                det.confidence = 0.6
+                reasons.append("conclusion: no Steam integration in this folder")
+                return det
         else:
             reasons.append("no .exe found")
         return det
