@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import os
-import re
 import subprocess
 import time
 from dataclasses import dataclass, field
@@ -20,11 +19,6 @@ PROFILES: dict[str, dict] = {
     "high": {"switches": ["-mx=7", "-m0=LZMA2:d=256m"]},
     "max": {"switches": ["-mx=9", "-m0=LZMA2:d=384m"]},
 }
-
-HEADER_RE = re.compile(
-    r"Scanning the drive:.*?\n.*?\n.*?\n(?P<body>.*)", re.S
-)
-
 
 @dataclass
 class PackOptions:

@@ -14,7 +14,7 @@ from .pack import PROFILES, PackOptions, pack_folder
 from .patch import PatchOptions, patch_game
 from .pipeline import PipelineOptions, PipelineResult, report, run_pipeline
 from .probe import probe
-from .util import Log, log, read_json
+from .util import log, read_json
 
 EXIT_OK = 0
 EXIT_ERROR = 1

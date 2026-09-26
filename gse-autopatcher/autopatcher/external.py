@@ -80,6 +80,16 @@ def default_threads(percent: int = 70) -> int:
     return max(1, count * percent // 100)
 
 
+def _walk_depth(root: Path, max_depth: int = 3, skip: tuple[str, ...] = ()):
+    root_depth = len(root.parts)
+    for dirpath, dirnames, filenames in os.walk(root):
+        here = Path(dirpath)
+        if len(here.parts) - root_depth >= max_depth:
+            dirnames[:] = []
+        dirnames[:] = [d for d in dirnames if d.lower() not in skip]
+        yield here, dirnames, filenames
+
+
 def find_steamless(explicit: str | Path | None = None) -> Path | None:
     if explicit:
         path = Path(explicit)
@@ -90,14 +100,21 @@ def find_steamless(explicit: str | Path | None = None) -> Path | None:
     if env and Path(env).is_file():
         return Path(env)
     roots = [Path.cwd(), Path(__file__).resolve().parent.parent]
+    skip = ("steamapps", "node_modules", "$recycle.bin", "windows", "system32")
+    fallback: Path | None = None
     for root in roots:
-        for name in STEAMLESS_NAMES:
-            for candidate in root.rglob(name) if root.exists() else []:
-                if candidate.is_file() and candidate.parent.name.lower() == "steamless":
-                    return candidate
-        for candidate in root.rglob(STEAMLESS_NAMES[0]) if root.exists() else []:
-            if candidate.is_file():
-                return candidate
+        if not root.is_dir():
+            continue
+        for _here, _dirs, filenames in _walk_depth(root, skip=skip):
+            for name in STEAMLESS_NAMES:
+                if name in filenames:
+                    candidate = _here / name
+                    if candidate.parent.name.lower() == "steamless":
+                        return candidate
+                    if fallback is None and name == STEAMLESS_NAMES[0]:
+                        fallback = candidate
+            if fallback is not None:
+                return fallback
     return None
 
 
@@ -114,14 +131,6 @@ class EmuSource:
 
     def all_dlls(self) -> list[Path]:
         return [p for _bits, p in sorted(self.found.items())]
-
-
-def _looks_like_emu_dir(path: Path) -> bool:
-    if not path.is_dir():
-        return False
-    if (path / const.STEAM_SETTINGS_DIR).is_dir():
-        return True
-    return any((path / name).is_file() for name in const.EMU_DLL_NAMES)
 
 
 def _dll_candidates_for(bitness: int) -> tuple[str, ...]:
@@ -162,14 +171,15 @@ def find_emu_source(explicit: str | Path | None = None) -> EmuSource | None:
     env = os.environ.get("GBE_EMU_DIR") or os.environ.get("STEAM_EMU_DIR")
     if env and Path(env).is_dir():
         return _scan_emu_dir(Path(env))
+    skip = ("steamapps", "node_modules", "$recycle.bin")
     for root in (Path.cwd(), Path(__file__).resolve().parent.parent):
         if not root.is_dir():
             continue
-        for candidate in root.rglob("steam_api64.dll"):
-            if candidate.is_file() and _looks_like_emu_dir(candidate.parent):
-                source = _scan_emu_dir(candidate.parent)
+        for _here, _dirs, filenames in _walk_depth(root, max_depth=4, skip=skip):
+            if "steam_api64.dll" in filenames or "steam_api.dll" in filenames:
+                source = _scan_emu_dir(_here)
                 if source.found:
-                    log.debug(f"emulator source guess: {candidate.parent}")
+                    log.debug(f"emulator source guess: {_here}")
                     return source
     return None
 
@@ -185,11 +195,12 @@ def find_gen_emu_config(explicit: str | Path | None = None) -> Path | None:
     env = os.environ.get("GSE_GEN_EMU_CONFIG")
     if env and Path(env).is_file():
         return Path(env)
+    skip = ("steamapps", "node_modules", "$recycle.bin")
     for root in (Path.cwd(), Path(__file__).resolve().parent.parent):
         if not root.is_dir():
             continue
-        for name in ("generate_emu_config.exe", "generate_emu_config.py"):
-            for candidate in root.rglob(name):
-                if candidate.is_file():
-                    return candidate
+        for _here, _dirs, filenames in _walk_depth(root, max_depth=4, skip=skip):
+            for name in ("generate_emu_config.exe", "generate_emu_config.py"):
+                if name in filenames:
+                    return _here / name
     return None
