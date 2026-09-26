@@ -26,9 +26,17 @@ _COLOR = {
 
 class Log:
     def __init__(self, level: str = "info", color: bool | None = None):
-        self.level = _LEVELS.get(level, 20)
+        self._level = _LEVELS.get(level, 20)
         self.color = sys.stdout.isatty() if color is None else bool(color)
         self._quiet = False
+
+    @property
+    def level(self) -> int:
+        return self._level
+
+    @level.setter
+    def level(self, value: str | int) -> None:
+        self._level = _LEVELS.get(value, 20) if isinstance(value, str) else int(value)
 
     def _paint(self, text: str, key: str) -> str:
         if not self.color or key not in _COLOR:

@@ -122,9 +122,22 @@ def _add_shared_safety_args(parser: argparse.ArgumentParser) -> None:
     group.add_argument("-y", "--yes", action="store_true", help="assume yes for prompts")
 
 
-def build_parser() -> argparse.ArgumentParser:
+# Global switches are accepted before *and* after the sub command. SUPPRESS
+# keeps the sub parser from overwriting a value given ahead of the sub command.
+GLOBAL = argparse.ArgumentParser(add_help=False)
+GLOBAL.add_argument("--config", default=argparse.SUPPRESS,
+                     help="JSON config file providing default values")
+GLOBAL.add_argument("--log-level", default=argparse.SUPPRESS,
+                     choices=("debug", "info", "warn", "error", "silent"),
+                     help="console verbosity (default: info)")
+GLOBAL.add_argument("--no-color", action="store_true", default=argparse.SUPPRESS,
+                     help="disable coloured output")
+
+
+def build_parser() -> tuple[argparse.ArgumentParser, dict[str, argparse.ArgumentParser]]:
     parser = argparse.ArgumentParser(
         prog="gse-autopatcher",
+        parents=[GLOBAL],
         description=(
             "Detect, patch, package and clean up Goldberg-emulator game folders. "
             "Built around gbe_fork, gse_fork_tools, Steamless and 7-Zip."
@@ -139,29 +152,32 @@ def build_parser() -> argparse.ArgumentParser:
         ),
     )
     parser.add_argument("--version", action="version", version=f"{const.TOOL_NAME} {const.TOOL_VERSION}")
-    parser.add_argument("--config", help="JSON config file with default values")
-    parser.add_argument("--log-level", default="info",
-                        choices=("debug", "info", "warn", "error", "silent"))
-    parser.add_argument("--no-color", action="store_true", help="disable coloured output")
+    parser.set_defaults(config=None, log_level="info", no_color=False)
 
     subs = parser.add_subparsers(dest="command", required=True)
+    subparsers: dict[str, argparse.ArgumentParser] = {}
 
-    p = subs.add_parser("detect", help="report whether a folder is patched")
+    def add(name: str, help_text: str) -> argparse.ArgumentParser:
+        sub = subs.add_parser(name, help=help_text, parents=[GLOBAL])
+        subparsers[name] = sub
+        return sub
+
+    p = add("detect", "report whether a folder is patched")
     _add_detect_args(p)
 
-    p = subs.add_parser("patch", help="apply the patch to a folder")
+    p = add("patch", "apply the patch to a folder")
     p.add_argument("folder")
     p.add_argument("--max-depth", type=int, default=2)
     p.add_argument("-v", "--verbose", action="store_true")
     p.add_argument("--json", action="store_true")
     _add_patch_args(p)
 
-    p = subs.add_parser("pack", help="compress a folder with 7-Zip")
+    p = add("pack", "compress a folder with 7-Zip")
     p.add_argument("folder")
     p.add_argument("--json", action="store_true")
     _add_pack_args(p)
 
-    p = subs.add_parser("run", help="detect, patch, then compress in one go")
+    p = add("run", "detect, patch, then compress in one go")
     p.add_argument("folder")
     p.add_argument("--max-depth", type=int, default=2)
     p.add_argument("--no-pack", action="store_true", help="stop after patching")
@@ -171,7 +187,7 @@ def build_parser() -> argparse.ArgumentParser:
     _add_pack_args(p, own_safety=False)
     _add_shared_safety_args(p)
 
-    p = subs.add_parser("batch", help="run the pipeline over many folders")
+    p = add("batch", "run the pipeline over many folders")
     p.add_argument("roots", nargs="+", help="folders or a parent folder to scan")
     p.add_argument("--recursive", action="store_true", help="descend into sub folders")
     p.add_argument("--depth", type=int, default=2, help="scan depth for --recursive")
@@ -186,11 +202,11 @@ def build_parser() -> argparse.ArgumentParser:
     _add_pack_args(p, own_safety=False)
     _add_shared_safety_args(p)
 
-    subs.add_parser("tools", help="show which external tools were found")
-    p = subs.add_parser("selftest", help="build a synthetic game and run the pipeline")
+    add("tools", "show which external tools were found")
+    p = add("selftest", "build a synthetic game and run the pipeline")
     p.add_argument("--keep", action="store_true", help="keep the temporary folders")
     p.add_argument("--json", action="store_true")
-    return parser
+    return parser, subparsers
 
 
 def _patch_options(args: argparse.Namespace) -> PatchOptions:
@@ -450,7 +466,11 @@ HANDLERS = {
 }
 
 
-def _load_config_defaults(parser: argparse.ArgumentParser, argv: list[str]) -> None:
+def _load_config_defaults(
+    parser: argparse.ArgumentParser,
+    subparsers: dict[str, argparse.ArgumentParser],
+    argv: list[str],
+) -> None:
     path = None
     for i, arg in enumerate(argv):
         if arg == "--config" and i + 1 < len(argv):
@@ -463,22 +483,29 @@ def _load_config_defaults(parser: argparse.ArgumentParser, argv: list[str]) -> N
     if not isinstance(data, dict):
         log.error(f"could not read config file: {path}")
         return
-    payload = data.get("patch", {}) if "patch" in data else data
-    defaults: dict[str, object] = {}
-    for key, value in payload.items():
-        name = key.replace("-", "_")
-        if parser.has_default(name) or any(
-            name == action.dest for action in parser._actions
-        ):
-            defaults[name] = value
-    parser.set_defaults(**defaults)
-    log.debug(f"loaded {len(defaults)} default(s) from {path}")
+    payload = data.get("patch", data)
+    if not isinstance(payload, dict):
+        log.error(f"config file {path} must hold an object")
+        return
+
+    applied = 0
+    for target in (parser, *subparsers.values()):
+        known = {action.dest for action in target._actions}
+        defaults = {
+            key.replace("-", "_"): value
+            for key, value in payload.items()
+            if key.replace("-", "_") in known
+        }
+        if defaults:
+            target.set_defaults(**defaults)
+            applied += len(defaults)
+    log.debug(f"loaded {applied} default(s) from {path}")
 
 
 def main(argv: list[str] | None = None) -> int:
     argv = list(sys.argv[1:] if argv is None else argv)
-    parser = build_parser()
-    _load_config_defaults(parser, argv)
+    parser, subparsers = build_parser()
+    _load_config_defaults(parser, subparsers, argv)
     args = parser.parse_args(argv)
 
     log.level = args.log_level

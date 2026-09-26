@@ -146,6 +146,13 @@ def is_valid_lnk(path: Path) -> bool:
         return False
 
 
+def _lnk_dest(facts, options) -> Path:
+    name = options.lnk_name or (facts.primary.path.stem if facts.primary else "game")
+    if not name.lower().endswith(".lnk"):
+        name += ".lnk"
+    return facts.root / name
+
+
 def install_extras(facts, options, result) -> bool:
     """Write the .txt and the .lnk. Returns False on a hard failure."""
     ok = True
@@ -185,9 +192,9 @@ def install_extras(facts, options, result) -> bool:
             result.errors.append(f"shortcut template not found: {src}")
             ok = False
         else:
-            dest = facts.root / (options.lnk_name or src.name)
+            dest = _lnk_dest(facts, options)
             if options.dry_run:
-                log.info(f"[dry-run] would add {dest.name}")
+                log.info(f"[dry-run] would create {dest.name}")
             else:
                 shutil.copy2(src, dest)
                 if is_valid_lnk(dest):
@@ -203,13 +210,12 @@ def install_extras(facts, options, result) -> bool:
         if not facts.primary:
             result.errors.append("cannot create a shortcut: no game executable found")
             ok = False
-        elif options.dry_run:
-            log.info(f"[dry-run] would create {options.lnk_name or facts.primary.path.stem}.lnk")
         else:
-            dest = facts.root / (
-                options.lnk_name or f"{facts.primary.path.stem}.lnk"
-            )
-            done, message = create_shortcut(
+            dest = _lnk_dest(facts, options)
+            if options.dry_run:
+                log.info(f"[dry-run] would create {dest.name}")
+            else:
+                done, message = create_shortcut(
                 dest,
                 facts.primary.path,
                 working_dir=facts.root,

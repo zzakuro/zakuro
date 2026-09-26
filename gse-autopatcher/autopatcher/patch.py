@@ -54,6 +54,7 @@ class PatchOptions:
     lnk_file: Path | None = None
     lnk_name: str | None = None
     lnk_icon: str | None = None
+    lnk_args: str | None = None
     lnk_description: str | None = None
     txt_name: str | None = None
     template_vars: dict[str, str] = field(default_factory=dict)
@@ -531,9 +532,9 @@ def _marker(facts: GameFacts, options: PatchOptions, result: PatchResult) -> Non
 
 
 # ------------------------------------------------------------------ entry
-def patch_game(root: str | Path, options: PatchOptions | None = None) -> PatchResult:
+def patch_game(root: str | Path | GameFacts, options: PatchOptions | None = None) -> PatchResult:
     options = options or PatchOptions()
-    facts = probe(root)
+    facts = root if isinstance(root, GameFacts) else probe(root)
     detection = detect(facts)
     result = PatchResult(facts=facts, detection=detection)
 
@@ -570,7 +571,7 @@ def patch_game(root: str | Path, options: PatchOptions | None = None) -> PatchRe
             log.error(f"step failed: {step.__name__.strip('_')}")
             break
 
-    facts = probe(root)
+    facts = probe(facts.root)
     result.detection = detect(facts)
     if result.errors:
         result.skipped.append("marker: not written because a step failed")

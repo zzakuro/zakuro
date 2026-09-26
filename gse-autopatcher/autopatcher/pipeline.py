@@ -58,8 +58,8 @@ def run_pipeline(root: str | Path, options: PipelineOptions | None = None) -> Pi
     before = detect(facts)
     result = PipelineResult(root=root, before=before)
 
-    if before.errors:
-        result.errors.extend(before.errors)
+    if facts.errors or before.verdict == "unknown":
+        result.errors.extend(facts.errors or before.reasons)
         return result
 
     if before.verdict == NOT_STEAM:
