@@ -208,6 +208,12 @@ def resolve_href(site: dict, href: str) -> str:
             dec = b64_decode_maybe(m.group(2))
             if dec:
                 return dec
+    if site.get("resolver") == "clk-base64":
+        m = re.search(r"[?&]url=([A-Za-z0-9_\-+=]+)", href)
+        if m:
+            dec = b64_decode_maybe(m.group(1))
+            if dec and dec.startswith("http"):
+                return dec
     return href
 
 
@@ -353,6 +359,11 @@ def post_links(html: str, site: dict) -> list[tuple[str, str, str | None]]:
     link_pat = site.get("linkPattern")
     out: list[tuple[str, str, str | None]] = []
     seen: set[str] = set()
+
+    frm = site.get("linkSectionFrom")
+    to = site.get("linkSectionTo")
+    if frm and to and frm in html and to in html and html.find(frm) < html.find(to):
+        html = html[html.find(frm):html.find(to)]
 
     if site.get("resolver") == "anker-mint":
         return []
