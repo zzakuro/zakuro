@@ -3,12 +3,15 @@
 from __future__ import annotations
 
 import os
+import shutil
 import subprocess
+import tempfile
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
 
 from .external import default_threads, find_7z, seven_zip_version
+from .select import Selection, SelectionOptions, build_selection, summary, write_list_file
 from .util import confirm, dir_size, human_size, log, safe_rmtree
 
 PROFILES: dict[str, dict] = {
@@ -38,6 +41,9 @@ class PackOptions:
     yes: bool = False
     dry_run: bool = False
     timeout: int = 0  # 0 = no timeout
+    selection: SelectionOptions = field(default_factory=SelectionOptions)
+    list_out: Path | None = None
+    show_selection: bool = False
 
 
 @dataclass
@@ -51,6 +57,7 @@ class PackResult:
     seconds: float = 0.0
     errors: list[str] = field(default_factory=list)
     sevenzip: Path | None = None
+    selection: Selection | None = None
 
     @property
     def ratio(self) -> float:
@@ -73,6 +80,7 @@ class PackResult:
             "deleted": self.deleted,
             "seconds": round(self.seconds, 1),
             "sevenzip": str(self.sevenzip) if self.sevenzip else None,
+            "selection": self.selection.to_dict() if self.selection else None,
             "errors": self.errors,
         }
 

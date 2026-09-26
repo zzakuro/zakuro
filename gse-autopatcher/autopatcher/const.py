@@ -75,3 +75,61 @@ EMU_STRING_MARKERS = (
     (b"emu_version", 2),
     (b"bymarian", 1),
 )
+
+# ---------------------------------------------------------------------------
+# Patch fingerprints: which emulator deployment a folder carries.
+# ---------------------------------------------------------------------------
+PATCHER_SELF = "gse-autopatcher"
+PATCHER_GBE_FORK = "gbe-fork"
+PATCHER_GOLDBERG_CLASSIC = "goldberg-classic"
+PATCHER_RUNE = "rune"
+PATCHER_STEAMLESS_ONLY = "drm-removed-only"
+PATCHER_UNKNOWN_EMU = "unknown-emulator"
+
+# Files that only the gbe_fork layout produces.
+GBE_FORK_MARKERS = (
+    "steam_interfaces.txt",
+    "emu_version.txt",
+    "configs.app.ini",
+    "configs.user.ini",
+    "configs.main.ini",
+    "configs.overlay.ini",
+    "appinfo.vdf",
+    "appcache/appinfo.vdf",
+    "controller",
+)
+
+# Files that only the pre-fork Goldberg layout produces.
+GOLDBERG_CLASSIC_MARKERS = (
+    "config.vdf",
+    "config.user.vdf",
+    "localconfig.vdf",
+    "settings/config.user.vdf",
+    "settings/localconfig.vdf",
+    "steam_emu.ini",
+)
+
+# ---------------------------------------------------------------------------
+# Archive selection
+# ---------------------------------------------------------------------------
+SELECT_PRESETS = ("full", "crack-only", "game-only")
+
+# Never archived unless --include-junk is passed: the tool's own leftovers and
+# Windows noise that would only bloat the archive.
+JUNK_DIR_PATTERNS = (
+    "*.autopatch-backup",
+    "*.deleting-*",
+    "_autopatcher",
+    "$recycle.bin",
+    "system volume information",
+)
+
+# Top level names that make up the emulator payload, used by the presets.
+PAYLOAD_DIRS = (STEAM_SETTINGS_DIR,)
+PAYLOAD_FILES = EMU_DLL_NAMES + (
+    "steam_emu.ini",
+    "localconfig.vdf",
+    "config.vdf",
+    "settings.txt",
+    ".gse_autopatch.json",
+)
