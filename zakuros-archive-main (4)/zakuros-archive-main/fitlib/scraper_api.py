@@ -304,11 +304,14 @@ def load_sites() -> dict:
     return json.loads(SITES_FILE.read_text(encoding="utf-8"))
 
 
-def write_payload(key: str, name: str, downloads: list) -> pathlib.Path:
+def write_payload(key: str, name: str, downloads: list, partial: bool = False) -> pathlib.Path:
     SCRAPED_DIR.mkdir(parents=True, exist_ok=True)
     out = SCRAPED_DIR / f"{key}.json"
+    payload = {"name": name, "downloads": downloads}
+    if partial:
+        payload["partial"] = True
     out.write_text(
-        json.dumps({"name": name, "downloads": downloads}, ensure_ascii=False, indent=2),
+        json.dumps(payload, ensure_ascii=False, indent=2),
         encoding="utf-8",
     )
     return out
@@ -494,7 +497,7 @@ def scrape_site(site: dict, key: str, max_posts: int) -> pathlib.Path:
                 return None
             uris = [uri(label, url, part) for label, _, _ in links]
             size = msize or extract_size(anchor_text, size_pat)
-            return {"title": title, "fileSize": size, "uploadDate": None, "uris": uris}
+            return {"title": title, "fileSize": size, "uploadDate": None, "uris": uris, "srcUrl": url}
 
         url, anchor_text = item
         try:
@@ -522,7 +525,7 @@ def scrape_site(site: dict, key: str, max_posts: int) -> pathlib.Path:
         delay = site.get("interPostDelay")
         if delay and not plain:
             time.sleep(delay)
-        return {"title": title, "fileSize": size, "uploadDate": None, "uris": uris}
+        return {"title": title, "fileSize": size, "uploadDate": None, "uris": uris, "srcUrl": url}
 
     ctx: contextlib.AbstractContextManager
     if plain:
@@ -628,18 +631,50 @@ def scrape_site(site: dict, key: str, max_posts: int) -> pathlib.Path:
         )
         return d
 
+    # Resume support: skip posts already present in a previous (possibly partial) crawl.
+    payload_path = SCRAPED_DIR / f"{key}.json"
+    done_src: set[str] = set()
+    if payload_path.exists():
+        try:
+            prev = json.loads(payload_path.read_text(encoding="utf-8"))
+            done_src = {d.get("srcUrl") for d in prev.get("downloads", []) if d.get("srcUrl")}
+        except Exception:
+            done_src = set()
+    if done_src:
+        posts = [p for p in posts if (p[2] if mode == "direct" else p[0]) not in done_src]
+        if posts:
+            emit({"event": "listing", "mode": mode, "posts": len(posts), "max": max_posts, "sitemap": False, "resume": len(done_src)})
+        else:
+            emit({"event": "done", "key": key, "total": len(prev.get("downloads", [])), "file": str(payload_path), "resumed": True})
+            return payload_path
+
+    CHECKPOINT_EVERY = 250 if plain else 100
+
+    def save_partial(downloads):
+        write_payload(key, site.get("name") or key, downloads, partial=True)
+        emit({"event": "checkpoint", "key": key, "total": len(downloads)})
+
     if plain:
         workers = int(site.get("plainWorkers") or 12)
+        downloads: list = []
         with concurrent.futures.ThreadPoolExecutor(max_workers=workers) as ex:
-            downloads = [d for d in ex.map(lambda p: process_one(p[0], p[1]), enumerate(posts)) if d is not None]
+            for d in ex.map(lambda p: process_one(p[0], p[1]), enumerate(posts)):
+                if d is not None:
+                    downloads.append(d)
+                    if len(downloads) % CHECKPOINT_EVERY == 0:
+                        save_partial(downloads)
     else:
         downloads = []
         for i, item in enumerate(posts):
             d = process_one(i, item)
             if d:
                 downloads.append(d)
+                if len(downloads) % CHECKPOINT_EVERY == 0:
+                    save_partial(downloads)
 
     if not downloads:
+        if done_src and posts:
+            raise RuntimeError("no new entries extracted")
         raise RuntimeError("no entries extracted from posts")
 
     out = write_payload(key, site.get("name") or key, downloads)
