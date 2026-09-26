@@ -448,11 +448,15 @@ async function runSourceSync(): Promise<SyncResult> {
 // configured source, the local scraped .json files we hold for them, when the
 // next sync fires, and last-run health. Deliberately plain HTML.
 function secEsc(s: unknown): string {
-  return String(s ?? "")
+  return String(s)
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;");
+}
+
+function enc(s: string): string {
+  return encodeURIComponent(s);
 }
 
 function fmtBytes(n: number | undefined | null): string {
@@ -647,6 +651,12 @@ function sourceLocalFiles(): Set<string> {
   }
   set.add(path.normalize("data/sources.json"));
   set.add(path.normalize("data/scraper-sites.json"));
+  // Scraper output files can be browsed too (data/scraped/<key>.json).
+  try {
+    for (const f of fs.readdirSync(path.join(process.cwd(), "data", "scraped"))) {
+      if (f.endsWith(".json")) set.add(path.normalize(path.join("data", "scraped", f)));
+    }
+  } catch {}
   return set;
 }
 
@@ -683,6 +693,87 @@ function renderRemoteView(url: string, status: number, body: string): string {
   );
 }
 
+const DATA_PAGE_SIZE = 300;
+
+function entriesOfScraped(data: Record<string, unknown> | unknown[]): { title?: string; fileSize?: string; uris?: { url: string; name?: string }[] }[] {
+  if (Array.isArray(data)) return data as any[];
+  const d = data as { downloads?: any[] };
+  if (d && Array.isArray(d.downloads)) return d.downloads;
+  return [];
+}
+
+function hostOf(url: string): string {
+  try {
+    return new URL(url).hostname.replace(/^www\./, "");
+  } catch {
+    return "link";
+  }
+}
+
+// Browsable paginated view of a scraper's output file (data/scraped/<key>.json),
+// e.g. every game pulled from GoG Revived with each download link.
+function renderScrapedDataView(key: string, st: fs.Stats, data: Record<string, unknown> | unknown[], page: number, q: string): string {
+  const all = entriesOfScraped(data);
+  let rows = all;
+  if (q) {
+    const needle = q.toLowerCase();
+    rows = all.filter((e) => String(e.title || "").toLowerCase().includes(needle));
+  }
+  const pages = Math.max(1, Math.ceil(rows.length / DATA_PAGE_SIZE));
+  const cur = Math.min(Math.max(1, page), pages);
+  const start = (cur - 1) * DATA_PAGE_SIZE;
+  const slice = rows.slice(start, start + DATA_PAGE_SIZE);
+  const esc = (s: string) => secEsc(s);
+
+  const body = slice
+    .map((e, i) => {
+      const idx = start + i + 1;
+      const uris = e.uris || [];
+      const chips = uris
+        .map(
+          (u) =>
+            `<a class="u" target="_blank" rel="noopener" href="${esc(u.url)}" title="${esc(u.name || u.url)}">${esc(hostOf(u.url))}<span class="fn">${esc((u.name || "").replace(/^[^ ]+ ·\s*/, ""))}</span></a>`,
+        )
+        .join("");
+      return (
+        `<div class="g">` +
+        `<span class="n">${idx}</span><span class="t">${esc(e.title || "<no title>")}</span>` +
+        `<span class="s">${esc(e.fileSize || "")}</span>` +
+        `<span class="c">${uris.length} link${uris.length === 1 ? "" : "s"}</span>` +
+        `<div class="urow">${chips || '<span class="dim">no links</span>'}</div>` +
+        `</div>`
+      );
+    })
+    .join("");
+
+  const pag =
+    `<a href="/secret-scraper/data/${enc(key)}?page=${Math.max(1, cur - 1)}${q ? "&q=" + enc(q) : ""}">prev</a> ` +
+    `<span>page ${cur} / ${pages}</span> ` +
+    `<a href="/secret-scraper/data/${enc(key)}?page=${Math.min(pages, cur + 1)}${q ? "&q=" + enc(q) : ""}">next</a>`;
+
+  return jsonViewShell(
+    `scraped: ${key}`,
+    `<h1>scraped data</h1><p><a href="/secret-scraper">&larr; live scraper</a> · <a href="/secret-sources">&larr; secret sources</a></p>` +
+      `<p><span class="chip"><code>${esc(key)}</code></span><span class="chip">${fmtBytes(st.size)}</span>` +
+      `<span class="chip">${all.length.toLocaleString()} entries</span>` +
+      (q ? `<span class="chip">${rows.length.toLocaleString()} match "&lt;${esc(q)}&gt;"</span>` : ``) + `</p>` +
+      `<form method="get" class="f">` +
+      `<input type="hidden" name="page" value="1">` +
+      `<input type="text" name="q" value="${esc(q)}" placeholder="filter by title">` +
+      `<button>filter</button></form>` +
+      `<p>${pag}</p>` +
+      `<style>body{font-family:system-ui,sans-serif;background:#0f1115;color:#d7d9dc;padding:16px;font-size:13px}` +
+      `h1{color:#fff;font-size:18px}a{color:#7ab1ff}.chip{display:inline-block;padding:0 5px;border-radius:3px;background:#1b212b;border:1px solid #2c3545;margin:2px 4px 2px 0}` +
+      `.g{border:1px solid #262c38;border-radius:6px;padding:7px 9px;margin:6px 0;background:#131722}` +
+      `.n{color:#5b667a;margin-right:8px}.t{color:#fff;font-weight:600}` +
+      `.s{color:#8ae08a;margin-left:10px}.c{color:#ffd479;margin-left:8px}` +
+      `.urow{margin-top:6px;display:flex;flex-wrap:wrap;gap:5px}` +
+      `.u{display:inline-block;padding:2px 7px;border-radius:12px;background:#1b2533;border:1px solid #2d4155;color:#8fc0ff;text-decoration:none;font-size:11px}` +
+      `.fn{margin-left:6px;color:#9aa7b8;font-weight:400}.dim{color:#5d6878}.f{margin:8px 0}.f input{background:#111722;border:1px solid #2c3545;color:#ddd;padding:3px 6px}` + `</style>` +
+      body,
+  );
+}
+
 // ── Live scraping panel ────────────────────────────────────────────────────────
 // Hidden admin page (no links anywhere in the UI) that streams a scraper run
 // from /api/scraper/live-stream/:key via SSE and shows per-title progress.
@@ -709,7 +800,7 @@ function renderScraperPanel(): string {
 </head>
 <body>
 <h1>live scraper</h1>
-<p><a href="/secret-sources">&larr; secret sources</a> · <a href="/secret-sources/file?rel=${encodeURIComponent("data/scraper-sites.json")}">view scraper-sites.json</a></p>
+<p><a href="/secret-sources">&larr; secret sources</a> · <a href="/secret-sources/file?rel=${encodeURIComponent("data/scraper-sites.json")}">view scraper-sites.json</a> · <a href="/secret-scraper/data/gogrev">browse gogrev data</a></p>
 <div class="row">
 <select id="site"></select>
 <button id="run">run</button>
@@ -900,6 +991,28 @@ async function startServer() {
   // Live scraping panel — hidden admin view (SSE progress from scraper_api.py).
   app.get("/secret-scraper", (_req, res) => {
     res.type("text/html").send(renderScraperPanel());
+  });
+
+  // Browsable paginated view of a scraper's output file (data/scraped/<key>.json).
+  app.get("/secret-scraper/data/:key", (req, res) => {
+    const key = path.basename(String(req.params.key || "")).replace(/\.json$/, "");
+    if (!/^[a-z_-]+$/i.test(key)) {
+      return res.status(400).type("text/plain").send("Bad key.");
+    }
+    const rel = path.normalize(path.join("data", "scraped", `${key}.json`));
+    const abs = path.resolve(process.cwd(), rel);
+    if (!fs.existsSync(abs)) return res.status(404).type("text/plain").send(`No scraped data for "${key}".`);
+    const st = fs.statSync(abs);
+    let data: Record<string, unknown> | unknown[];
+    try {
+      data = JSON.parse(fs.readFileSync(abs, "utf8"));
+    } catch {
+      return res.status(500).type("text/plain").send("Invalid JSON in file.");
+    }
+    const page = Math.max(1, parseInt(String(req.query.page || "1"), 10) || 1);
+    const q = String(req.query.q || "").slice(0, 120);
+    res.set("Content-Security-Policy", "default-src 'none'; style-src 'unsafe-inline'");
+    res.type("text/html").send(renderScrapedDataView(key, st, data, page, q));
   });
 
   // JSON viewer for a local source file (allow-listed by sources config).
