@@ -216,23 +216,23 @@ def install_extras(facts, options, result) -> bool:
                 log.info(f"[dry-run] would create {dest.name}")
             else:
                 done, message = create_shortcut(
-                dest,
-                facts.primary.path,
-                working_dir=facts.root,
-                icon=options.lnk_icon,
-                description=options.lnk_description,
-                arguments=getattr(options, "lnk_args", None),
-            )
-            if done:
-                log.ok(f"added {dest.name} -> {facts.primary.rel}")
-                result.performed.append("extras:lnk")
-                result.changed = True
-                result.files[str(dest.relative_to(facts.root)).replace("\\", "/")] = (
-                    f"sha256:{sha256_file(dest)}"
+                    dest,
+                    facts.primary.path,
+                    working_dir=facts.root,
+                    icon=options.lnk_icon,
+                    description=options.lnk_description,
+                    arguments=getattr(options, "lnk_args", None),
                 )
-            else:
-                result.errors.append(f"shortcut not created: {message}")
-                ok = False
+                if done:
+                    log.ok(f"added {dest.name} -> {facts.primary.rel}")
+                    result.performed.append("extras:lnk")
+                    result.changed = True
+                    result.files[str(dest.relative_to(facts.root)).replace("\\", "/")] = (
+                        f"sha256:{sha256_file(dest)}"
+                    )
+                else:
+                    result.errors.append(f"shortcut not created: {message}")
+                    ok = False
     else:
         result.skipped.append("extras: no shortcut requested (--lnk-name/--lnk-file)")
 

@@ -262,19 +262,21 @@ def pack_folder(root: str | Path, options: PackOptions | None = None) -> PackRes
         return result
 
     trash = root.with_name(f"{root.name}.deleting-{time.strftime('%H%M%S')}")
+    staged = False
     try:
-        if not os.replace(root, trash):
-            raise OSError("os.replace returned false")
+        os.replace(root, trash)
+        staged = True
     except OSError as exc:
         log.warn(f"could not stage the source for deletion ({exc}); deleting in place")
-        trash = root
+    target = trash if staged else root
     try:
-        if trash.is_dir():
-            safe_rmtree(trash)
-        result.deleted = not root.exists()
+        if target.is_dir():
+            safe_rmtree(target)
     except OSError as exc:
-        result.errors.append(f"could not delete {trash}: {exc}")
+        result.errors.append(f"could not delete {target}: {exc}")
         return result
+
+    result.deleted = not root.exists() and not target.exists()
 
     if result.deleted:
         log.ok(f"deleted source folder, only {archive.name} remains")

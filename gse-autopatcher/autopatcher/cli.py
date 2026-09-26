@@ -107,6 +107,8 @@ def _add_pack_args(parser: argparse.ArgumentParser, own_safety: bool = True) -> 
     group.add_argument("--encrypt-names", action="store_true",
                        help="also encrypt the archive file names")
     group.add_argument("--no-test", action="store_true", help="skip 7z t after packing")
+    group.add_argument("--pack-anyway", action="store_true",
+                       help="compress even when a patch step reported errors")
     group.add_argument("--timeout", type=int, default=0, help="abort 7-Zip after N seconds")
     group.add_argument("--delete-original", action="store_true",
                        help="delete the game folder once the archive is verified")
@@ -191,6 +193,9 @@ def build_parser() -> tuple[argparse.ArgumentParser, dict[str, argparse.Argument
     p.add_argument("roots", nargs="+", help="folders or a parent folder to scan")
     p.add_argument("--recursive", action="store_true", help="descend into sub folders")
     p.add_argument("--depth", type=int, default=2, help="scan depth for --recursive")
+    p.add_argument("--max-depth", type=int, default=2,
+                   help="how deep to look for executables inside each folder")
+    p.add_argument("--no-pack", action="store_true", help="patch only, do not compress")
     p.add_argument("--only", choices=("all", "unpatched", "patched"),
                    default="all", help="filter by current state (default: all)")
     p.add_argument("--stop-on-error", action="store_true")
@@ -323,6 +328,7 @@ def cmd_run(args) -> int:
         patch=_patch_options(args),
         pack=_pack_options(args),
         do_pack=not args.no_pack,
+        pack_anyway=args.pack_anyway,
         verbose=args.verbose,
     )
     result = run_pipeline(args.folder, options)
@@ -382,7 +388,7 @@ def cmd_batch(args) -> int:
         log.rule(f"[{index}/{len(targets)}] {target.name}")
         det = detect(probe(target, max_depth=args.max_depth))
         if args.only == "unpatched" and not det.needs_patch:
-            log.info("skipping: already patched")
+            log.info(f"skipping: verdict is {det.verdict}")
             continue
         if args.only == "patched" and det.verdict != PATCHED:
             log.info("skipping: not patched")
@@ -391,6 +397,7 @@ def cmd_batch(args) -> int:
             patch=patch_options,
             pack=pack_options,
             do_pack=not args.no_pack,
+            pack_anyway=args.pack_anyway,
         )
         result = run_pipeline(target, options)
         results.append(result)
@@ -411,6 +418,8 @@ def cmd_batch(args) -> int:
 
 
 def log_summary(results: list[PipelineResult]) -> str:
+    from .util import human_size
+
     lines = [f"{'folder':38} {'state':10} {'archive':34} size"]
     lines.append("-" * 100)
     for result in results:
@@ -420,7 +429,7 @@ def log_summary(results: list[PipelineResult]) -> str:
         if result.pack and result.pack.archive:
             archive = result.pack.archive.name[:34]
             if result.pack.archive_size:
-                size = f"{result.pack.archive_size / (1024 * 1024):.1f} MB"
+                size = human_size(result.pack.archive_size)
         if result.errors:
             state = "error"
         lines.append(f"{result.root.name[:38]:38} {state:10} {archive:34} {size}")

@@ -18,6 +18,7 @@ class PipelineOptions:
     pack: PackOptions = field(default_factory=PackOptions)
     do_patch: bool = True
     do_pack: bool = True
+    pack_anyway: bool = False
     verbose: bool = False
 
 
@@ -58,8 +59,13 @@ def run_pipeline(root: str | Path, options: PipelineOptions | None = None) -> Pi
     before = detect(facts)
     result = PipelineResult(root=root, before=before)
 
-    if facts.errors or before.verdict == "unknown":
-        result.errors.extend(facts.errors or before.reasons)
+    if facts.errors:
+        result.errors.extend(facts.errors)
+        return result
+
+    if before.verdict == "unknown":
+        result.skipped_reason = before.reasons[0] if before.reasons else "unidentified folder"
+        log.warn(f"skipping: {result.skipped_reason}")
         return result
 
     if before.verdict == NOT_STEAM:
@@ -90,8 +96,10 @@ def run_pipeline(root: str | Path, options: PipelineOptions | None = None) -> Pi
     if not options.do_pack:
         return result
 
-    if result.errors and not options.patch.yes:
-        log.warn("compression skipped because the patch step reported errors")
+    if result.errors and not options.pack_anyway:
+        log.warn("compression skipped: the patch step reported errors")
+        log.warn("fix the errors above, or pass --pack-anyway to archive it as it is")
+        return result
 
     if options.patch.dry_run:
         log.info("[dry-run] skipping compression")

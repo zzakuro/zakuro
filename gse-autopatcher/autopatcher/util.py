@@ -112,7 +112,8 @@ def read_json(path: str | Path) -> Any:
     if not p.is_file():
         return None
     try:
-        return json.loads(p.read_text(encoding="utf-8"))
+        # utf-8-sig tolerates the BOM that Windows editors love to add.
+        return json.loads(p.read_text(encoding="utf-8-sig"))
     except (OSError, json.JSONDecodeError):
         return None
 

@@ -509,6 +509,8 @@ def _run_checks(checks: Checks, fixture: dict, tmp: Path) -> None:
     )
     checks.check("pack: source deleted after verification",
                  dropped.deleted and not game64.exists(), str(dropped.errors))
+    checks.check("pack: no staging folder left behind",
+                 not list(tmp.glob("Game64.deleting-*")))
     checks.check("pack: archive survives the deletion", (tmp / "Game64b.7z").is_file())
 
 
