@@ -52,6 +52,114 @@ def b64_decode_maybe(s: str) -> str | None:
         return None
 
 
+def b2human(num) -> str:
+    n = float(num)
+    units = ["B", "KB", "MB", "GB", "TB"]
+    i = 0
+    while n >= 1024 and i < len(units) - 1:
+        n /= 1024
+        i += 1
+    return f"{n:.0f} {units[i]}" if n >= 100 else f"{n:.1f} {units[i]}"
+
+
+def _b64u_bytes(s: str) -> bytes:
+    s = s.strip().replace("-", "+").replace("_", "/")
+    pad = "=" * (-len(s) % 4)
+    return base64.b64decode(s + pad)
+
+
+def _unseal(token: str, key: list[int]) -> str | None:
+    try:
+        a = _b64u_bytes(token)
+    except Exception:
+        return None
+    if len(key) < 2:
+        return None
+    a = bytearray(a)
+    n = len(key)
+    q = a[-1] ^ key[len(a) % n]
+    if q == 0:
+        return None
+    r = len(a) - q
+    if r <= 0:
+        return None
+    for i in range(r - 1, -1, -1):
+        b = key[i % n]
+        for j in range(len(a) - 1, i, -1):
+            a[j] = ((a[j] - b) & 0xFF) ^ a[i]
+    try:
+        out = bytes(a[:r]).decode("utf-8", "replace")
+    except Exception:
+        return None
+    if not out.startswith(("http://", "https://")):
+        return None
+    return out
+
+
+def glitch_seal_links(html: str) -> list[tuple[str, str, str | None]]:
+    m = re.search(r"linkKey\s*=\s*\[([^\]]+)\]", html)
+    if not m:
+        return []
+    key = [int(x) for x in m.group(1).split(",") if x.strip().lstrip("-").isdigit()]
+    out: list[tuple[str, str, str | None]] = []
+    for a in re.finditer(r'<a\b[^>]*data-anl3cgehmr="([^"]+)"[^>]*>', html, re.I):
+        hm = re.search(r'data-host="([^"]*)"', a.group(0))
+        host = hm.group(1) if hm else ""
+        url = _unseal(a.group(1), key)
+        if not url:
+            continue
+        tail = html[a.end(): a.end() + 1500]
+        sm = re.search(r"download-size-badge[^>]*>([\s\S]{0,140}?)([\d.,]+\s*(?:GB|MB|TB))", tail)
+        size = sm.group(2) if sm else None
+        fm = re.search(r"([A-Za-z0-9_ .'()\-]+\.(?:rar|zip|7z))", tail)
+        label = host or urlparse(url).netloc
+        if fm:
+            label = f"{label} · {fm.group(1)}"
+        out.append((url, label, size))
+    return out
+
+
+def text_links(html: str, link_pat: str) -> list[tuple[str, str | None, str | None]]:
+    pat = link_pat.lower()
+    out: list[tuple[str, str | None, str | None]] = []
+    seen: set[str] = set()
+    for m in re.finditer(r"https?://[^\s\"'<>\\]+", html):
+        u = m.group(0).rstrip(".,;:})]\"'")
+        if pat not in u.lower() or u in seen:
+            continue
+        seen.add(u)
+        ctx = html[max(0, m.start() - 700):m.end()]
+        nm = re.search(r'"name"\s*:\s*"([^"]+)"', ctx)
+        sz = re.search(r'"size"\s*:\s*"([^"]+)"', ctx)
+        out.append((u, nm.group(1) if nm else None, sz.group(1) if sz else None))
+    return out
+
+
+def magnet_parts(href: str) -> tuple[str, str | None]:
+    dn = re.search(r"&dn=([^&\s]+)", href)
+    xl = re.search(r"&xl=(\d+)", href)
+    title = unquote(dn.group(1)) if dn else "(no title)"
+    size = b2human(int(xl.group(1))) if xl else None
+    return title, size
+
+
+GENERIC_LABELS = {"click here", "download", "download here", "download now", "here", "view"}
+ALIAS_NAMES = {"tpi.li": "OvaGames", "oii.la": "OvaGames", "srnky.com": "OvaGames", "shrinkme.click": "OvaGames"}
+
+
+def link_label(site: dict, url: str, anchor_label: str | None) -> str:
+    s = (anchor_label or "").strip() if anchor_label else ""
+    low = s.lower()
+    if low in GENERIC_LABELS or low.endswith("click here") or not s:
+        aliases = site.get("linkAliases") or {}
+        for pat, label in aliases.items():
+            if re.search(pat, url, re.I):
+                return label
+        host = urlparse(url).netloc
+        return ALIAS_NAMES.get(host, host or "link")
+    return s
+
+
 def default_title(html: str, strip_re: str | None = None) -> str:
     m = DEFAULT_TITLE_RE.search(html)
     t = get_text(m.group(1)) if m else ""
@@ -166,6 +274,80 @@ def discover_pages(home_html: str, base: str, page_pat: str | None, pages: int) 
     return ordered[: pages - 1]
 
 
+def fetch_post(session, url: str, site: dict) -> tuple[str, list[str]]:
+    """Fetch a post page; returns (html, extra_links). Extra links are minted
+    per-page via a browser step (e.g. the AnkerGames signed-download flow)."""
+    held: list[str] = []
+    if site.get("resolver") == "anker-mint":
+        def action(page):
+            try:
+                token = page.evaluate(
+                    "(document.querySelector('meta[name=csrf-token]')||{}).content||''"
+                )
+                if not token:
+                    return
+                ids = sorted(set(re.findall(r"generateDownloadUrl\((\d+)\)", page.content())))
+                for dlid in ids:
+                    js = (
+                        "(async()=>{try{const t=document.querySelector('meta[name=csrf-token]').content;"
+                        f"const r=await fetch('/generate-download-url/{dlid}',{{method:'POST',headers:{{'X-CSRF-TOKEN':t,'X-Requested-With':'XMLHttpRequest','Accept':'application/json'}}}});"
+                        "return r.status+'$$'+(await r.text());}catch(e){return 'ERR$$'+String(e);}})()"
+                    )
+                    try:
+                        out = page.evaluate(js)
+                    except Exception:
+                        continue
+                    status, _, body = out.partition("$$")
+                    if status == "200":
+                        try:
+                            dl = json.loads(body).get("download_url")
+                            if dl:
+                                held.append(dl)
+                        except Exception:
+                            pass
+            except Exception:
+                pass
+        page = session.fetch(url, google_search=False, timeout=90000, page_action=action)
+        return page.body.decode("utf-8", "replace"), held
+    return fetch_text(session, url), []
+
+
+def post_links(html: str, site: dict) -> list[tuple[str, str, str | None]]:
+    """(url, label, size) pairs for one post page, per the site's link strategy."""
+    link_pat = site.get("linkPattern")
+    out: list[tuple[str, str, str | None]] = []
+    seen: set[str] = set()
+
+    if site.get("resolver") == "glitch-seal":
+        for url, label, size in glitch_seal_links(html):
+            if url in seen:
+                continue
+            seen.add(url)
+            out.append((url, label, size))
+        return out
+
+    if site.get("linkSource") == "text":
+        for url, label, size in text_links(html, link_pat):
+            if url in seen:
+                continue
+            seen.add(url)
+            out.append((url, link_label(site, url, label), size))
+        return out
+
+    for h, label in anchor_links(html, link_pat):
+        if h in seen:
+            continue
+        seen.add(h)
+        if h.startswith(("mailto:", "tel:", "javascript:", "#")):
+            continue
+        resolved = resolve_href(site, h)
+        if resolved in seen:
+            continue
+        seen.add(resolved)
+        out.append((resolved, link_label(site, resolved, label), None))
+    return out
+
+
 def scrape_site(site: dict, key: str, max_posts: int) -> pathlib.Path:
     from scrapling.fetchers import StealthySession
 
@@ -206,6 +388,8 @@ def scrape_site(site: dict, key: str, max_posts: int) -> pathlib.Path:
                 u = urljoin(base, re.split(r"[#]", raw)[0])
                 if u in seen:
                     continue
+                if u == base or u.rstrip("/") == site["home"].rstrip("/"):
+                    continue
                 seen.add(u)
                 if mode == "direct":
                     posts.append(("", get_text(inner), u))
@@ -221,33 +405,40 @@ def scrape_site(site: dict, key: str, max_posts: int) -> pathlib.Path:
         for item in posts:
             if mode == "direct":
                 _, anchor_text, url = item
-                title = direct_title(anchor_text, strip_re, strip_nums, size_pat)
+                if url.startswith("magnet:"):
+                    title, msize = magnet_parts(url)
+                    part = None
+                    links = [(url, "Magnet", msize)]
+                else:
+                    title = direct_title(anchor_text, strip_re, strip_nums, size_pat)
+                    msize = extract_size(anchor_text, size_pat)
+                    part = part_from_anchor_text(anchor_text, part_label_pat)
+                    links = [(url, None, None)]
                 if not title:
                     continue
-                uris = [uri(None, url, part_from_anchor_text(anchor_text, part_label_pat))]
-                size = extract_size(anchor_text, size_pat)
+                uris = [uri(None, url, part) for _, _, _ in links]
+                size = msize or extract_size(anchor_text, size_pat)
             else:
                 url, anchor_text = item
                 try:
-                    html = fetch_text(session, url)
+                    html, extra = fetch_post(session, url, site)
                 except Exception:
                     continue
                 title = default_title(html, strip_re)
                 if not title:
                     continue
-                links = anchor_links(html, link_pat)
+                links = post_links(html, site)
+                for u in extra:
+                    links.append((u, "AnkerGames", None))
                 if not links:
                     continue
-                size = extract_size(anchor_text, size_pat)
+                size = extract_size(html, size_pat) or extract_size(anchor_text, size_pat)
                 uris = []
-                seen_hrefs: set[str] = set()
-                for h, label in links:
-                    if h in seen_hrefs:
-                        continue
-                    seen_hrefs.add(h)
-                    resolved = resolve_href(site, h)
-                    part = part_from_anchor_text(label, part_label_pat) or part_label(resolved, part_pat)
-                    uris.append(uri(None, resolved, part))
+                for h, label, lsize in links:
+                    part = part_from_anchor_text(label, part_label_pat) or part_label(h, part_pat)
+                    uris.append(uri(label, h, part))
+                    if not size and lsize:
+                        size = lsize
             downloads.append(
                 {
                     "title": title,

@@ -43,6 +43,8 @@ const SITE_FIELDS = [
   "partLabelPattern",
   "skipLinkPatterns",
   "stripListNumbers",
+  "linkSource",
+  "linkAliases",
 ] as const;
 
 function loadSites(): Record<string, Record<string, unknown>> {
@@ -96,6 +98,7 @@ export function scraperRouter(): express.Router {
     const site: Record<string, unknown> = { name: String(body.name ?? key), home };
     const arrayFields = ["skipLinkPatterns"] as const;
     const boolFields = ["stripListNumbers"] as const;
+    const objectFields = ["linkAliases"] as const;
     for (const f of SITE_FIELDS) {
       if (f === "name" || f === "home") continue;
       const v = body[f];
@@ -106,6 +109,9 @@ export function scraperRouter(): express.Router {
       }
       if (boolFields.includes(f as (typeof boolFields)[number]) && typeof v === "boolean") {
         site[f] = v;
+      }
+      if (objectFields.includes(f as (typeof objectFields)[number]) && v && typeof v === "object" && !Array.isArray(v)) {
+        site[f] = v as Record<string, string>;
       }
     }
     const sites = loadSites();
