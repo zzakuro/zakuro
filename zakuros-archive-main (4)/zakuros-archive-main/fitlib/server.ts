@@ -566,7 +566,7 @@ function renderSecretSources(): string {
 </head>
 <body>
 <h1>secret sources</h1>
-<p><a href="/secret-sources/file?rel=${encodeURIComponent("data/sources.json")}">view sources.json</a> · <a href="/secret-sources/file?rel=${encodeURIComponent("data/scraper-sites.json")}">view scraper-sites.json</a></p>
+<p><a href="/secret-sources/file?rel=${encodeURIComponent("data/sources.json")}">view sources.json</a> · <a href="/secret-sources/file?rel=${encodeURIComponent("data/scraper-sites.json")}">view scraper-sites.json</a> · <a href="/secret-scraper">live scraper panel</a></p>
 <p class="chip">catalog: <b>${gamesCatalog.length}</b> games</p>
 <p class="chip">interval: every <b>${Math.round(interval / 3600_000)}h</b></p>
 <p class="chip">next sync in: <b class="${nextIn === 0 ? "warn" : "ok"}">${fmtDur(nextIn)}</b> (at ${new Date(nextSyncAtMs).toISOString()})</p>
@@ -683,6 +683,154 @@ function renderRemoteView(url: string, status: number, body: string): string {
   );
 }
 
+// ── Live scraping panel ────────────────────────────────────────────────────────
+// Hidden admin page (no links anywhere in the UI) that streams a scraper run
+// from /api/scraper/live-stream/:key via SSE and shows per-title progress.
+function renderScraperPanel(): string {
+  return `<!doctype html>
+<html>
+<head><meta charset="utf-8"><title>live scraper</title>
+<style>
+ body{font-family:monospace;font-size:12px;background:#111;color:#ddd;padding:16px;}
+ h1{color:#fff} a{color:#8cf}
+ select,button{font-family:monospace;font-size:12px;background:#222;color:#ddd;border:1px solid #555;padding:3px 6px;cursor:pointer}
+ .row{display:flex;gap:8px;align-items:center;margin:8px 0;flex-wrap:wrap}
+ .chip{display:inline-block;padding:0 5px;border-radius:3px;background:#222;border:1px solid #444;margin:2px 4px 2px 0}
+ #stats{min-height:1.4em;margin:6px 0;color:#9cf}
+ pre#log{background:#0c0c0c;border:1px solid #333;padding:8px;height:58vh;overflow:auto;white-space:pre-wrap;word-break:break-all;font-size:11px}
+ .st{color:#fa0}.ok{color:#6f6}.err{color:#f66}.dim{color:#888}.warn{color:#fa0}
+ .bar{background:#1c1c1c;border:1px solid #333;height:10px;width:100%;margin:4px 0}
+ .bar>div{background:#4c8;height:10px;width:0%}
+ .run{display:inline-block;border:1px solid #444;padding:2px 6px;margin:2px;border-radius:3px;cursor:pointer}
+ .run.running{border-color:#6f6;color:#6f6}
+ .run.done{border-color:#666}
+ .run.fail{border-color:#f66}
+</style>
+</head>
+<body>
+<h1>live scraper</h1>
+<p><a href="/secret-sources">&larr; secret sources</a> · <a href="/secret-sources/file?rel=${encodeURIComponent("data/scraper-sites.json")}">view scraper-sites.json</a></p>
+<div class="row">
+<select id="site"></select>
+<button id="run">run</button>
+<button id="stop" disabled>stop feed</button>
+</div>
+<div id="runs"></div>
+<div id="stats"></div>
+<div class="bar"><div id="bar"></div></div>
+<pre id="log"></pre>
+<script>
+(() => {
+  var $ = function (s) { return document.querySelector(s); };
+  var logEl = $("#log"), statsEl = $("#stats"), barEl = $("#bar"), runBtn = $("#run"), stopBtn = $("#stop");
+  var es = null;
+
+  function esc(s) { return String(s == null ? "" : s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;"); }
+  function keyEsc(s) { return encodeURIComponent(s); }
+  function line(text, cls) {
+    var d = document.createElement("div");
+    d.className = cls || "";
+    d.textContent = text;
+    logEl.appendChild(d);
+    logEl.scrollTop = logEl.scrollHeight;
+    while (logEl.childNodes.length > 2000) logEl.removeChild(logEl.firstChild);
+  }
+  function age(ts) {
+    if (!ts) return "";
+    var s = Math.floor((Date.now() - ts) / 1000);
+    if (s < 60) return s + "s ago";
+    if (s < 3600) return Math.floor(s / 60) + "m" + (s % 60) + "s ago";
+    return Math.floor(s / 3600) + "h ago";
+  }
+  function onLine(text) {
+    if (text.indexOf("PROGRESS\t") === 0) {
+      var evt = null;
+      try { evt = JSON.parse(text.slice(9)); } catch (err) {}
+      if (!evt) return;
+      if (evt.event === "listing") {
+        statsEl.innerHTML = "listing: found <b>" + esc(evt.posts) + "</b> entries (mode " + esc(evt.mode) + (evt.sitemap ? " · sitemap" : "") + ")";
+        return;
+      }
+      if (evt.event === "post") {
+        var pct = evt.total ? (100 * (evt.i + 1) / evt.total) : 0;
+        barEl.style.width = pct.toFixed(1) + "%";
+        if (evt.title) line("(" + (evt.i + 1) + "/" + evt.total + ") [" + (evt.links || 0) + " links] " + evt.title, "st");
+        else line("(" + (evt.i + 1) + "/" + evt.total + ") <no title> parts=" + (evt.links || 0), "err");
+        return;
+      }
+      if (evt.event === "done") { barEl.style.width = "100%"; line("done: " + evt.total + " entries", "ok"); return; }
+      return;
+    }
+    if (text.indexOf("error:") === 0) return line(text, "err");
+    if (text.indexOf("ok total=") === 0) return line(text, "ok");
+    line(text, "dim");
+  }
+  function closeFeed() { if (es) { es.close(); es = null; } stopBtn.disabled = true; }
+  function connect(key) {
+    closeFeed();
+    logEl.textContent = "";
+    statsEl.innerHTML = "connecting to <b>" + esc(key) + "</b> ...";
+    barEl.style.width = "0%";
+    es = new EventSource("/api/scraper/live-stream/" + keyEsc(key));
+    es.addEventListener("hello", function (e) {
+      var m = JSON.parse(e.data);
+      statsEl.innerHTML = "feed: <b>" + esc(m.key) + "</b>" + (m.running ? " <span class=ok>RUNNING</span>" : " <span class=dim>idle</span>") +
+        " · total " + (m.total == null ? "?" : m.total) + " · done " + (m.done == null ? 0 : m.done) +
+        (m.lastTitle ? " · last: " + esc(m.lastTitle) : "");
+      stopBtn.disabled = false;
+    });
+    es.addEventListener("start", function (e) { var m = JSON.parse(e.data); line(">> started " + m.name, "ok"); stopBtn.disabled = false; });
+    es.addEventListener("line", function (e) { try { onLine(JSON.parse(e.data).text); } catch (err) {} });
+    es.addEventListener("done", function (e) {
+      var m = JSON.parse(e.data);
+      stopBtn.disabled = true;
+      statsEl.innerHTML = "done: " + (m.ok ? "OK" : "FAILED") + " code=" + (m.code == null ? "-" : m.code) + " total=" + (m.total == null ? "?" : m.total) + (m.error ? " err=" + esc(m.error) : "");
+      line("== done ok=" + m.ok + " code=" + (m.code == null ? "-" : m.code) + " elapsed=" + (m.ms / 1000).toFixed(1) + "s total=" + (m.total == null ? "?" : m.total), m.ok ? "ok" : "err");
+    });
+  }
+  function refreshRuns() {
+    fetch("/api/scraper/live-runs").then(function (r) { return r.json(); }).then(function (d) {
+      var box = $("#runs"); box.textContent = "";
+      (d.runs || []).forEach(function (run) {
+        var el = document.createElement("span");
+        el.className = "run " + (run.running ? "running" : (run.code === 0 ? "done" : "fail"));
+        el.textContent = run.key + " · " + (run.running ? "running" : (run.done + " / " + (run.total == null ? "?" : run.total))) + (run.running ? "" : " · " + age(run.startedAt));
+        el.onclick = function () { connect(run.key); };
+        box.appendChild(el);
+      });
+    }).catch(function () {});
+  }
+  function init() {
+    var sel = $("#site");
+    fetch("/api/scraper/sites").then(function (r) { return r.json(); }).then(function (d) {
+      Object.keys(d.sites || {}).sort().forEach(function (k) {
+        var nm = d.sites[k].name;
+        var o = document.createElement("option");
+        o.value = k;
+        o.textContent = k + (nm && nm !== k ? " (" + nm + ")" : "");
+        sel.appendChild(o);
+      });
+    }).catch(function () { line("no sites configured in scraper-sites.json", "err"); });
+    runBtn.onclick = function () {
+      var key = sel.value; if (!key) return;
+      logEl.textContent = ""; barEl.style.width = "0%";
+      fetch("/api/scraper/live-run/" + keyEsc(key), { method: "POST" }).then(function (r) {
+        if (r.status === 409) line("already running — connecting to existing feed", "warn");
+        return r.json();
+      }).then(function () { connect(key); }).catch(function (err) { line("run failed: " + err, "err"); });
+      refreshRuns();
+    };
+    stopBtn.onclick = closeFeed;
+    refreshRuns();
+    setInterval(refreshRuns, 5000);
+  }
+  init();
+})();
+</script>
+</body>
+</html>`;
+}
+
 async function startServer() {
   gamesCatalog = loadGames();
 
@@ -739,6 +887,11 @@ async function startServer() {
   // Secret sources page — hidden admin view (no links anywhere in the UI).
   app.get("/secret-sources", (_req, res) => {
     res.type("text/html").send(renderSecretSources());
+  });
+
+  // Live scraping panel — hidden admin view (SSE progress from scraper_api.py).
+  app.get("/secret-scraper", (_req, res) => {
+    res.type("text/html").send(renderScraperPanel());
   });
 
   // JSON viewer for a local source file (allow-listed by sources config).
