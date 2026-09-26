@@ -12,11 +12,14 @@ Usage:
 """
 import argparse
 import base64
+import contextlib
+import concurrent.futures
 import html as _html
 import json
 import pathlib
 import re
 import sys
+import threading
 import time
 from urllib.parse import unquote, urljoin, urlparse
 
@@ -205,6 +208,36 @@ def fetch_text(session, url: str) -> str:
         return page.body.decode("utf-8")
     except UnicodeDecodeError:
         return page.body.decode("latin-1", "replace")
+
+
+_http_local = threading.local()
+_HTTP_UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
+
+
+def http_text(url: str, tries: int = 3) -> str:
+    """Plain-HTTP GET with a per-thread opener (keep-alive connections)."""
+    op = getattr(_http_local, "op", None)
+    if op is None:
+        op = urllib.request.build_opener()
+        op.addheaders = [("User-Agent", _HTTP_UA), ("Accept", "text/html,*/*")]
+        _http_local.op = op
+    last: Exception | None = None
+    for i in range(tries):
+        try:
+            req = urllib.request.Request(url)
+            with op.open(req, timeout=30) as r:
+                if r.status >= 400:
+                    raise RuntimeError(f"HTTP {r.status} for {url}")
+                body = r.read()
+            try:
+                return body.decode("utf-8")
+            except UnicodeDecodeError:
+                return body.decode("latin-1", "replace")
+        except Exception as e:
+            last = e
+            if i < tries - 1:
+                time.sleep(min(2 ** i, 4))
+    raise last or RuntimeError(f"failed to fetch {url}")
 
 
 def resolve_href(site: dict, href: str) -> str:
@@ -425,16 +458,72 @@ def scrape_site(site: dict, key: str, max_posts: int) -> pathlib.Path:
     base = site.get("home", "")
     if base and not base.endswith("/"):
         base += "/"
+    plain = bool(site.get("plainHttp"))
 
-    downloads: list = []
-    with StealthySession(headless=True, solve_cloudflare=True) as session:
-        home_html = fetch_text(session, site["home"])
+    def fetch(url: str) -> str:
+        return http_text(url) if plain else fetch_text(session, url)
+
+    def process(item):
+        if mode == "direct":
+            _, anchor_text, url = item
+            if url.startswith("magnet:"):
+                title, msize = magnet_parts(url)
+                if strip_re:
+                    title = re.sub(strip_re, "", title, flags=re.I).strip()
+                part = None
+                links = [(url, "Magnet", msize)]
+            else:
+                title = direct_title(anchor_text, strip_re, strip_nums, size_pat)
+                msize = extract_size(anchor_text, size_pat)
+                part = part_from_anchor_text(anchor_text, part_label_pat)
+                links = [(url, None, None)]
+            if not title:
+                return None
+            uris = [uri(label, url, part) for label, _, _ in links]
+            size = msize or extract_size(anchor_text, size_pat)
+            return {"title": title, "fileSize": size, "uploadDate": None, "uris": uris}
+
+        url, anchor_text = item
+        try:
+            if plain:
+                html, extra = fetch(url), []
+            else:
+                html, extra = fetch_post(session, url, site)
+        except Exception:
+            return None
+        title = default_title(html, strip_re, site.get("titleSource"))
+        if not title:
+            return None
+        links = post_links(html, site)
+        for u in extra:
+            links.append((u, "AnkerGames", None))
+        if not links:
+            return None
+        size = extract_size(html, size_pat) or extract_size(anchor_text, size_pat)
+        uris = []
+        for h, label, lsize in links:
+            part = part_from_anchor_text(label, part_label_pat) or part_label(h, part_pat)
+            uris.append(uri(label, h, part))
+            if not size and lsize:
+                size = lsize
+        delay = site.get("interPostDelay")
+        if delay and not plain:
+            time.sleep(delay)
+        return {"title": title, "fileSize": size, "uploadDate": None, "uris": uris}
+
+    ctx: contextlib.AbstractContextManager
+    if plain:
+        ctx = contextlib.nullcontext()
+    else:
+        ctx = StealthySession(headless=True, solve_cloudflare=True)
+    with ctx as session:
+        home_html = fetch(site["home"])
         listing_urls = [site["home"]] + discover_pages(home_html, base, site.get("pageLinkPattern"), pages)
 
         seen, posts = set(), []
         smap = site.get("sitemapUrl")
         if smap:
-            smap_html = fetch_text(session, smap)
+            smap_html = fetch(smap)
             for raw in re.findall(r"<loc>\s*([^<\s]+)\s*</loc>", smap_html):
                 u = raw.strip()
                 if pattern and pattern not in u:
@@ -449,7 +538,7 @@ def scrape_site(site: dict, key: str, max_posts: int) -> pathlib.Path:
                     break
         else:
             for lu in listing_urls:
-                html = home_html if lu == site["home"] else fetch_text(session, lu)
+                html = home_html if lu == site["home"] else fetch(lu)
                 for href, inner in re.findall(r'<a[^>]+href="([^"]+)"[^>]*>([\s\S]*?)</a>', html, re.I):
                     raw = _html.unescape(href)
                     if raw.startswith(("mailto:", "tel:", "javascript:")):
@@ -475,59 +564,19 @@ def scrape_site(site: dict, key: str, max_posts: int) -> pathlib.Path:
                     break
 
         posts = posts[:max_posts]
-        if not posts:
-            raise RuntimeError("no entries found (check postLinkPattern/entryPattern)")
+    if not posts:
+        raise RuntimeError("no entries found (check postLinkPattern/entryPattern)")
 
+    if plain:
+        workers = int(site.get("plainWorkers") or 12)
+        with concurrent.futures.ThreadPoolExecutor(max_workers=workers) as ex:
+            downloads = [d for d in ex.map(process, posts) if d is not None]
+    else:
+        downloads = []
         for item in posts:
-            if mode == "direct":
-                _, anchor_text, url = item
-                if url.startswith("magnet:"):
-                    title, msize = magnet_parts(url)
-                    if strip_re:
-                        title = re.sub(strip_re, "", title, flags=re.I).strip()
-                    part = None
-                    links = [(url, "Magnet", msize)]
-                else:
-                    title = direct_title(anchor_text, strip_re, strip_nums, size_pat)
-                    msize = extract_size(anchor_text, size_pat)
-                    part = part_from_anchor_text(anchor_text, part_label_pat)
-                    links = [(url, None, None)]
-                if not title:
-                    continue
-                uris = [uri(label, url, part) for label, _, _ in links]
-                size = msize or extract_size(anchor_text, size_pat)
-            else:
-                url, anchor_text = item
-                try:
-                    html, extra = fetch_post(session, url, site)
-                except Exception:
-                    continue
-                title = default_title(html, strip_re, site.get("titleSource"))
-                if not title:
-                    continue
-                links = post_links(html, site)
-                for u in extra:
-                    links.append((u, "AnkerGames", None))
-                if not links:
-                    continue
-                size = extract_size(html, size_pat) or extract_size(anchor_text, size_pat)
-                uris = []
-                for h, label, lsize in links:
-                    part = part_from_anchor_text(label, part_label_pat) or part_label(h, part_pat)
-                    uris.append(uri(label, h, part))
-                    if not size and lsize:
-                        size = lsize
-                delay = site.get("interPostDelay")
-                if delay:
-                    time.sleep(delay)
-            downloads.append(
-                {
-                    "title": title,
-                    "fileSize": size,
-                    "uploadDate": None,
-                    "uris": uris,
-                }
-            )
+            d = process(item)
+            if d:
+                downloads.append(d)
 
     if not downloads:
         raise RuntimeError("no entries extracted from posts")
