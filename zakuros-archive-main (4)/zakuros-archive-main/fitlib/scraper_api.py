@@ -129,12 +129,13 @@ def glitch_seal_links(html: str) -> list[tuple[str, str, str | None]]:
 
 def text_links(html: str, link_pat: str) -> list[tuple[str, str | None, str | None]]:
     pat = link_pat.lower()
+    h = html.replace("\\/", "/").replace('\\"', '"')
     best: dict[str, tuple[int, str | None, str | None]] = {}
-    for m in re.finditer(r"https?://[^\s\"'<>\\]+", html):
+    for m in re.finditer(r"https?://[^\s\"'<>\\]+", h):
         u = m.group(0).rstrip(".,;:})]\"'")
         if pat not in u.lower():
             continue
-        pre = html[max(0, m.start() - 3000):m.start()]
+        pre = h[max(0, m.start() - 3000):m.start()]
         nm = re.findall(r'"name"\s*:\s*"([^"]+)"', pre)
         sz = re.findall(r'"size"\s*:\s*"([^"]+)"', pre)
         label = nm[-1] if nm else None
