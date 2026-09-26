@@ -525,6 +525,9 @@ def scrape_site(site: dict, key: str, max_posts: int) -> pathlib.Path:
         smap = site.get("sitemapUrl")
         if smap:
             smap_html = fetch(smap)
+            if "<sitemapindex" in smap_html.lower():
+                subs = re.findall(r"<loc>\s*([^<\s]+)\s*</loc>", smap_html)
+                smap_html = "\n".join(fetch(su) for su in subs)
             for raw in re.findall(r"<loc>\s*([^<\s]+)\s*</loc>", smap_html):
                 u = raw.strip()
                 if pattern and pattern not in u:
