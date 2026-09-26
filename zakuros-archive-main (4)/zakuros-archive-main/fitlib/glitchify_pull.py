@@ -70,17 +70,24 @@ def parse_game(url: str, g: list[int], attr: str) -> dict | None:
     g2, attr2 = (pg, pa) if pg and pa else (g, attr)
 
     title = None
-    t = re.search(r"<h1[^>]*>([\s\S]{0,300}?)</h1>", html)
-    if t:
-        title = re.sub(r"\s+", " ", re.sub(r"<[^>]+>", " ", t.group(1))).strip()
+    # data-game-title is the reliable per-game title (the first <h1> is the site wordmark).
+    dt = re.search(r'data-game-title="([^"]+)"', html)
+    if dt:
+        title = dt.group(1).strip()
+    if not title:
+        gt = re.search(r'class="[^"]*game-title[^"]*"[^>]*>([\s\S]{0,160}?)</', html)
+        if gt:
+            title = re.sub(r"\s+", " ", re.sub(r"<[^>]+>", " ", gt.group(1))).strip()
     if not title:
         og = re.search(r'property="og:title"[^>]*content="([^"]+)"', html)
         title = og.group(1).strip() if og else None
 
     size = None
-    sm = re.search(r'side-size-badge[^>]*>[\s\S]{0,200}?([\d.,]+\s*[GMK]?B)', html, re.I)
+    sm = re.search(r'side-size-badge[^>]*>([\s\S]{0,400}?)</span>', html, re.I)
     if sm:
-        size = sm.group(1).strip()
+        hit = re.search(r"([\d.,]+\s*[KMGT]?B)\b", re.sub(r"<[^>]+>", " ", sm.group(1)), re.I)
+        if hit:
+            size = hit.group(1).strip()
 
     uris, seen = [], set()
     for m in re.finditer(
