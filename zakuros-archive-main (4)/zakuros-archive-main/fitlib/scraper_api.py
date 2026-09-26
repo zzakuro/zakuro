@@ -354,6 +354,9 @@ def post_links(html: str, site: dict) -> list[tuple[str, str, str | None]]:
     out: list[tuple[str, str, str | None]] = []
     seen: set[str] = set()
 
+    if site.get("resolver") == "anker-mint":
+        return []
+
     if site.get("resolver") == "glitch-seal":
         for url, label, size in glitch_seal_links(html):
             if url in seen:
