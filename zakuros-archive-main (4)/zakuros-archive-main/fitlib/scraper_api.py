@@ -367,9 +367,6 @@ def post_links(html: str, site: dict) -> list[tuple[str, str, str | None]]:
     for h, label in anchor_links(html, None):
         if not href_matches(link_pat, h):
             continue
-        if h in seen:
-            continue
-        seen.add(h)
         if h.startswith(("mailto:", "tel:", "javascript:", "#")):
             continue
         resolved = resolve_href(site, h)
