@@ -778,6 +778,16 @@ function renderScrapedDataView(key: string, st: fs.Stats, data: Record<string, u
 // Hidden admin page (no links anywhere in the UI) that streams a scraper run
 // from /api/scraper/live-stream/:key via SSE and shows per-title progress.
 function renderScraperPanel(): string {
+  let dataLinks = "";
+  try {
+    dataLinks = fs
+      .readdirSync(path.join(process.cwd(), "data", "scraped"))
+      .filter((f) => f.endsWith(".json") && f !== "_live.json")
+      .map((f) => f.replace(/\.json$/, ""))
+      .sort()
+      .map((k) => `<a href="/secret-scraper/data/${enc(k)}">${secEsc(k)}</a>`)
+      .join(" · ");
+  } catch {}
   return `<!doctype html>
 <html>
 <head><meta charset="utf-8"><title>live scraper</title>
