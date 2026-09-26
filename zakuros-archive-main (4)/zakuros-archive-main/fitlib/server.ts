@@ -810,7 +810,7 @@ function renderScraperPanel(): string {
 </head>
 <body>
 <h1>live scraper</h1>
-<p><a href="/secret-sources">&larr; secret sources</a> · <a href="/secret-sources/file?rel=${encodeURIComponent("data/scraper-sites.json")}">view scraper-sites.json</a> · <a href="/secret-scraper/data/gogrev">browse gogrev data</a></p>
+<p><a href="/secret-sources">&larr; secret sources</a> · <a href="/secret-sources/file?rel=${encodeURIComponent("data/scraper-sites.json")}">view scraper-sites.json</a> · <span>data: </span>${dataLinks || "none"}</p>
 <div class="row">
 <select id="site"></select>
 <button id="run">run</button>
