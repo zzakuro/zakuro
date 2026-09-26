@@ -35,8 +35,32 @@ def _add_detect_args(parser: argparse.ArgumentParser) -> None:
                         help="how deep to search for executables (default: 2)")
     parser.add_argument("--no-verify-hashes", action="store_true",
                         help="do not re-hash files listed in the patch marker")
+    parser.add_argument("--emu-dir",
+                        help="compare the deployed library against this emulator build")
     parser.add_argument("-v", "--verbose", action="store_true", help="show every executable")
     parser.add_argument("--json", action="store_true", help="machine readable output")
+
+
+def _add_selection_args(parser: argparse.ArgumentParser) -> None:
+    group = parser.add_argument_group("archive contents")
+    group.add_argument("--select", choices=const.SELECT_PRESETS, default="full",
+                       help="what goes into the archive: full (default), "
+                            "crack-only (emulator payload), or game-only (no payload)")
+    group.add_argument("--include", action="append", metavar="PATTERN",
+                       help="only include paths matching this glob (repeatable)")
+    group.add_argument("-x", "--exclude", action="append", metavar="PATTERN",
+                       help="exclude paths matching this glob (repeatable)")
+    group.add_argument("--exclude-dir", action="append", metavar="NAME",
+                       help="exclude a folder and everything under it (repeatable)")
+    group.add_argument("--list", dest="list_file", metavar="FILE",
+                       help="read paths/globs from a file ('#' comments, '-pattern' "
+                            "excludes, '/name' excludes a folder)")
+    group.add_argument("--list-out", metavar="FILE",
+                       help="write the resolved selection to a file for --list")
+    group.add_argument("--include-junk", action="store_true",
+                       help="also archive the tool's own leftovers and system folders")
+    group.add_argument("--show-selection", action="store_true",
+                       help="print the selection breakdown even for a full archive")
 
 
 def _add_patch_args(parser: argparse.ArgumentParser, own_safety: bool = True) -> None:
@@ -101,8 +125,6 @@ def _add_pack_args(parser: argparse.ArgumentParser, own_safety: bool = True) -> 
     group.add_argument("--solid", dest="solid_block", help="solid block size, e.g. 256m")
     group.add_argument("--threads", type=int, help="worker threads (default: 70%% of CPUs)")
     group.add_argument("--mem-percent", type=int, help="7-Zip memory use, e.g. 90")
-    group.add_argument("-x", "--exclude", action="append", metavar="PATTERN",
-                       help="exclude files from the archive (repeatable)")
     group.add_argument("-p", "--password", help="encrypt the archive")
     group.add_argument("--encrypt-names", action="store_true",
                        help="also encrypt the archive file names")

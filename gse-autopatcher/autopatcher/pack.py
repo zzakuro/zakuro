@@ -90,9 +90,14 @@ def build_command(
     root: Path,
     archive: Path,
     options: PackOptions,
+    list_file: Path | None = None,
 ) -> list[str]:
     profile = PROFILES.get(options.profile, PROFILES["normal"])
-    cmd = [str(sevenzip), "a", str(archive), str(root / "*")]
+    cmd = [str(sevenzip), "a", str(archive)]
+    if list_file is not None:
+        cmd.append(f"@{list_file}")
+    else:
+        cmd.append(str(root / "*"))
 
     if options.level is not None:
         cmd.append(f"-mx={options.level}")
@@ -125,9 +130,10 @@ def build_command(
     return cmd
 
 
-def _run(cmd: list[str], timeout: int = 0) -> tuple[int, str]:
+def _run(cmd: list[str], timeout: int = 0, cwd: Path | None = None) -> tuple[int, str]:
     proc = subprocess.run(
         cmd,
+        cwd=str(cwd) if cwd else None,
         stdout=None,  # let 7-Zip draw its progress bar
         stderr=subprocess.PIPE,
         text=True,
@@ -202,13 +208,54 @@ def pack_folder(root: str | Path, options: PackOptions | None = None) -> PackRes
         return result
 
     result.source_size = dir_size(root)
-    cmd = build_command(sevenzip, root, archive, options)
+
+    selection = build_selection(root, options.selection)
+    result.selection = selection
+    if selection.count == 0:
+        result.errors.append(
+            "the selection is empty: nothing would be archived (check --select/--include/--exclude)"
+        )
+        return result
+
+    # The plain "everything" case is handed to 7-Zip as a wildcard, which is
+    # both faster and closer to what people expect; anything else goes through
+    # an explicit list file.
+    plain = (
+        selection.options.preset == "full"
+        and not selection.options.include
+        and not selection.options.exclude
+        and not selection.options.exclude_dirs
+        and selection.options.list_file is None
+    )
+    if plain and not options.show_selection:
+        log.info(
+            f"selection: everything ({len(selection.files)} file(s), "
+            f"{human_size(selection.bytes_total)})"
+        )
+    else:
+        log.plain(summary(selection))
+
+    if options.list_out:
+        written = write_list_file(selection, Path(options.list_out).expanduser())
+        log.info(f"selection list written to {options.list_out} ({written} lines)")
+
+    tmp_dir: Path | None = None
+    list_file: Path | None = None
+    if not plain:
+        tmp_dir = Path(tempfile.mkdtemp(prefix="gse-autopatcher-pack-"))
+        list_file = tmp_dir / "files.lst"
+        written = write_list_file(selection, list_file)
+        log.info(f"packing an explicit selection of {written} path(s)")
+
+    cmd = build_command(sevenzip, root, archive, options, list_file=list_file)
     log.info("compressing with: " + " ".join(cmd[1:]))
     log.info(f"source: {human_size(result.source_size)} -> {archive.name}")
 
     if options.dry_run:
         log.info("[dry-run] would create the archive; nothing written")
         result.archive = archive
+        if tmp_dir:
+            shutil.rmtree(tmp_dir, ignore_errors=True)
         return result
 
     if archive.exists():
@@ -221,13 +268,18 @@ def pack_folder(root: str | Path, options: PackOptions | None = None) -> PackRes
 
     started = time.time()
     try:
-        code, stderr = _run(cmd, timeout=options.timeout)
+        # With a list file the paths are relative, so 7-Zip must run from the
+        # game folder to resolve them.
+        code, stderr = _run(cmd, timeout=options.timeout, cwd=root if list_file else None)
     except subprocess.TimeoutExpired:
         result.errors.append("7-Zip timed out")
         return result
     except OSError as exc:
         result.errors.append(f"could not start 7-Zip: {exc}")
         return result
+    finally:
+        if tmp_dir:
+            shutil.rmtree(tmp_dir, ignore_errors=True)
     result.seconds = time.time() - started
 
     if code != 0 or not archive.is_file():

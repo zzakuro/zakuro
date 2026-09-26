@@ -43,15 +43,26 @@ class GameFacts:
     emu_settings_files: list[str] = field(default_factory=list)
     legacy_markers: list[str] = field(default_factory=list)
     marker: dict | None = None
+    marker_state: str = "absent"  # absent | verified | modified | foreign
+    marker_note: str = ""
+    patcher: str = "none"  # see const.PATCHER_*
+    patcher_note: str = ""
     extra_txt: list[Path] = field(default_factory=list)
     extra_lnk: list[Path] = field(default_factory=list)
     has_steamstub: bool = False
     steam_referencing_exes: list[str] = field(default_factory=list)
+    is_steam_game_like: bool = False
+    payload: dict[str, str] = field(default_factory=dict)  # rel path -> category
     errors: list[str] = field(default_factory=list)
 
     @property
     def name(self) -> str:
         return self.app_name or self.root.name
+
+    @property
+    def has_payload(self) -> bool:
+        """True when any emulator artefact is deployed in the folder."""
+        return bool(self.emu_dlls or self.emu_settings_files or self.legacy_markers)
 
     def summary(self) -> dict:
         return {
@@ -84,7 +95,12 @@ class GameFacts:
             "legacy_markers": self.legacy_markers,
             "has_steamstub": self.has_steamstub,
             "steam_referencing_exes": self.steam_referencing_exes,
+            "patcher": self.patcher,
+            "patcher_note": self.patcher_note,
             "marker": self.marker,
+            "marker_state": self.marker_state,
+            "marker_note": self.marker_note,
+            "payload": self.payload,
             "extra_txt": [str(p) for p in self.extra_txt],
             "extra_lnk": [str(p) for p in self.extra_lnk],
             "errors": self.errors,
@@ -309,6 +325,80 @@ def _scan_extras(facts: GameFacts) -> None:
             facts.extra_lnk.append(path)
 
 
+def _has_rune_markers(facts: GameFacts) -> list[str]:
+    """RUNE leaves `.rne` libraries and a `steam_emu.ini` behind."""
+    hits: list[str] = []
+    for path in facts.root.rglob("*.rne"):
+        hits.append(path.relative_to(facts.root).as_posix())
+        if len(hits) >= 5:
+            break
+    for candidate in [facts.root / "steam_emu.ini", *sorted(facts.root.glob("*.ini"))]:
+        if not candidate.is_file():
+            continue
+        try:
+            text = candidate.read_text(encoding="utf-8", errors="ignore")
+        except OSError:
+            continue
+        if "RUNE_" in text or "RUNE" in text.upper():
+            hits.append(candidate.name)
+            break
+    return hits
+
+
+def identify_patcher(facts: GameFacts) -> None:
+    """Work out which emulator deployment (if any) the folder carries."""
+    marker = facts.marker if isinstance(facts.marker, dict) else {}
+    settings_files = [f for f in facts.emu_settings_files if not f.startswith("<")]
+
+    if marker.get("tool") == const.TOOL_NAME:
+        facts.patcher = const.PATCHER_SELF
+        facts.patcher_note = "patched by this tool"
+        return
+
+    if _has_rune_markers(facts):
+        facts.patcher = const.PATCHER_RUNE
+        facts.patcher_note = "RUNE style deployment (.rne / steam_emu.ini)"
+        return
+
+    gbe_hits = [f for f in settings_files if f in const.GBE_FORK_MARKERS]
+    classic_hits = [f for f in settings_files if f in const.GOLDBERG_CLASSIC_MARKERS]
+    if any(f in const.GOLDBERG_CLASSIC_MARKERS for f in facts.legacy_markers):
+        classic_hits.append("steam_emu.ini")
+
+    if gbe_hits and not classic_hits:
+        facts.patcher = const.PATCHER_GBE_FORK
+        facts.patcher_note = "gbe_fork layout: " + ", ".join(gbe_hits[:3])
+    elif classic_hits and not gbe_hits:
+        facts.patcher = const.PATCHER_GOLDBERG_CLASSIC
+        facts.patcher_note = "pre-fork Goldberg layout: " + ", ".join(classic_hits[:3])
+    elif gbe_hits and classic_hits:
+        facts.patcher = const.PATCHER_GBE_FORK
+        facts.patcher_note = "gbe_fork layout, with some pre-fork leftovers"
+    elif facts.emu_dlls or facts.legacy_markers:
+        facts.patcher = const.PATCHER_UNKNOWN_EMU
+        facts.patcher_note = "emulator libraries found, but no recognisable steam_settings"
+    elif facts.is_steam_game_like and not facts.has_steamstub:
+        facts.patcher = const.PATCHER_STEAMLESS_ONLY
+        facts.patcher_note = "SteamStub removed, but no emulator deployed"
+    else:
+        facts.patcher = "none"
+        facts.patcher_note = "no emulator artefacts found"
+
+
+def _scan_payload(facts: GameFacts) -> None:
+    """Label every top level entry so selections and reports can talk about it."""
+    from .select import categorize
+
+    if not facts.root.is_dir():
+        return
+    for entry in sorted(facts.root.iterdir(), key=lambda p: p.name.lower()):
+        try:
+            rel = entry.relative_to(facts.root).as_posix()
+        except ValueError:
+            continue
+        facts.payload[rel] = categorize(rel, entry.is_dir())
+
+
 def probe(root: str | Path, max_depth: int = 2) -> GameFacts:
     root = Path(root).expanduser().resolve()
     facts = GameFacts(root=root)
@@ -331,7 +421,12 @@ def probe(root: str | Path, max_depth: int = 2) -> GameFacts:
     _scan_steam_settings(facts)
     _scan_dlls(facts)
     _scan_extras(facts)
+    _scan_payload(facts)
 
     facts.marker = read_json(root / const.MARKER_FILENAME)
     _find_appid(facts)
+    facts.is_steam_game_like = bool(
+        facts.steam_referencing_exes or facts.emu_dlls or facts.original_dlls
+    )
+    identify_patcher(facts)
     return facts
