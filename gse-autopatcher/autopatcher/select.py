@@ -193,7 +193,10 @@ def _preset_allows(rel: str, name: str, is_dir: bool, preset: str) -> bool:
         top = rel.split("/")[0].lower()
         if top in const.PAYLOAD_DIRS:
             return False
-        return name.lower() != const.MARKER_FILENAME
+        if name.lower() == const.MARKER_FILENAME:
+            return False
+        # A payload library sitting in the game root counts as payload too.
+        return not any(fnmatch.fnmatch(name.lower(), p) for p in const.PAYLOAD_FILES)
     return True
 
 
@@ -284,8 +287,8 @@ def summary(selection: Selection) -> str:
         + (f" include={selection.options.include}" if selection.options.include else "")
         + (f" exclude={selection.options.exclude}" if selection.options.exclude else "")
         + (f" exclude-dirs={selection.options.exclude_dirs}" if selection.options.exclude_dirs else ""),
-        f"entries   : {len(selection.files)} file(s), {len(selection.dirs)} folder(s), "
-        f"{human_size(selection.bytes_total)}",
+        f"entries   : {selection.count} ({len(selection.files)} file(s), "
+        f"{len(selection.dirs)} folder(s), {human_size(selection.bytes_total)})",
     ]
     for name, (count, size) in sorted(selection.categories.items()):
         lines.append(f"  {name:20} {count:6} entry(ies)  {human_size(size)}")

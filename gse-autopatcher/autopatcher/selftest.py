@@ -18,7 +18,7 @@ from .pack import PackOptions, pack_folder
 from .patch import PatchOptions, patch_game
 from .pe import read_pe
 from .probe import probe
-from .select import SelectionOptions, build_selection, categorize, summary
+from .select import SelectionOptions, build_selection
 from .util import log, safe_rmtree
 
 INTERFACE_STRINGS = [
@@ -517,6 +517,8 @@ def _run_checks(checks: Checks, fixture: dict, tmp: Path) -> None:
     checks.check("select: crack-only drops the game",
                  "Game64.exe" not in crack.files and "payload.txt" not in crack.files,
                  str(crack.files))
+    checks.check("select: crack-only leaves the patch marker behind",
+                 const.MARKER_FILENAME not in crack.files, str(crack.files))
 
     only_game = build_selection(game64, SelectionOptions(preset="game-only"))
     checks.check("select: game-only drops the payload",
@@ -600,6 +602,58 @@ def _run_checks(checks: Checks, fixture: dict, tmp: Path) -> None:
     checks.check("pack: shortcut is inside the archive", "Game64.lnk" in listing)
     checks.check("pack: steam_settings is inside the archive",
                  any("steam_settings/steam_interfaces.txt" in name.replace("\\", "/") for name in listing))
+    checks.check("pack: the tool's backup folder stays out of the archive",
+                 not any("autopatch-backup" in name for name in listing), str(listing))
+
+    # ---- compression honours the selection -------------------------
+    crack_archive = tmp / "Game64-crack.7z"
+    crack_packed = pack_folder(
+        game64,
+        PackOptions(sevenzip=sevenzip, output=crack_archive, profile="fast",
+                    selection=SelectionOptions(preset="crack-only")),
+    )
+    crack_listing = _list_archive(sevenzip, crack_archive)
+    checks.check("pack: crack-only archive holds the payload",
+                 crack_packed.ok
+                 and "steam_api64.dll" in crack_listing
+                 and any("steam_settings" in n for n in crack_listing),
+                 str(crack_listing))
+    checks.check("pack: crack-only archive leaves the game out",
+                 "Game64.exe" not in crack_listing and "payload.txt" not in crack_listing,
+                 str(crack_listing))
+    checks.check("pack: crack-only archive carries no patch marker",
+                 const.MARKER_FILENAME not in crack_listing, str(crack_listing))
+
+    picked_archive = tmp / "Game64-picked.7z"
+    picked = pack_folder(
+        game64,
+        PackOptions(sevenzip=sevenzip, output=picked_archive, profile="fast",
+                    selection=SelectionOptions(exclude_dirs=["logs"]), list_out=tmp / "picked.txt"),
+    )
+    picked_listing = _list_archive(sevenzip, picked_archive)
+    checks.check("pack: --exclude-dir keeps the excluded folder out",
+                 picked.ok and not any("session.log" in n for n in picked_listing)
+                 and "Game64.exe" in picked_listing, str(picked_listing))
+    checks.check("pack: --list-out saves the selection for reuse",
+                 (tmp / "picked.txt").is_file()
+                 and "Game64.exe" in (tmp / "picked.txt").read_text(encoding="utf-8"))
+
+    reuse = pack_folder(
+        game64,
+        PackOptions(sevenzip=sevenzip, output=tmp / "Game64-reuse.7z", profile="fast",
+                    selection=SelectionOptions(list_file=tmp / "picked.txt")),
+    )
+    checks.check("pack: a saved selection can be replayed with --list",
+                 reuse.ok and "Game64.exe" in _list_archive(sevenzip, tmp / "Game64-reuse.7z"))
+
+    dry = pack_folder(
+        game64,
+        PackOptions(sevenzip=sevenzip, output=tmp / "Game64-dry.7z", profile="fast",
+                    selection=SelectionOptions(include=["nope*"]), dry_run=True),
+    )
+    checks.check("pack: an empty selection is refused",
+                 any("selection is empty" in e for e in dry.errors)
+                 and not (tmp / "Game64-dry.7z").exists(), str(dry.errors))
 
     dropped = pack_folder(
         game64,

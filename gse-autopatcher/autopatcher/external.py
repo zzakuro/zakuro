@@ -8,7 +8,6 @@ import subprocess
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from . import const
 from .util import log
 
 SEVENZIP_CANDIDATES = (

@@ -217,15 +217,17 @@ def pack_folder(root: str | Path, options: PackOptions | None = None) -> PackRes
         )
         return result
 
-    # The plain "everything" case is handed to 7-Zip as a wildcard, which is
-    # both faster and closer to what people expect; anything else goes through
-    # an explicit list file.
+    # The plain "everything, nothing to leave out" case is handed to 7-Zip as a
+    # wildcard, which is both faster and closer to what people expect. Anything
+    # else - and any folder that has to be held back - goes through an explicit
+    # list file, so what `files` prints is exactly what lands in the archive.
     plain = (
         selection.options.preset == "full"
         and not selection.options.include
         and not selection.options.exclude
         and not selection.options.exclude_dirs
         and selection.options.list_file is None
+        and not selection.skipped_junk
     )
     if plain and not options.show_selection:
         log.info(

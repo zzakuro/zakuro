@@ -125,11 +125,12 @@ JUNK_DIR_PATTERNS = (
 )
 
 # Top level names that make up the emulator payload, used by the presets.
+# The patch marker is deliberately not part of it: a crack-only export gets
+# copied into somebody else's game folder, where its hashes would be wrong.
 PAYLOAD_DIRS = (STEAM_SETTINGS_DIR,)
 PAYLOAD_FILES = EMU_DLL_NAMES + (
     "steam_emu.ini",
     "localconfig.vdf",
     "config.vdf",
     "settings.txt",
-    ".gse_autopatch.json",
 )

@@ -34,6 +34,7 @@ Or from a checkout, `gse-autopatcher.cmd` wraps `python -m autopatcher %*`.
 
 ```
 detect <folder>     report patched / partial / unpatched with the evidence
+files   <folder>    show what is in the folder and what would be archived
 patch  <folder>     apply the patch (idempotent, re-runs are no-ops)
 pack   <folder>     compress with 7-Zip, verify, optionally delete the source
 run    <folder>     detect -> patch -> extras -> compress -> delete
@@ -44,6 +45,82 @@ selftest            build a synthetic game and run the whole pipeline on it
 
 Exit codes: `0` done, `1` error, `2` nothing to do (not a Steam game / already
 patched), `3` `detect` says a patch is needed — handy in CI.
+
+## Choosing what goes into the archive
+
+Every compression command (`pack`, `run`, `batch`) takes the same selection
+flags, and `files` shows the result without writing anything.
+
+```bat
+:: what is in here, and what would be archived?
+gse-autopatcher files "D:\Games\Hades"
+
+:: only the emulator payload (the "crack only" export)
+gse-autopatcher files "D:\Games\Hades" --select crack-only
+
+:: skip the noise
+gse-autopatcher run "D:\Games\Hades" --exclude-dir logs --exclude-dir "*.pdb" -x "*.bk"
+
+:: only these paths
+gse-autopatcher run "D:\Games\Hades" --include "Hades.exe" --include "data/*"
+
+:: save the current selection, then reuse it later
+gse-autopatcher files "D:\Games\Hades" --exclude-dir logs --list-out keep.txt
+gse-autopatcher pack  "D:\Games\Hades" --list keep.txt
+```
+
+| Flag | Meaning |
+| --- | --- |
+| `--select full` | everything (default) |
+| `--select crack-only` | only `steam_settings/`, the emulator libraries and their config — no game files, no marker (it gets copied into other people's folders, where its hashes would be wrong) |
+| `--select game-only` | everything except the emulator payload |
+| `--include PATTERN` | only include what matches (repeatable). A pattern with `/` matches the path relative to the game folder, without it matches a file name anywhere |
+| `-x, --exclude PATTERN` | exclude what matches (repeatable) |
+| `--exclude-dir NAME` | exclude a folder and everything under it |
+| `--list FILE` | read paths/globs from a file: `# comment`, `-pattern` excludes, `/folder` excludes a folder |
+| `--list-out FILE` | write the resolved selection so it can be replayed with `--list` |
+| `--include-junk` | also archive the tool's own leftovers (`*.autopatch-backup`, `*.deleting-*`, `_autopatcher`) and system folders |
+| `--show-selection` | print the breakdown even for a full archive |
+
+Anything other than a plain full archive is handed to 7-Zip as an explicit
+list file, so what `files` prints is exactly what lands in the `.7z`. A
+selection that ends up empty is refused instead of quietly archiving nothing.
+An impossible `--include` is an error, never a silent "archive everything".
+
+## Detection: is it already patched?
+
+`detect` answers this from several independent signals and shows its work —
+every claim in `evidence:` is a fact it read from the folder.
+
+```
+folder : D:\Games\Hades
+name   : Hades
+appid  : 1145360  [steam_appid.txt, marker]
+bits   : 64-bit primary
+state  : ALREADY PATCHED (confidence 0.99)
+patcher: gse-autopatcher - patched by this tool
+marker : verified - v1, all 6 hashed file(s) match
+emu    : match
+```
+
+* **which patcher** — `gse-autopatcher`, `gbe-fork`, `goldberg-classic`
+  (pre-fork), `rune` (`.rne` / `steam_emu.ini`), `drm-removed-only` (SteamStub
+  gone, no emulator) or `unknown-emulator`, decided from the layout on disk.
+* **marker state** — `absent`, `verified` (every recorded SHA-256 still matches),
+  `modified` (a patched file was edited or removed) or `foreign` (a marker from
+  another tool). A `modified` marker is *not* treated as "already patched".
+* **emulator build** — with `--emu-dir` the deployed `steam_api*.dll` is
+  compared byte for byte with the build you configured: `match`, `mismatch`
+  (the folder is patched with an older/other emu, so `emu_dll` shows up as
+  missing work) or `unknown`.
+* `.bind` section, imports, bitness, `steam_settings` contents, appid sources —
+  as described above.
+
+A patched folder is skipped by `run` and `batch` unless you pass `--force`;
+`batch --only` accepts `all`, `unpatched`, `patched` and `stale` (patched but
+modified, or built with a different emulator).
+
+## Commands
 
 ## Detection
 
