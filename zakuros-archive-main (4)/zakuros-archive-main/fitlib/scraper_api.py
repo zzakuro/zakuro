@@ -222,13 +222,23 @@ def part_from_anchor_text(text: str, pattern: str | None) -> str | None:
     return m.group(1) if m else None
 
 
-def anchor_links(html: str, link_pat: str) -> list[tuple[str, str]]:
-    """(href, visible text) pairs for anchors whose href contains link_pat."""
+def anchor_links(html: str, link_pat: str | None) -> list[tuple[str, str]]:
+    """(href, visible text) pairs for anchors whose href contains link_pat
+    (None = no filter)."""
     out = []
     for href, inner in re.findall(r'<a[^>]+href="([^"]+)"[^>]*>([\s\S]*?)</a>', html, re.I):
-        if link_pat.lower() in href.lower():
-            out.append((href, get_text(inner)))
+        if link_pat is not None and link_pat.lower() not in href.lower():
+            continue
+        out.append((href, get_text(inner)))
     return out
+
+
+def href_matches(pat: str | None, href: str) -> bool:
+    if not pat:
+        return True
+    if "|" in pat or pat.startswith("^"):
+        return re.search(pat, href, re.I) is not None
+    return pat.lower() in href.lower()
 
 
 def uri(name: str | None, url: str, part: str | None = None) -> dict:
@@ -354,7 +364,9 @@ def post_links(html: str, site: dict) -> list[tuple[str, str, str | None]]:
             out.append((url, link_label(site, url, label), size))
         return out
 
-    for h, label in anchor_links(html, link_pat):
+    for h, label in anchor_links(html, None):
+        if not href_matches(link_pat, h):
+            continue
         if h in seen:
             continue
         seen.add(h)
