@@ -18,6 +18,7 @@ from .pack import PackOptions, pack_folder
 from .patch import PatchOptions, patch_game
 from .pe import read_pe
 from .probe import probe
+from .select import SelectionOptions, build_selection, categorize, summary
 from .util import log, safe_rmtree
 
 INTERFACE_STRINGS = [
@@ -384,8 +385,8 @@ def _run_checks(checks: Checks, fixture: dict, tmp: Path) -> None:
                  str(det32.missing))
     det64 = detect(probe(game64))
     checks.check("detect: 64-bit game is unpatched", det64.verdict == UNPATCHED, det64.verdict)
-    checks.check("detect: no SteamStub on the clean game",
-                 not any("SteamStub" in r for r in det64.reasons), str(det64.reasons))
+    checks.check("detect: no SteamStub section on the clean game",
+                 not probe(game64).has_steamstub, str(det64.reasons))
 
     # ---- patch refuses to guess when Steamless is missing ---------
     blocked = patch_game(game32, PatchOptions(emu_source=None, settings_mode="minimal"))
@@ -446,11 +447,109 @@ def _run_checks(checks: Checks, fixture: dict, tmp: Path) -> None:
         checks.note("shortcut test skipped: not on Windows")
 
     # ---- re-detection is idempotent --------------------------------
-    det_after = detect(probe(game64))
+    det_after = detect(probe(game64), emu_source=_emu_source(emu_dir))
     checks.check("detect: patched game is recognised",
                  det_after.verdict == PATCHED, f"{det_after.verdict} {det_after.reasons}")
     checks.check("detect: nothing missing after patching", not det_after.missing, str(det_after.missing))
-    checks.check("detect: marker is trusted", any("hashes match" in r for r in det_after.reasons))
+    checks.check("detect: marker is trusted", det_after.marker_state == "verified",
+                 det_after.marker_state)
+    checks.check("detect: patcher identified as this tool",
+                 det_after.patcher == const.PATCHER_SELF, det_after.patcher)
+    checks.check("detect: deployed library matches the configured emu build",
+                 det_after.emu_match == "match", det_after.emu_match)
+
+    # a different emu build in the folder must not pass as "already patched"
+    swapped = tmp / "Game64Swapped"
+    shutil.copytree(game64, swapped)
+    (swapped / "steam_api64.dll").write_bytes(
+        (emu_dir / "steam_api64.dll").read_bytes() + b"\x00tampered"
+    )
+    det_swapped = detect(probe(swapped), emu_source=_emu_source(emu_dir))
+    checks.check("detect: a different emu build is reported as a mismatch",
+                 det_swapped.emu_match == "mismatch", det_swapped.emu_match)
+    checks.check("detect: mismatch turns a patched folder into work to do",
+                 "emu_dll" in det_swapped.missing, str(det_swapped.missing))
+
+    # a hand made gbe_fork layout must be recognised as somebody else's patch
+    foreign = tmp / "ForeignPatch"
+    shutil.copytree(game64, foreign)
+    (foreign / const.MARKER_FILENAME).unlink()
+    (foreign / const.STEAM_SETTINGS_DIR / "configs.user.ini").write_text(
+        "[user]\naccount_name=someone\n", encoding="utf-8"
+    )
+    det_foreign = detect(probe(foreign), emu_source=_emu_source(emu_dir))
+    checks.check("detect: a foreign gbe_fork patch is identified",
+                 det_foreign.patcher == const.PATCHER_GBE_FORK, det_foreign.patcher)
+    checks.check("detect: a verified emu build still counts as patched",
+                 det_foreign.verdict == PATCHED, det_foreign.verdict)
+
+    # a changed file must invalidate the marker
+    tampered = tmp / "Tampered"
+    shutil.copytree(game64, tampered)
+    (tampered / "payload.txt").write_text("edited after patching", encoding="utf-8")
+    det_tampered = detect(probe(tampered))
+    checks.check("detect: editing a patched file invalidates the marker",
+                 det_tampered.marker_state == "modified", det_tampered.marker_state)
+
+    # ---- archive contents selection --------------------------------
+    (game64 / "logs").mkdir(exist_ok=True)
+    (game64 / "logs" / "session.log").write_text("noise", encoding="utf-8")
+    (game64 / "readme.md").write_text("docs", encoding="utf-8")
+    (game64 / "Hades.autopatch-backup").mkdir(exist_ok=True)
+    (game64 / "Hades.autopatch-backup" / "Game64.exe").write_bytes(b"old")
+
+    everything = build_selection(game64)
+    checks.check("select: full takes every file",
+                 "logs/session.log" in everything.files
+                 and "payload.txt" in everything.files
+                 and "steam_settings/steam_interfaces.txt" in everything.files,
+                 str(everything.files))
+    checks.check("select: tool leftovers are skipped by default",
+                 "Hades.autopatch-backup/Game64.exe" not in everything.files
+                 and "Hades.autopatch-backup" in everything.skipped_junk,
+                 str(everything.skipped_junk))
+
+    crack = build_selection(game64, SelectionOptions(preset="crack-only"))
+    checks.check("select: crack-only keeps the emulator payload",
+                 "steam_api64.dll" in crack.files
+                 and "steam_settings/steam_interfaces.txt" in crack.files,
+                 str(crack.files))
+    checks.check("select: crack-only drops the game",
+                 "Game64.exe" not in crack.files and "payload.txt" not in crack.files,
+                 str(crack.files))
+
+    only_game = build_selection(game64, SelectionOptions(preset="game-only"))
+    checks.check("select: game-only drops the payload",
+                 "steam_api64.dll" not in only_game.files
+                 and const.MARKER_FILENAME not in only_game.files
+                 and "Game64.exe" in only_game.files, str(only_game.files))
+
+    only_data = build_selection(game64, SelectionOptions(include=["logs/*"]))
+    checks.check("select: --include narrows to the match",
+                 only_data.files == ["logs/session.log"], str(only_data.files))
+
+    no_logs = build_selection(game64, SelectionOptions(exclude_dirs=["logs"]))
+    checks.check("select: --exclude-dir drops a folder and its contents",
+                 not any(f.startswith("logs/") for f in no_logs.files)
+                 and "Game64.exe" in no_logs.files, str(no_logs.files))
+
+    no_pdb = build_selection(game64, SelectionOptions(exclude=["*.md"]))
+    checks.check("select: --exclude matches by name anywhere",
+                 "readme.md" not in no_pdb.files, str(no_pdb.files))
+
+    list_path = tmp / "selection.txt"
+    list_path.write_text(
+        "# only what matters\nGame64.exe\nsteam_settings/*\n-lnk\n/logs\n", encoding="utf-8"
+    )
+    from_list = build_selection(game64, SelectionOptions(list_file=list_path))
+    checks.check("select: --list honours includes, excludes and folder excludes",
+                 set(from_list.files) == {"Game64.exe", "steam_settings/steam_interfaces.txt",
+                                          "steam_settings/steam_appid.txt"},
+                 str(from_list.files))
+
+    empty = build_selection(game64, SelectionOptions(include=["does-not-exist*"]))
+    checks.check("select: an impossible selection is empty, not everything",
+                 empty.count == 0, str(empty.files))
 
     again = patch_game(game64, PatchOptions(emu_source=_emu_source(emu_dir), settings_mode="minimal"))
     checks.check("patch: second run is a no-op",

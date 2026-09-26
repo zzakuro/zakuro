@@ -101,11 +101,11 @@ def _marker_state(facts: GameFacts) -> tuple[str, str]:
         return "foreign", f"marker written by {marker.get('tool', 'another tool')}"
     recorded = marker.get("files") or {}
     if not isinstance(recorded, dict) or not recorded:
-        return "verified", f"marker v{marker.get('marker_version', '?')} (no hashes recorded)"
+        return "verified", f"written by this tool (v{marker.get('marker_version', '?')}, no hashes recorded)"
     for rel, expected in recorded.items():
         path = facts.root / rel
         if not path.is_file():
-            return "modified", f"marker references a missing file: {rel}"
+            return "modified", f"a file it patched is gone: {rel}"
         if isinstance(expected, str) and expected.startswith("sha256:"):
             try:
                 actual = sha256_file(path)
@@ -113,7 +113,7 @@ def _marker_state(facts: GameFacts) -> tuple[str, str]:
                 return "modified", f"{rel} could not be read: {exc}"
             if actual != expected.split(":", 1)[1]:
                 return "modified", f"{rel} changed since it was patched"
-    return "verified", f"marker v{marker.get('marker_version', '?')} verified"
+    return "verified", f"v{marker.get('marker_version', '?')}, all {len(recorded)} hashed file(s) match"
 
 
 def _compare_emu_build(facts: GameFacts, emu_source) -> tuple[str, list[str]]:
@@ -149,8 +149,9 @@ def detect(
     reasons: list[str] = det.reasons
     det.patcher = facts.patcher
     det.patcher_note = facts.patcher_note
-    det.marker_state, facts.marker_note = _marker_state(facts)
-    det.marker_state = facts.marker_state
+    state, note = _marker_state(facts)
+    facts.marker_state, facts.marker_note = state, note
+    det.marker_state = state
 
     if facts.errors:
         reasons.extend(facts.errors)
@@ -180,7 +181,8 @@ def detect(
     ]
 
     if facts.marker is not None:
-        reasons.append(f"autopatch marker: {facts.marker_note or 'unverified'}")
+        reasons.append(f"autopatch marker: {det.marker_state}"
+                       + (f" - {facts.marker_note}" if facts.marker_note else ""))
     if facts.patcher != "none":
         reasons.append(f"patch looks like: {facts.patcher} ({facts.patcher_note})")
 

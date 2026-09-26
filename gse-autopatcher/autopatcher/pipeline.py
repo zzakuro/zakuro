@@ -56,7 +56,7 @@ def run_pipeline(root: str | Path, options: PipelineOptions | None = None) -> Pi
     log.rule(f"{root.name}")
 
     facts = probe(root)
-    before = detect(facts)
+    before = detect(facts, emu_source=options.patch.emu_source)
     result = PipelineResult(root=root, before=before)
 
     if facts.errors:
@@ -75,18 +75,24 @@ def run_pipeline(root: str | Path, options: PipelineOptions | None = None) -> Pi
 
     if before.verdict == PATCHED and not options.patch.force:
         result.after = before
+        detail = f"already patched ({before.patcher})" if before.patcher != "none" else "already patched"
+        if before.emu_match == "mismatch":
+            log.warn(
+                f"{detail}, but the emulator library differs from the configured build "
+                f"({', '.join(before.emu_mismatched)}) - use --force to update it"
+            )
         if not options.do_pack or options.pack.dry_run:
-            result.skipped_reason = "already patched"
-            log.ok("already patched, skipping the patch step")
+            result.skipped_reason = detail
+            log.ok(f"{detail}, skipping the patch step")
             return result
-        log.ok("already patched, continuing to compression")
+        log.ok(f"{detail}, continuing to compression")
     elif options.do_patch:
         patch_result = patch_game(facts, options.patch)
         result.patch = patch_result
         result.errors.extend(patch_result.errors)
-        result.after = detect(probe(facts.root))
+        result.after = detect(probe(facts.root), emu_source=options.patch.emu_source)
         log.info(
-            f"patch result: {result.after.verdict.upper()} "
+            f"patch result: {result.after.label} "
             f"({len(patch_result.performed)} step(s) run, "
             f"{len(patch_result.skipped)} already satisfied)"
         )

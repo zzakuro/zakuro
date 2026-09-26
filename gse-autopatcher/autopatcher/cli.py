@@ -14,7 +14,8 @@ from .pack import PROFILES, PackOptions, pack_folder
 from .patch import PatchOptions, patch_game
 from .pipeline import PipelineOptions, PipelineResult, report, run_pipeline
 from .probe import probe
-from .util import log, read_json
+from .select import SelectionOptions, build_selection, inventory, summary, write_list_file
+from .util import human_size, log, read_json
 
 EXIT_OK = 0
 EXIT_ERROR = 1
@@ -169,10 +170,12 @@ def build_parser() -> tuple[argparse.ArgumentParser, dict[str, argparse.Argument
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog=(
             "examples:\n"
-            "  gse-autopatcher detect 'D:\\Games\\Hades'\n"
+            "  gse-autopatcher detect 'D:\\Games\\Hades' --emu-dir emu\n"
+            "  gse-autopatcher files 'D:\\Games\\Hades' --select crack-only\n"
             "  gse-autopatcher patch 'D:\\Games\\Hades' --emu-dir emu --steamless steamless\\Steamless.CLI.exe\n"
             "  gse-autopatcher run 'D:\\Games\\Hades' --emu-dir emu --appid 1145360 \\\n"
-            "      --txt-file nfo.txt --lnk-name 'Hades.lnk' --profile high --delete-original -y\n"
+            "      --txt-file nfo.txt --lnk-name 'Hades.lnk' --profile high \\\n"
+            "      --exclude-dir logs --delete-original -y\n"
         ),
     )
     parser.add_argument("--version", action="version", version=f"{const.TOOL_NAME} {const.TOOL_VERSION}")
@@ -186,8 +189,13 @@ def build_parser() -> tuple[argparse.ArgumentParser, dict[str, argparse.Argument
         subparsers[name] = sub
         return sub
 
-    p = add("detect", "report whether a folder is patched")
+    p = add("detect", "report whether a folder is already patched")
     _add_detect_args(p)
+
+    p = add("files", "show what is in a folder and what would be archived")
+    p.add_argument("folder")
+    p.add_argument("--json", action="store_true")
+    _add_selection_args(p)
 
     p = add("patch", "apply the patch to a folder")
     p.add_argument("folder")
@@ -200,6 +208,7 @@ def build_parser() -> tuple[argparse.ArgumentParser, dict[str, argparse.Argument
     p.add_argument("folder")
     p.add_argument("--json", action="store_true")
     _add_pack_args(p)
+    _add_selection_args(p)
 
     p = add("run", "detect, patch, then compress in one go")
     p.add_argument("folder")
@@ -209,6 +218,7 @@ def build_parser() -> tuple[argparse.ArgumentParser, dict[str, argparse.Argument
     p.add_argument("--json", action="store_true")
     _add_patch_args(p, own_safety=False)
     _add_pack_args(p, own_safety=False)
+    _add_selection_args(p)
     _add_shared_safety_args(p)
 
     p = add("batch", "run the pipeline over many folders")
@@ -218,8 +228,10 @@ def build_parser() -> tuple[argparse.ArgumentParser, dict[str, argparse.Argument
     p.add_argument("--max-depth", type=int, default=2,
                    help="how deep to look for executables inside each folder")
     p.add_argument("--no-pack", action="store_true", help="patch only, do not compress")
-    p.add_argument("--only", choices=("all", "unpatched", "patched"),
-                   default="all", help="filter by current state (default: all)")
+    p.add_argument("--only", choices=("all", "unpatched", "patched", "stale"),
+                   default="all",
+                   help="filter by current state; 'stale' means patched but changed "
+                        "or built with a different emulator (default: all)")
     p.add_argument("--stop-on-error", action="store_true")
     p.add_argument("--continue", dest="keep_going", action="store_true",
                    help="keep going after a folder fails (default)")
@@ -227,6 +239,7 @@ def build_parser() -> tuple[argparse.ArgumentParser, dict[str, argparse.Argument
     p.add_argument("--json", action="store_true", help="write a JSON report to stdout")
     _add_patch_args(p, own_safety=False)
     _add_pack_args(p, own_safety=False)
+    _add_selection_args(p)
     _add_shared_safety_args(p)
 
     add("tools", "show which external tools were found")
@@ -278,6 +291,17 @@ def _patch_options(args: argparse.Namespace) -> PatchOptions:
     )
 
 
+def _selection_options(args: argparse.Namespace) -> SelectionOptions:
+    return SelectionOptions(
+        preset=getattr(args, "select", "full") or "full",
+        include=list(getattr(args, "include", None) or []),
+        exclude=list(getattr(args, "exclude", None) or []),
+        exclude_dirs=list(getattr(args, "exclude_dir", None) or []),
+        list_file=Path(args.list_file) if getattr(args, "list_file", None) else None,
+        include_junk=getattr(args, "include_junk", False),
+    )
+
+
 def _pack_options(args: argparse.Namespace) -> PackOptions:
     return PackOptions(
         sevenzip=Path(args.sevenzip) if args.sevenzip else None,
@@ -288,7 +312,7 @@ def _pack_options(args: argparse.Namespace) -> PackOptions:
         solid_block=args.solid_block,
         threads=args.threads,
         mem_percent=args.mem_percent,
-        exclude=list(args.exclude or []),
+        exclude=list(getattr(args, "exclude", None) or []),
         password=args.password,
         header_encrypt=args.encrypt_names,
         test_archive=not args.no_test,
@@ -296,6 +320,9 @@ def _pack_options(args: argparse.Namespace) -> PackOptions:
         yes=args.yes,
         dry_run=args.dry_run,
         timeout=args.timeout,
+        selection=_selection_options(args),
+        list_out=Path(args.list_out) if getattr(args, "list_out", None) else None,
+        show_selection=getattr(args, "show_selection", False),
     )
 
 
@@ -305,7 +332,10 @@ def _emit_json(payload) -> None:
 
 def cmd_detect(args) -> int:
     facts = probe(args.folder, max_depth=args.max_depth)
-    det = detect(facts, verify_hashes=not args.no_verify_hashes)
+    emu_source = find_emu_source(args.emu_dir) if getattr(args, "emu_dir", None) else None
+    if getattr(args, "emu_dir", None) and emu_source is None:
+        log.warn(f"no emulator library found in {args.emu_dir}; skipping the build comparison")
+    det = detect(facts, verify_hashes=not args.no_verify_hashes, emu_source=emu_source)
     if args.json:
         _emit_json(det.to_dict())
     else:
@@ -313,6 +343,39 @@ def cmd_detect(args) -> int:
     if det.verdict in (NOT_STEAM, PATCHED):
         return EXIT_SKIPPED
     return EXIT_NEEDS_PATCH
+
+
+def cmd_files(args) -> int:
+    root = Path(args.folder).expanduser()
+    if not root.is_dir():
+        log.error(f"not a directory: {root}")
+        return EXIT_ERROR
+    options = _selection_options(args)
+    selection = build_selection(root, options)
+    rows = inventory(root, options)
+
+    if args.json:
+        _emit_json({"inventory": rows, "selection": selection.to_dict()})
+        return EXIT_OK
+
+    log.plain(f"folder : {root}")
+    log.plain("")
+    log.plain(f"{'entry':44} {'kind':5} {'files':>7} {'size':>12}  category")
+    log.plain("-" * 92)
+    for row in rows:
+        size = human_size(row["bytes"])
+        log.plain(
+            f"{row['name'][:44]:44} {row['kind']:5} {row['files']:7} {size:>12}  {row['category']}"
+        )
+    log.plain("-" * 92)
+    log.plain("")
+    log.plain(summary(selection))
+    if args.list_out:
+        written = write_list_file(selection, Path(args.list_out).expanduser())
+        log.plain("")
+        log.plain(f"selection written to {args.list_out} ({written} path(s))")
+        log.plain(f"reuse it with:  gse-autopatcher pack {root} --list {args.list_out}")
+    return EXIT_OK
 
 
 def cmd_patch(args) -> int:
@@ -408,13 +471,18 @@ def cmd_batch(args) -> int:
 
     for index, target in enumerate(targets, 1):
         log.rule(f"[{index}/{len(targets)}] {target.name}")
-        det = detect(probe(target, max_depth=args.max_depth))
+        det = detect(probe(target, max_depth=args.max_depth), emu_source=patch_options.emu_source)
         if args.only == "unpatched" and not det.needs_patch:
-            log.info(f"skipping: verdict is {det.verdict}")
+            log.info(f"skipping: {det.label.lower()}")
             continue
         if args.only == "patched" and det.verdict != PATCHED:
             log.info("skipping: not patched")
             continue
+        if args.only == "stale":
+            stale = det.marker_state == "modified" or det.emu_match == "mismatch"
+            if not (stale or det.needs_patch):
+                log.info("skipping: patched and up to date")
+                continue
         options = PipelineOptions(
             patch=patch_options,
             pack=pack_options,
@@ -488,6 +556,7 @@ def cmd_selftest(args) -> int:
 
 HANDLERS = {
     "detect": cmd_detect,
+    "files": cmd_files,
     "patch": cmd_patch,
     "pack": cmd_pack,
     "run": cmd_run,
