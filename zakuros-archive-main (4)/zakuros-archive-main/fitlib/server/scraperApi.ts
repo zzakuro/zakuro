@@ -218,7 +218,7 @@ const slugify = (s: string): string =>
     .replace(/^-+|-+$/g, "");
 
 function runEngine(args: string[]): Promise<{ stdout: string; stderr: string }> {
-  return execFileP(SCRAPLING_PY, args, {
+  return execFileP(SCRAPLING_PY, ["-X", "utf8", ...args], {
     cwd: process.cwd(),
     timeout: 6 * 60 * 1000,
     maxBuffer: 5 * 1024 * 1024,
