@@ -385,6 +385,7 @@ def post_links(html: str, site: dict) -> list[tuple[str, str, str | None]]:
         return out
 
     for h, label in anchor_links(html, None):
+        h = _html.unescape(h)
         if not href_matches(link_pat, h):
             continue
         if h.startswith(("mailto:", "tel:", "javascript:", "#")):
