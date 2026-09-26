@@ -363,17 +363,3 @@ def read_pe(path: str | Path) -> PEInfo:
         return PEInfo(path=path, error=str(exc))
     except OSError as exc:
         return PEInfo(path=path, error=f"OS error: {exc}")
-
-
-def read_pe_bytes(path: str | Path) -> bytes:
-    return Path(path).read_bytes()
-
-
-def sha256_file(path: str | Path, chunk: int = 1024 * 1024) -> str:
-    import hashlib
-
-    h = hashlib.sha256()
-    with Path(path).open("rb") as fh:
-        for block in iter(lambda: fh.read(chunk), b""):
-            h.update(block)
-    return h.hexdigest()
