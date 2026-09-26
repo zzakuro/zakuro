@@ -106,7 +106,7 @@ function startLiveRun(key: string, maxPosts: number): ScraperRunRecord | null {
   liveRuns.set(key, rec);
   broadcast(key, { type: "start", key, name: rec.name });
 
-  const args = [ENGINE_SCRIPT, key];
+  const args = ["-X", "utf8", ENGINE_SCRIPT, key];
   if (maxPosts > 0) args.push("--max-posts", String(Math.floor(maxPosts)));
   const child = spawn(SCRAPLING_PY, args, { cwd: process.cwd(), windowsHide: true });
 

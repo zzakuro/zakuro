@@ -791,13 +791,17 @@ function renderScraperPanel(): string {
   function refreshRuns() {
     fetch("/api/scraper/live-runs").then(function (r) { return r.json(); }).then(function (d) {
       var box = $("#runs"); box.textContent = "";
+      var autoKey = null;
       (d.runs || []).forEach(function (run) {
         var el = document.createElement("span");
         el.className = "run " + (run.running ? "running" : (run.code === 0 ? "done" : "fail"));
         el.textContent = run.key + " · " + (run.running ? "running" : (run.done + " / " + (run.total == null ? "?" : run.total))) + (run.running ? "" : " · " + age(run.startedAt));
         el.onclick = function () { connect(run.key); };
         box.appendChild(el);
+        if (run.running && !autoKey) autoKey = run.key;
       });
+      // Auto-attach to a running feed so live output streams without a click.
+      if (autoKey && (!es || es.url.indexOf("/" + encodeURIComponent(autoKey)) < 0)) connect(autoKey);
     }).catch(function () {});
   }
   function init() {
