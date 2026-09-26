@@ -101,8 +101,10 @@ def glitch_seal_links(html: str) -> list[tuple[str, str, str | None]]:
     if not m:
         return []
     key = [int(x) for x in m.group(1).split(",") if x.strip().lstrip("-").isdigit()]
+    am = re.search(r'linkPayloadAttribute\s*=\s*"([^"]+)"', html)
+    attr = am.group(1) if am else "data-anl3cgehmr"
     out: list[tuple[str, str, str | None]] = []
-    for a in re.finditer(r'<a\b[^>]*data-anl3cgehmr="([^"]+)"[^>]*>', html, re.I):
+    for a in re.finditer(r'<a\b[^>]*' + re.escape(attr) + r'="([^"]+)"[^>]*>', html, re.I):
         hm = re.search(r'data-host="([^"]*)"', a.group(0))
         host = hm.group(1) if hm else ""
         url = _unseal(a.group(1), key)
